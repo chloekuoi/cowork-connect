@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(npx expo install:*)",
+      "Bash(xcrun simctl:*)",
+      "Bash(pkill:*)",
+      "Bash(tree:*)"
+    ]
+  }
+}
