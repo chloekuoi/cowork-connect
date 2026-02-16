@@ -188,7 +188,6 @@ export default function SessionRequestCard({
             session.status === 'pending' && styles.statusDotPending,
             session.status === 'declined' && styles.statusDotDeclined,
             session.status === 'completed' && styles.statusDotCompleted,
-            session.status === 'cancelled' && styles.statusDotCancelled,
           ]}
         />
       </View>
@@ -327,9 +326,6 @@ const styles = StyleSheet.create({
   },
   statusDotCompleted: {
     backgroundColor: theme.primary,
-  },
-  statusDotCancelled: {
-    backgroundColor: theme.textMuted,
   },
   description: {
     marginTop: spacing[2],
