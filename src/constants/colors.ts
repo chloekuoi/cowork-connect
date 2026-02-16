@@ -2,9 +2,10 @@
 
 export const colors = {
   // Backgrounds
-  bgPrimary: '#FAFAF8',
-  bgSecondary: '#F4F3F0',
+  bgPrimary: '#F5F4F1',
+  bgSecondary: '#EEEDEA',
   bgCard: '#FFFFFF',
+  bgInput: '#FFFFFF',
 
   // Text
   textPrimary: '#1A1A1A',
@@ -13,23 +14,28 @@ export const colors = {
   textInverse: '#FFFFFF',
 
   // Borders & Dividers
-  borderDefault: '#E8E8E4',
-  borderFocus: '#3D3D3D',
-  divider: '#F0EFEC',
+  borderDefault: '#E4E3E0',
+  borderFocus: '#3F5443',
+  divider: '#EEEDEA',
 
   // Accent
-  accentPrimary: '#3D3D3D',
-  accentHover: '#2A2A2A',
-  accentSubtle: '#EAEAE6',
+  accentPrimary: '#3F5443',
+  accentHover: '#334536',
+  accentPrimaryLight: '#EDF3EF',
+  accentSecondary: '#C9AEFB',
+  accentSecondaryDark: '#8B6FC0',
+  accentSecondaryText: '#2E2440',
+  accentSecondaryLight: '#F5EEFF',
+  accentSubtle: '#E8E7E4',
 
   // Status
-  accentSuccess: '#4A7A5B',
-  accentWarning: '#C4973B',
+  accentSuccess: '#3F5443',
+  accentWarning: '#9B7FD4',
   accentDanger: '#B85C4D',
-  statusPendingBg: '#FDF6E8',
-  statusPendingText: '#C4973B',
-  statusConfirmedBg: '#EDF5EF',
-  statusConfirmedText: '#4A7A5B',
+  statusPendingBg: '#F5EEFF',
+  statusPendingText: '#9B7FD4',
+  statusConfirmedBg: '#EDF3EF',
+  statusConfirmedText: '#3F5443',
   statusCancelledBg: '#F5F4F2',
   statusCancelledText: '#9B9B9B',
 } as const;
@@ -54,11 +60,18 @@ export const shadows = {
     elevation: 3,
   },
   button: {
-    shadowColor: '#3D3D3D',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 2 },
+    shadowColor: '#3F5443',
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 4 },
     elevation: 4,
+  },
+  dropdown: {
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
   },
 } as const;
 
@@ -67,6 +80,7 @@ export const theme = {
   primary: colors.accentPrimary,
   primaryHover: colors.accentHover,
   accent: colors.accentPrimary,
+  primaryLight: colors.accentPrimaryLight,
 
   background: colors.bgPrimary,
   surface: colors.bgCard,
@@ -80,6 +94,6 @@ export const theme = {
   warning: colors.accentWarning,
   error: colors.accentDanger,
 
-  swipeRight: colors.accentSuccess,
+  swipeRight: colors.accentPrimary,
   swipeLeft: colors.accentDanger,
 } as const;
