@@ -15,7 +15,7 @@ import {
   Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme, spacing, borderRadius } from '../../constants';
+import { colors, theme, spacing, borderRadius } from '../../constants';
 import { WorkStyle, LocationType } from '../../types';
 import { upsertIntent, IntentInput, getTodayIntent } from '../../services/discoveryService';
 import { useAuth } from '../../context/AuthContext';
@@ -68,6 +68,7 @@ export default function IntentScreen({
 
   const timeOptions = getTimeOptions();
   const endTimeOptions = timeOptions.filter(option => option.value > startTime);
+  const durationLabel = getDurationLabel(startTime, endTime);
 
   useEffect(() => {
     let isMounted = true;
@@ -304,6 +305,11 @@ export default function IntentScreen({
                   </Text>
                 </TouchableOpacity>
               </View>
+              {durationLabel !== '--' && (
+                <View style={styles.durationBadge}>
+                  <Text style={styles.durationBadgeText}>{durationLabel}</Text>
+                </View>
+              )}
             </View>
           </View>
 
@@ -403,9 +409,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing[2],
   },
   textInput: {
-    backgroundColor: theme.surface,
+    backgroundColor: colors.bgInput,
     borderWidth: 1,
-    borderColor: theme.highlight,
+    borderColor: colors.borderDefault,
     borderRadius: borderRadius.md,
     padding: spacing[4],
     fontSize: 16,
@@ -416,8 +422,8 @@ const styles = StyleSheet.create({
     minHeight: 48,
   },
   optionsCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+    backgroundColor: colors.bgCard,
+    borderRadius: borderRadius.lg,
     padding: 20,
     marginBottom: spacing[5],
   },
@@ -427,11 +433,11 @@ const styles = StyleSheet.create({
   },
   chip: {
     flex: 1,
-    paddingVertical: 9,
-    paddingHorizontal: 8,
-    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: '#e8e4de',
+    borderColor: colors.borderDefault,
     backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
@@ -440,13 +446,13 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   chipSelected: {
-    backgroundColor: '#6b7f5e',
-    borderColor: '#6b7f5e',
+    backgroundColor: colors.accentPrimary,
+    borderColor: colors.accentPrimary,
   },
   chipText: {
     fontSize: 12.5,
     fontWeight: '500',
-    color: '#5a554e',
+    color: colors.textSecondary,
     textAlign: 'center',
   },
   chipEmoji: {
@@ -455,11 +461,11 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   chipTextSelected: {
-    color: '#ffffff',
+    color: colors.textInverse,
   },
   divider: {
     height: 1,
-    backgroundColor: '#f0ede8',
+    backgroundColor: colors.divider,
     marginVertical: spacing[4],
   },
   availabilityText: {
@@ -473,6 +479,7 @@ const styles = StyleSheet.create({
   timeRow: {
     flexDirection: 'row',
     gap: spacing[4],
+    alignItems: 'flex-end',
   },
   timeColumn: {
     flex: 1,
@@ -483,9 +490,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing[2],
   },
   timePicker: {
-    backgroundColor: theme.surface,
+    backgroundColor: colors.bgCard,
     borderWidth: 1,
-    borderColor: theme.highlight,
+    borderColor: colors.borderDefault,
     borderRadius: borderRadius.md,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
@@ -493,6 +500,21 @@ const styles = StyleSheet.create({
   timePickerText: {
     fontSize: 16,
     color: theme.text,
+  },
+  durationBadge: {
+    alignSelf: 'flex-end',
+    backgroundColor: colors.accentPrimaryLight,
+    borderRadius: borderRadius.full,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    marginTop: spacing[3],
+  },
+  durationBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    color: colors.accentPrimary,
   },
   button: {
     marginTop: spacing[4],
@@ -527,10 +549,10 @@ const styles = StyleSheet.create({
     color: theme.text,
   },
   modalItemSelected: {
-    backgroundColor: theme.highlight,
+    backgroundColor: colors.accentPrimaryLight,
   },
   modalItemTextSelected: {
-    color: theme.primary,
+    color: colors.accentPrimary,
     fontWeight: '600',
   },
   modalClose: {
@@ -602,6 +624,27 @@ function formatDisplayTime(value: string): string {
   const period = hour >= 12 ? 'PM' : 'AM';
   const displayHour = hour % 12 === 0 ? 12 : hour % 12;
   return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+}
+
+function getDurationLabel(startValue: string, endValue: string): string {
+  if (!startValue || !endValue || endValue <= startValue) return '--';
+  const [startH, startM] = startValue.split(':').map(Number);
+  const [endH, endM] = endValue.split(':').map(Number);
+  if (Number.isNaN(startH) || Number.isNaN(startM) || Number.isNaN(endH) || Number.isNaN(endM)) {
+    return '--';
+  }
+  const startMinutes = startH * 60 + startM;
+  const endMinutes = endH * 60 + endM;
+  const totalMinutes = Math.max(endMinutes - startMinutes, 0);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) {
+    return `${minutes} min`;
+  }
+  if (minutes === 0) {
+    return `${hours} hr`;
+  }
+  return `${hours} hr ${minutes} min`;
 }
 
 type TimePickerModalProps = {

@@ -460,7 +460,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[3],
     borderBottomWidth: 1,
-    borderBottomColor: '#E2DDD6',
+    borderBottomColor: theme.highlight,
     backgroundColor: theme.surface,
   },
   backButton: {

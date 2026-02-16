@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { borderRadius, spacing, touchTarget } from '../../constants';
+import { borderRadius, colors, spacing, shadows } from '../../constants';
 
 type DateOption = {
   label: string;
@@ -79,24 +79,20 @@ export default function InviteComposerCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: '#ffffff',
-    borderRadius: 20,
-    paddingHorizontal: 26,
+    backgroundColor: colors.bgCard,
+    borderRadius: borderRadius.lg,
+    paddingHorizontal: 24,
     paddingVertical: 24,
     marginHorizontal: spacing[4],
     marginTop: spacing[3],
     maxWidth: 360,
     width: '88%',
     alignSelf: 'center',
-    shadowColor: '#000000',
-    shadowOpacity: 0.06,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 4,
+    ...shadows.card,
   },
   badge: {
     alignSelf: 'flex-start',
-    backgroundColor: '#e5eade',
+    backgroundColor: colors.accentPrimaryLight,
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderRadius: borderRadius.full,
@@ -106,17 +102,17 @@ const styles = StyleSheet.create({
     fontSize: 10,
     letterSpacing: 0.6,
     textTransform: 'uppercase',
-    color: '#6b7f5e',
+    color: colors.accentPrimary,
     fontWeight: '600',
   },
   title: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#3a3632',
+    color: colors.textPrimary,
   },
   subtitle: {
     fontSize: 13,
-    color: '#a09a90',
+    color: colors.textTertiary,
     marginTop: spacing[1],
   },
   pillsRow: {
@@ -124,38 +120,36 @@ const styles = StyleSheet.create({
     paddingRight: spacing[2],
   },
   pill: {
-    width: 56,
-    height: 52,
+    width: 54,
     paddingVertical: 10,
-    paddingHorizontal: 6,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#ece8e2',
-    backgroundColor: '#faf9f7',
+    paddingHorizontal: 4,
+    borderRadius: borderRadius.md,
+    borderWidth: 1.5,
+    borderColor: colors.borderDefault,
+    backgroundColor: colors.bgPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 8,
   },
   pillSelected: {
-    backgroundColor: '#6b7f5e',
-    borderColor: '#6b7f5e',
-    transform: [{ scale: 1.05 }],
+    backgroundColor: colors.accentPrimary,
+    borderColor: colors.accentPrimary,
   },
   pillDay: {
     fontSize: 12,
-    color: '#5a554e',
+    color: colors.textPrimary,
     fontWeight: '700',
   },
   pillDaySelected: {
-    color: '#ffffff',
+    color: colors.textInverse,
   },
   pillDate: {
     fontSize: 11,
-    color: '#5a554e',
+    color: colors.textPrimary,
     marginTop: 2,
   },
   pillDateSelected: {
-    color: '#ffffff',
+    color: colors.textInverse,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -164,18 +158,14 @@ const styles = StyleSheet.create({
   },
   sendButton: {
     flex: 1,
-    backgroundColor: '#6b7f5e',
-    borderRadius: 16,
+    backgroundColor: colors.accentPrimary,
+    borderRadius: borderRadius.md,
     paddingVertical: 14,
     alignItems: 'center',
-    shadowColor: '#000000',
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    ...shadows.button,
   },
   sendButtonText: {
-    color: '#ffffff',
+    color: colors.textInverse,
     fontSize: 15,
     fontWeight: '600',
   },
@@ -185,7 +175,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
   },
   cancelButtonText: {
-    color: '#a09a90',
+    color: colors.textTertiary,
     fontSize: 14,
     fontWeight: '600',
   },

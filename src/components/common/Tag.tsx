@@ -1,6 +1,6 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from 'react-native';
-import { theme, spacing, borderRadius } from '../../constants';
+import { colors, theme, borderRadius } from '../../constants';
 
 type TagProps = {
   label: string;
@@ -62,26 +62,31 @@ export default function Tag({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: borderRadius.full,
+    borderRadius: borderRadius.md,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   sm: {
-    paddingHorizontal: spacing[2],
-    paddingVertical: spacing[1],
+    paddingHorizontal: 10,
+    paddingVertical: 6,
   },
   md: {
-    paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   selected: {
     backgroundColor: theme.primary,
     borderColor: theme.primary,
+    shadowColor: theme.primary,
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   unselected: {
-    backgroundColor: theme.surface,
-    borderColor: theme.highlight,
+    backgroundColor: 'transparent',
+    borderColor: colors.borderDefault,
   },
   text: {
     fontWeight: '500',
@@ -90,12 +95,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   mdText: {
-    fontSize: 14,
+    fontSize: 13,
   },
   selectedText: {
-    color: theme.surface,
+    color: colors.textInverse,
   },
   unselectedText: {
-    color: theme.text,
+    color: colors.textSecondary,
   },
 });

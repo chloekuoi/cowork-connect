@@ -7,7 +7,7 @@ import {
   ViewStyle,
   TextStyle,
 } from 'react-native';
-import { theme, spacing, borderRadius, touchTarget } from '../../constants';
+import { colors, theme, spacing, borderRadius, touchTarget, shadows } from '../../constants';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
@@ -67,18 +67,19 @@ const styles = StyleSheet.create({
   base: {
     minHeight: touchTarget.min,
     paddingHorizontal: spacing[6],
-    paddingVertical: spacing[3],
+    paddingVertical: 15,
     borderRadius: borderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
   primary: {
     backgroundColor: theme.primary,
+    ...shadows.button,
   },
   secondary: {
-    backgroundColor: theme.highlight,
+    backgroundColor: colors.bgSecondary,
     borderWidth: 1,
-    borderColor: theme.primary,
+    borderColor: colors.borderDefault,
   },
   ghost: {
     backgroundColor: 'transparent',
@@ -87,16 +88,17 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   text: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
+    letterSpacing: 0.2,
   },
   primaryText: {
     color: theme.surface,
   },
   secondaryText: {
-    color: theme.text,
+    color: colors.textPrimary,
   },
   ghostText: {
-    color: theme.primary,
+    color: colors.textTertiary,
   },
 });
