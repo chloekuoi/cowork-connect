@@ -62,12 +62,12 @@ Renders one of 5 states based on conditions:
 │ └─────────────────────┘ │
 │                         │
 │ Work style              │
-│ [Deep focus] [Happy...] │
-│ [Pomodoro fan][Flexible]│
+│ [Deep focus] [Chat mode]│
+│ [Flexible]              │
 │                         │
 │ Location preference     │
 │ [Cafe] [Library]        │
-│ [Video Call] [Anywhere] │
+│ [Anywhere]              │
 │                         │
 │ Spot name (conditional) │
 │ ┌─────────────────────┐ │
@@ -1182,3 +1182,476 @@ Renders one of 5 states based on conditions:
 | Match modal while card stack empty | Modal shows, "Keep Swiping" transitions to empty state |
 | Navigate to chat from modal | Switches to Matches tab, pushes Chat screen onto stack |
 | Back from chat | Returns to MatchesList, unread count refreshes |
+
+---
+---
+
+# Phase 5: Friends & Polish
+
+**Added:** 2026-02-15
+
+---
+
+## Navigation
+
+### ProfileStack
+
+**File:** `src/navigation/ProfileStack.tsx`
+
+**Purpose:** Stack navigator for the Profile tab, enabling navigation to Friends and Add Friend screens
+
+**Screens:**
+
+| Screen | Route Name | Params |
+|--------|-----------|--------|
+| ProfileScreen | `Profile` | None |
+| FriendsScreen | `Friends` | None |
+| AddFriendScreen | `AddFriend` | None |
+
+**Behavior:**
+- Initial route: `Profile`
+- Stack headers hidden (each screen renders its own header)
+- Default stack transition animations
+- MainTabs Profile tab renders this stack (replaces direct ProfileScreen reference)
+
+---
+
+## Screens
+
+### 7. FriendsScreen
+
+**File:** `src/screens/profile/FriendsScreen.tsx`
+
+**Purpose:** Display pending friend requests and unified list of all friends (matched + manually added) with availability status
+
+**Layout:**
+```
+┌─────────────────────────┐
+│ SafeAreaView             │
+│ ┌─────────────────────┐  │
+│ │ ← Back  "Friends" [+]│  │  Header: back + title + add button
+│ └─────────────────────┘  │
+│                          │
+│ PENDING REQUESTS (2)     │  Section header (conditional)
+│ ┌──────────────────────┐ │
+│ │ FriendRequestCard    │ │
+│ │ ──────────────────── │ │  Separator
+│ │ FriendRequestCard    │ │
+│ └──────────────────────┘ │
+│                          │
+│ YOUR FRIENDS (5)         │  Section header
+│ ┌──────────────────────┐ │
+│ │ FriendCard           │ │
+│ │ ──────────────────── │ │
+│ │ FriendCard           │ │
+│ │ ──────────────────── │ │
+│ │ ...                  │ │
+│ └──────────────────────┘ │
+└─────────────────────────┘
+```
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `loading` | Initial fetch in progress | Centered spinner + "Loading friends..." |
+| `empty` | No friends and no pending requests | Centered illustration + "No friends yet" + "Match with people on Discover or add them here!" + "Add Friend" button |
+| `list` | Has friends or pending requests | SectionList with conditional sections |
+
+**Interactions:**
+- "+" button in header → navigate to AddFriendScreen
+- Accept on FriendRequestCard → calls `respondToFriendRequest('accept')` → card moves from pending to friends list
+- Decline on FriendRequestCard → calls `respondToFriendRequest('decline')` → card removed from pending
+- Tap a FriendCard → navigate to ChatScreen with `matchId` and `otherUser` params
+- Pull-to-refresh → refetch both pending requests and friends list
+- Screen focus → refetch data (useFocusEffect)
+
+**Edge Cases:**
+
+| Scenario | Behavior |
+|----------|----------|
+| 0 friends, 0 pending | Empty state with encouragement text and add button |
+| 0 friends, has pending | Only pending section shows, no friends section |
+| Has friends, 0 pending | Only friends section shows, no pending section |
+| Accept fails (network) | Alert with error, card stays in pending state |
+| Decline fails (network) | Alert with error, card stays in pending state |
+| New request arrives while viewing | Visible on next pull-to-refresh or screen refocus |
+| Friend's availability changes | Updates on next pull-to-refresh or screen refocus |
+
+---
+
+### 8. AddFriendScreen
+
+**File:** `src/screens/profile/AddFriendScreen.tsx`
+
+**Purpose:** Search for existing users and send friend requests
+
+**Layout:**
+```
+┌─────────────────────────┐
+│ SafeAreaView             │
+│ ┌─────────────────────┐  │
+│ │ ← Back "Add Friend" │  │  Header with back button
+│ └─────────────────────┘  │
+│                          │
+│ ┌─────────────────────┐  │
+│ │ 🔍 Search by username│  │  Search input (pill shape)
+│ │   email, or phone   │  │
+│ └─────────────────────┘  │
+│                          │
+│ ┌──────────────────────┐ │
+│ │ UserSearchResultCard │ │  FlatList of results
+│ │ ──────────────────── │ │
+│ │ UserSearchResultCard │ │
+│ │ ──────────────────── │ │
+│ │ UserSearchResultCard │ │
+│ └──────────────────────┘ │
+└─────────────────────────┘
+```
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `initial` | Input is empty | Centered text: "Search by username, email, or phone number" + magnifying glass icon |
+| `searching` | Query in progress (3+ chars typed) | ActivityIndicator below search input |
+| `results` | Query returned results | FlatList of UserSearchResultCard |
+| `no_results` | Query returned 0 results | Centered text: "No users found" + "Try a different search term" |
+
+**Search Behavior:**
+- Debounced: 300ms after typing stops
+- Minimum 3 characters before search triggers
+- Fewer than 3 characters: stays on `initial` state (no error)
+- Max 20 results returned
+- Searches across `username`, `email`, and `phone_number` fields using ILIKE
+- Current user excluded from results
+
+**Interactions:**
+- Type in search → debounced query fires
+- Tap "Add" button on result → calls `sendFriendRequest` → button changes to "Requested" (optimistic)
+- Tap "Accept" button on result (pending_received) → calls `respondToFriendRequest('accept')` → button changes to "Friends"
+- Clear search input → returns to `initial` state
+- Back button → returns to FriendsScreen
+
+**Edge Cases:**
+
+| Scenario | Behavior |
+|----------|----------|
+| Query < 3 characters | Stays on initial state, no search triggered |
+| Query returns 0 results | Shows "No users found" empty state |
+| Send request fails | Alert with error, button reverts from "Requested" to "Add" |
+| User already requested | Button shows "Requested" (disabled), no action |
+| User is already a friend | Button shows "Friends" with checkmark, no action |
+| User previously declined | Button shows "Declined" (disabled), no action |
+| Very fast typing | Only the final debounced query fires |
+| Network error during search | Alert with error, stays on previous state |
+
+---
+
+## Components
+
+### FriendRequestCard
+
+**File:** `src/components/friends/FriendRequestCard.tsx`
+
+**Purpose:** Single row in the pending requests section with accept/decline actions
+
+**Props:**
+- `friendship`: Friendship (with requester profile joined)
+- `onAccept`: (friendshipId: string) => void
+- `onDecline`: (friendshipId: string) => void
+
+**Layout:**
+```
+┌─────────────────────────────────────┐
+│ ┌────┐  Alex Chen                   │  Row height: 72px
+│ │photo│  @alexchen                   │  Padding: 16px horizontal
+│ └────┘         [Accept]  [Decline]  │  Buttons right-aligned
+└─────────────────────────────────────┘
+```
+
+**Photo:**
+- Size: 48 x 48px
+- Border radius: 24px (circular)
+- If no photo_url: initials on `#D4DCD1` background
+- Initials: 18px, weight 600, color `#6F8268`
+
+**Text:**
+- Name: 16px, weight 600, color `#2D3A2D`
+- Username: 14px, weight 400, color `#756C62`
+
+**Buttons:**
+- "Accept": primary variant (sage bg `#A8B5A2`, white text), min height 36px, padding 12px horizontal, font 14px weight 600, border radius 10px
+- "Decline": ghost variant (`#B57070` text, no background), min height 36px, padding 12px horizontal, font 14px weight 500
+- 8px gap between buttons
+- Both disabled during loading (opacity 0.5)
+
+**Separator:**
+- 1px line, color `#E2DDD6`
+- Full width (no inset)
+
+**Touch:**
+- Minimum height: 72px (exceeds 44pt touch target)
+- Buttons are tappable with 44pt touch targets (achieved via padding)
+
+---
+
+### FriendCard
+
+**File:** `src/components/friends/FriendCard.tsx`
+
+**Purpose:** Single row in the friends list showing a friend with availability status
+
+**Props:**
+- `friend`: FriendListItem
+- `onPress`: () => void
+
+**Layout — Available:**
+```
+┌─────────────────────────────────────┐
+│ ┌────┐  Jordan Kim            🟢   │  Row height: 72px
+│ │photo│  Writing blog posts...      │  Green dot = has intent today
+│ └────┘                              │  Task description, 1 line
+└─────────────────────────────────────┘
+```
+
+**Layout — Not Available:**
+```
+┌─────────────────────────────────────┐
+│ ┌────┐  Taylor Swift                │  Row height: 72px
+│ │photo│  Not available today        │  Muted text, no dot
+│ └────┘                              │
+└─────────────────────────────────────┘
+```
+
+**Photo:**
+- Size: 48 x 48px
+- Border radius: 24px (circular)
+- If no photo_url: initials on `#D4DCD1` background
+- Initials: 18px, weight 600, color `#6F8268`
+
+**Text:**
+- Name: 16px, weight 600, color `#2D3A2D`
+- Available subtitle: 14px, weight 400, color `#756C62`, numberOfLines={1}
+- Not available subtitle: 14px, weight 400, color `#968D82`, italic
+
+**Availability Indicator:**
+- Green dot: 10px diameter, `#6B9B6B`, positioned right side, vertically centered
+- Only visible when friend has a work_intent for today
+
+**Separator:**
+- 1px line, color `#E2DDD6`
+- Left inset: 80px (aligned past the photo)
+
+**Touch:**
+- Minimum height: 72px
+- Touchable feedback: opacity reduction on press
+
+---
+
+### UserSearchResultCard
+
+**File:** `src/components/friends/UserSearchResultCard.tsx`
+
+**Purpose:** Single row in search results showing a user with relationship-aware action button
+
+**Props:**
+- `user`: UserSearchResult
+- `onAdd`: (userId: string) => void
+- `onAccept`: (friendshipId: string) => void
+
+**Layout:**
+```
+┌─────────────────────────────────────┐
+│ ┌────┐  Alex Chen         [Action] │  Row height: 64px
+│ │photo│  @alexchen                  │  Padding: 16px horizontal
+│ └────┘                              │
+└─────────────────────────────────────┘
+```
+
+**Photo:**
+- Size: 40 x 40px
+- Border radius: 20px (circular)
+- If no photo_url: initials on `#D4DCD1` background
+- Initials: 16px, weight 600, color `#6F8268`
+
+**Text:**
+- Name: 16px, weight 600, color `#2D3A2D`
+- Username: 13px, weight 400, color `#968D82`
+
+**Action Button — varies by relationship status:**
+
+| Status | Label | Style | Tappable |
+|--------|-------|-------|----------|
+| `none` | "Add" | Primary (sage bg, white text) | Yes |
+| `pending_sent` | "Requested" | Disabled (gray bg `#E2DDD6`, muted text `#968D82`) | No |
+| `pending_received` | "Accept" | Primary (sage bg, white text) | Yes |
+| `friends` | "Friends ✓" | Disabled (sage text `#A8B5A2`, no background) | No |
+| `declined` | "Declined" | Disabled (gray bg `#E2DDD6`, muted text `#968D82`) | No |
+
+**Button Sizing:**
+- Min width: 80px
+- Height: 32px
+- Padding: 10px horizontal
+- Font: 13px, weight 600
+- Border radius: 8px
+
+**Separator:**
+- 1px line, color `#E2DDD6`
+- Left inset: 72px (aligned past the photo)
+
+---
+
+## Profile Screen Additions
+
+**File:** `src/screens/profile/ProfileScreen.tsx` (modified)
+
+**New Rows (appended below existing profile content):**
+
+```
+│ ┌──────────────────────┐ │
+│ │ 📱 Phone Number      │ │  Tappable row
+│ │    +1 555-123-4567 > │ │  Shows current value or placeholder
+│ └──────────────────────┘ │
+│                          │
+│ ┌──────────────────────┐ │
+│ │ 👥 My Friends   (5) >│ │  Tappable row with friend count
+│ └──────────────────────┘ │
+```
+
+**Phone Number Row:**
+- Label: "Phone Number", 14px, weight 500, color `#968D82`
+- Value: current phone number or "Add phone number" (placeholder, italic, `#B5ADA3`)
+- Chevron: ">" right-aligned, color `#B5ADA3`
+- Tap → opens an Alert.prompt (iOS) or modal with TextInput to enter/edit phone number
+- On confirm → saves to `profiles.phone_number`
+- Row height: 56px, padding 16px horizontal
+
+**My Friends Row:**
+- Label: "My Friends", 16px, weight 600, color `#2D3A2D`
+- Count: "(N)" right side, 16px, weight 400, color `#756C62`
+- Chevron: ">" right-aligned, color `#B5ADA3`
+- Tap → navigate to FriendsScreen
+- Row height: 56px, padding 16px horizontal
+
+**Separator:**
+- 1px line, color `#E2DDD6`, 16px left inset
+
+---
+
+## Profile Tab Badge
+
+**File:** `src/navigation/MainTabs.tsx` (modified)
+
+**Behavior:**
+- Profile tab icon shows numeric badge when pending friend request count > 0
+- Badge color: `#B57070` (error/attention red) — same as unread message badge
+- Badge fetched via `getPendingRequestsCount(userId)` on Profile tab focus
+- Badge disappears when count is 0
+- Pattern matches existing Matches tab unread badge implementation
+
+---
+
+## Phase 5 Interactions
+
+### Search and Send Friend Request Flow
+
+1. User navigates to Profile → My Friends → "+" (Add Friend)
+2. Types query in search input (minimum 3 characters)
+3. After 300ms debounce, search fires
+4. Results appear with relationship-aware action buttons
+5. User taps "Add" on a result
+6. `sendFriendRequest` called
+7. Button changes to "Requested" immediately (optimistic)
+8. If error: Alert shown, button reverts to "Add"
+9. Recipient sees pending request next time they open Friends screen
+
+### Accept Friend Request Flow
+
+1. User B opens Friends screen (or Profile tab badge prompts them)
+2. Pending requests section shows at top
+3. User B taps "Accept" on User A's request
+4. `respondToFriendRequest(friendshipId, userId, 'accept')` called
+5. RPC sets status='accepted' and creates match row via `create_match`
+6. FriendRequestCard moves from pending section to friends list
+7. Both users can now chat (match row exists)
+
+### Decline Friend Request Flow
+
+1. User B taps "Decline" on User A's request
+2. `respondToFriendRequest(friendshipId, userId, 'decline')` called
+3. RPC sets status='declined'
+4. FriendRequestCard removed from pending section
+5. User A's search results show "Declined" for User B (no re-request)
+
+### Mutual Request Auto-Accept Flow
+
+1. User A sends friend request to User B → pending (A→B)
+2. User B searches for User A and taps "Add"
+3. `send_friend_request` RPC detects existing pending (A→B)
+4. Auto-accepts: sets A→B friendship to 'accepted', creates match
+5. User B sees "Friends ✓" immediately
+6. User A sees User B in friends list on next refresh
+
+### Navigate to Friend's Chat Flow
+
+1. User taps a FriendCard on Friends screen
+2. FriendCard has `match_id` and `otherUser` data
+3. Navigate to `Matches` tab → `Chat` screen with `{ matchId, otherUser }` params
+4. Chat opens with existing conversation (or empty state for new friendship)
+
+### Add Phone Number Flow
+
+1. User taps "Phone Number" row on Profile screen
+2. Alert.prompt (iOS) or modal appears with TextInput
+3. User enters phone number and confirms
+4. `updatePhoneNumber(userId, phoneNumber)` called
+5. Row updates to show the new phone number
+6. User is now searchable by this phone number
+
+---
+
+## Phase 5 Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| Search with < 3 characters | No search triggered, stays on initial state |
+| Search returns self | Self excluded from results (filtered server-side) |
+| Send request to already-matched user | Search results show "Friends ✓", no "Add" button |
+| Request already sent to this user | Search results show "Requested" (disabled) |
+| Request from this user pending | Search results show "Accept" button |
+| User previously declined | Search results show "Declined" (disabled, no re-request) |
+| Accept request while offline | Alert with error, card stays in pending |
+| Tap friend with no match row | Should not happen (accept always creates match). Fallback: show error toast |
+| Phone number empty string | Treated as null (cleared) |
+| Very long phone number | TextInput max length 20 characters |
+| Friends screen with 100+ friends | FlatList handles scrolling, no pagination for MVP |
+| Profile tab badge while on Profile tab | Badge still visible; clears on next focus cycle |
+| Navigate to chat from Friends screen | Cross-tab navigation: `navigation.navigate('Matches', { screen: 'Chat', params })` |
+
+---
+
+## Phase 5 Typography Additions
+
+| Element | Size | Weight | Color |
+|---------|------|--------|-------|
+| Friends screen title | 28px | 700 | `#2D3A2D` |
+| Friends section header | 14px | 600 | `#968D82` (uppercase) |
+| Add Friend screen title | 28px | 700 | `#2D3A2D` |
+| Search input text | 16px | 400 | `#2D3A2D` |
+| Search input placeholder | 16px | 400 | `#968D82` |
+| Friend request name | 16px | 600 | `#2D3A2D` |
+| Friend request username | 14px | 400 | `#756C62` |
+| Friend card name | 16px | 600 | `#2D3A2D` |
+| Friend card subtitle (available) | 14px | 400 | `#756C62` |
+| Friend card subtitle (not available) | 14px | 400 italic | `#968D82` |
+| Search result name | 16px | 600 | `#2D3A2D` |
+| Search result username | 13px | 400 | `#968D82` |
+| Search result action button | 13px | 600 | varies |
+| Profile phone label | 14px | 500 | `#968D82` |
+| Profile phone value | 16px | 400 | `#2D3A2D` |
+| Profile phone placeholder | 16px | 400 italic | `#B5ADA3` |
+| Profile friends label | 16px | 600 | `#2D3A2D` |
+| Profile friends count | 16px | 400 | `#756C62` |
+| Empty state title | 24px | 600 | `#2D3A2D` |
+| Empty state text | 16px | 400 | `#756C62` |

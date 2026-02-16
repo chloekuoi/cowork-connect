@@ -198,8 +198,8 @@
 
 **Scope:**
 - Included: Task description text input
-- Included: Work style selection (Deep focus, Happy to chat, Pomodoro fan, Flexible)
-- Included: Location type selection (Cafe, Library, Video Call, Anywhere)
+- Included: Work style selection (Deep focus, Chat mode, Flexible)
+- Included: Location type selection (Cafe, Library, Anywhere)
 - Included: Optional specific location name input
 - Included: Load existing intent if user already set one today
 - Included: Location permission error state with retry
