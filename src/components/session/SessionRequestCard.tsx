@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import Button from '../common/Button';
-import { borderRadius, spacing, theme, touchTarget } from '../../constants';
+import { borderRadius, colors, spacing, theme, touchTarget, shadows } from '../../constants';
 import { SessionRecord } from '../../types';
 
 type SessionRequestCardProps = {
@@ -207,31 +207,27 @@ const styles = StyleSheet.create({
     marginVertical: spacing[2],
   },
   pendingRowCard: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
+    backgroundColor: colors.bgCard,
+    borderRadius: borderRadius.lg,
     paddingVertical: 16,
     paddingHorizontal: 18,
     marginVertical: spacing[2],
     flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    ...shadows.card,
   },
   pendingIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 12,
-    backgroundColor: '#faf3e0',
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.statusPendingBg,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   pendingIcon: {
     fontSize: 22,
-    color: '#c9a84c',
+    color: colors.statusPendingText,
   },
   pendingContent: {
     flex: 1,
@@ -244,11 +240,11 @@ const styles = StyleSheet.create({
   pendingTitle: {
     fontSize: 14.5,
     fontWeight: '600',
-    color: '#3a3632',
+    color: colors.textPrimary,
   },
   pendingBadge: {
     marginLeft: 8,
-    backgroundColor: '#faf3e0',
+    backgroundColor: colors.statusPendingBg,
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 20,
@@ -259,39 +255,39 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
-    color: '#c9a84c',
+    color: colors.statusPendingText,
   },
   pendingDate: {
     fontSize: 12.5,
-    color: '#a09a90',
+    color: colors.textTertiary,
     marginTop: 2,
   },
   pendingCancelButton: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f5f3f0',
+    backgroundColor: colors.bgSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
   },
   pendingCancelText: {
-    color: '#b0a99a',
+    color: colors.textTertiary,
     fontSize: 16,
     fontWeight: '600',
   },
   cancelledCard: {
-    backgroundColor: '#faf9f7',
-    borderRadius: 16,
+    backgroundColor: colors.bgSecondary,
+    borderRadius: borderRadius.lg,
     paddingVertical: 14,
     paddingHorizontal: 18,
     borderWidth: 1,
-    borderColor: '#ece8e2',
+    borderColor: colors.borderDefault,
     marginVertical: spacing[2],
   },
   cancelledText: {
     fontSize: 13,
-    color: '#a09a90',
+    color: colors.textTertiary,
   },
   activeCard: {
     borderColor: theme.success,

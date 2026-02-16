@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { theme, spacing, borderRadius, touchTarget } from '../../constants';
+import { colors, theme, spacing, borderRadius, touchTarget } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
 
 export default function ProfileScreen() {
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[4],
   },
   badge: {
-    backgroundColor: theme.highlight,
+    backgroundColor: colors.accentPrimaryLight,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2],
     borderRadius: borderRadius.full,
@@ -83,7 +83,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 14,
-    color: theme.accent,
+    color: colors.accentPrimary,
     fontWeight: '500',
   },
   signOutButton: {
