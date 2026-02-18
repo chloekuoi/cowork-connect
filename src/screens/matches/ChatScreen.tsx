@@ -37,6 +37,7 @@ import { MatchesStackParamList, useMatchesStack } from '../../navigation/Matches
 type Props = NativeStackScreenProps<MatchesStackParamList, 'Chat'>;
 
 const declinedToastShown: Record<string, boolean> = {};
+const cancelledToastShown: Record<string, boolean> = {};
 
 export default function ChatScreen({ navigation, route }: Props) {
   const { user } = useAuth();
@@ -54,6 +55,7 @@ export default function ChatScreen({ navigation, route }: Props) {
     {}
   );
   const [shownDeclinedSessions, setShownDeclinedSessions] = useState<Record<string, boolean>>({});
+  const [shownCancelledSessions, setShownCancelledSessions] = useState<Record<string, boolean>>({});
   const [shownMissedSessions, setShownMissedSessions] = useState<Record<string, boolean>>({});
   const listRef = useRef<FlatList<ChatTimelineItem>>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -86,6 +88,8 @@ export default function ChatScreen({ navigation, route }: Props) {
     const updatedRecentlyCompleted: Record<string, number> = { ...recentlyCompletedSessions };
     let didDeclineToast = false;
     let declinedSessionId: string | null = null;
+    let didCancelToast = false;
+    let cancelledSessionId: string | null = null;
     matchSessions.forEach((session) => {
       if (session.status === 'completed' && session.completed_ack) {
         const completedAt = session.completed_at ? new Date(session.completed_at).getTime() : now;
@@ -100,6 +104,15 @@ export default function ChatScreen({ navigation, route }: Props) {
         didDeclineToast = true;
         declinedSessionId = session.id;
       }
+
+      if (
+        session.status === 'cancelled' &&
+        !session.accepted_at &&
+        !cancelledToastShown[session.id]
+      ) {
+        didCancelToast = true;
+        cancelledSessionId = session.id;
+      }
     });
     if (didUpdate) {
       setRecentlyCompletedSessions(updatedRecentlyCompleted);
@@ -109,6 +122,11 @@ export default function ChatScreen({ navigation, route }: Props) {
       declinedToastShown[declinedSessionId] = true;
       setShownDeclinedSessions((prev) => ({ ...prev, [declinedSessionId]: true }));
       showToast('Next Time 🫶🏼');
+    }
+    if (didCancelToast && cancelledSessionId) {
+      cancelledToastShown[cancelledSessionId] = true;
+      setShownCancelledSessions((prev) => ({ ...prev, [cancelledSessionId]: true }));
+      showToast('Invite cancelled');
     }
     setSessionLoading(false);
   }, [matchId, user, recentlyCompletedSessions, showToast]);
@@ -167,6 +185,15 @@ export default function ChatScreen({ navigation, route }: Props) {
           setShownDeclinedSessions((prev) => ({ ...prev, [updated.id]: true }));
           showToast('Next Time 🫶🏼');
         }
+        if (
+          updated.status === 'cancelled' &&
+          !updated.accepted_at &&
+          !cancelledToastShown[updated.id]
+        ) {
+          cancelledToastShown[updated.id] = true;
+          setShownCancelledSessions((prev) => ({ ...prev, [updated.id]: true }));
+          showToast('Invite cancelled');
+        }
       })
     );
 
@@ -200,6 +227,9 @@ export default function ChatScreen({ navigation, route }: Props) {
         return false;
       }
       if (session.status === 'declined') {
+        return false;
+      }
+      if (session.status === 'cancelled') {
         return false;
       }
       return true;

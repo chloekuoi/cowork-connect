@@ -72,8 +72,8 @@
 | `task_description` | `TEXT` | No | — | What user is working on |
 | `available_from` | `TIME` | No | — | Start of availability window |
 | `available_until` | `TIME` | No | — | End of availability window |
-| `work_style` | `TEXT` | No | — | One of: Deep focus, Happy to chat, Pomodoro fan, Flexible |
-| `location_type` | `TEXT` | No | — | One of: Cafe, Library, Video Call, Anywhere |
+| `work_style` | `TEXT` | No | — | One of: Deep focus, Chat mode, Flexible |
+| `location_type` | `TEXT` | No | — | One of: Cafe, Library, Anywhere |
 | `location_name` | `TEXT` | Yes | `NULL` | Specific place name (optional) |
 | `latitude` | `DOUBLE PRECISION` | No | — | User's latitude when intent was set |
 | `longitude` | `DOUBLE PRECISION` | No | — | User's longitude when intent was set |
@@ -426,34 +426,9 @@ CREATE TRIGGER on_auth_user_created
 
 ## Storage Buckets
 
-### `avatars` (NOT YET IMPLEMENTED)
+### `avatars`
 
-**Status:** Planned for Phase 3
-
-**Future Configuration:**
-| Setting | Value |
-|---------|-------|
-| Public | No |
-| File size limit | 5MB |
-| Allowed MIME types | `image/jpeg`, `image/png`, `image/webp` |
-
-**Future Policies:**
-```sql
--- Users can upload their own avatar
-CREATE POLICY "Users can upload own avatar"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
--- Users can update their own avatar
-CREATE POLICY "Users can update own avatar"
-ON storage.objects FOR UPDATE
-USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
--- Anyone can view avatars
-CREATE POLICY "Avatars are publicly viewable"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'avatars');
-```
+**Status:** Implemented in Phase 5 (Profile Redesign). See Phase 5 section for full configuration, policies, and file path pattern.
 
 ---
 
@@ -1320,3 +1295,543 @@ Execute in Supabase SQL Editor in this order:
 4. **Participant verification** — All RPCs verify the calling user is a session participant
 5. **RLS restricts reads** — Users can only see sessions for their own matches
 6. **Realtime filtered by session id** — Users only subscribe to their own sessions
+
+---
+---
+
+# Phase 5 Additions
+
+**Added:** 2026-02-15
+
+---
+
+## Tables Overview (Updated)
+
+| Table | RLS | Purpose | Phase |
+|-------|-----|---------|-------|
+| `profiles` | Enabled | User profile data | 1 (**modified Phase 5: phone_number, tagline, currently_working_on, work, school**) |
+| `work_intents` | Enabled | Daily work intentions for discovery | 2 |
+| `swipes` | Enabled | Swipe history (right/left) | 2 |
+| `matches` | Enabled | Persistent mutual matches | 3 |
+| `messages` | Enabled | Chat messages between matched users | 3 |
+| `sessions` | Enabled | Co-working session records with lifecycle status | 4 |
+| `session_participants` | Enabled | Links users to sessions with role | 4 |
+| `session_events` | Enabled | System events for session timeline | 4 |
+| `friendships` | Enabled | Manual friend requests with accept/decline lifecycle | **5** |
+| `profile_photos` | Enabled | User profile photos with position ordering | **5** |
+
+---
+
+## Modification to Existing Table: `profiles`
+
+**Phase 5 adds five columns. All existing columns, constraints, indexes, and policies remain unchanged.**
+
+### New Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `phone_number` | `TEXT` | Yes | `NULL` | User's phone number (for friend search) |
+| `tagline` | `TEXT` | Yes | `NULL` | Short bio/tagline (1-2 sentences) |
+| `currently_working_on` | `TEXT` | Yes | `NULL` | Single-line casual description of current project |
+| `work` | `TEXT` | Yes | `NULL` | Work context (company, role — low-pressure, not credentials) |
+| `school` | `TEXT` | Yes | `NULL` | School context (optional, low-pressure) |
+
+### Business Rules (phone_number)
+
+- **Not unique:** Multiple users could theoretically enter the same number. No uniqueness constraint for MVP.
+- **No format validation:** Stored as entered. No normalization or formatting at the database level.
+- **Max length:** Not enforced at database level. UI limits input to 20 characters.
+- **Searchable:** Used as a search target in Add Friend flow (ILIKE query).
+- **Optional:** Users are not required to set a phone number.
+
+### Business Rules (profile text fields)
+
+- **All optional:** Users are not required to fill in tagline, currently_working_on, work, or school.
+- **No length limits at database level:** UI provides reasonable input constraints.
+- **Publicly readable:** Existing `SELECT` policy (`true`) means all authenticated users can see these fields.
+- **Owner-editable:** Existing `UPDATE` policy (`auth.uid() = id`) restricts editing to the profile owner.
+
+### Updated RLS Notes
+
+- The existing `SELECT` policy on profiles (`true` — public read) means all new columns are readable by all authenticated users. This is acceptable for MVP.
+- The existing `UPDATE` policy (`auth.uid() = id`) means users can only edit their own profile fields.
+
+### Migration
+
+```sql
+ALTER TABLE profiles ADD COLUMN phone_number TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN tagline TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN currently_working_on TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN work TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN school TEXT DEFAULT NULL;
+```
+
+---
+
+## Table: `friendships`
+
+**Purpose:** Stores manual friend requests between users, tracking the request/accept/decline lifecycle. One row per directional request (requester → recipient).
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | `UUID` | No | `gen_random_uuid()` | Primary key |
+| `requester_id` | `UUID` | No | — | FK to `profiles.id` (who sent the request) |
+| `recipient_id` | `UUID` | No | — | FK to `profiles.id` (who received the request) |
+| `status` | `TEXT` | No | `'pending'` | One of: `pending`, `accepted`, `declined` |
+| `created_at` | `TIMESTAMPTZ` | No | `NOW()` | When the request was sent |
+| `updated_at` | `TIMESTAMPTZ` | No | `NOW()` | Last status change |
+
+### Constraints
+
+| Type | Name | Definition |
+|------|------|------------|
+| Primary Key | `friendships_pkey` | `id` |
+| Unique | `friendships_requester_recipient_key` | `(requester_id, recipient_id)` |
+| Check | `friendships_no_self_request` | `requester_id <> recipient_id` |
+| Check | `friendships_status_check` | `status IN ('pending', 'accepted', 'declined')` |
+| Foreign Key | — | `requester_id` → `profiles(id)` ON DELETE CASCADE |
+| Foreign Key | — | `recipient_id` → `profiles(id)` ON DELETE CASCADE |
+
+### Business Rules
+
+- **One request per direction:** Unique constraint on `(requester_id, recipient_id)` prevents duplicate requests from A to B.
+- **Mutual request handling:** If A requests B and a pending request from B to A already exists, the `send_friend_request` RPC auto-accepts the existing B→A request (sets it to 'accepted') and creates a match. No A→B row is created in this case.
+- **No re-request after decline:** Once declined, the requester cannot send a new request to the same recipient. The `send_friend_request` RPC returns an error.
+- **Status transitions:**
+  - `pending` → `accepted` (via `respond_to_friend_request` with 'accept')
+  - `pending` → `declined` (via `respond_to_friend_request` with 'decline')
+- **Invalid transitions:** No other status changes are allowed.
+- **Match creation on accept:** When a friendship is accepted, a `matches` row is auto-created via `create_match` (idempotent — if they already matched via swiping, this is a no-op). This enables the existing chat infrastructure for manual friends.
+- **Lifecycle:** Friendships are permanent once accepted for MVP. No unfriend or block.
+
+### Indexes
+
+| Name | Columns | Purpose |
+|------|---------|---------|
+| `idx_friendships_requester` | `requester_id` | Find requests sent by a user |
+| `idx_friendships_recipient` | `recipient_id` | Find requests received by a user |
+| `idx_friendships_status` | `status` | Filter by pending/accepted |
+| `idx_friendships_recipient_status` | `recipient_id, status` | Efficient pending count query |
+
+### RLS: **ENABLED**
+
+### Policies
+
+| Policy Name | Operation | Rule | Reason |
+|-------------|-----------|------|--------|
+| Users can read own friendships | `SELECT` | `auth.uid() = requester_id OR auth.uid() = recipient_id` | Only see friendships you are part of |
+
+**Note:** No INSERT/UPDATE/DELETE policies for direct client access. All mutations go through SECURITY DEFINER RPC functions.
+
+### Realtime: **ENABLED**
+
+Supabase Realtime should be enabled on the `friendships` table. Not actively subscribed to in Phase 5 (polling on screen focus), but enabled for future real-time notifications.
+
+### UI Assumptions
+
+- Frontend uses `requester_id` vs `recipient_id` to determine who sent the request
+- Frontend uses `status` to determine which action buttons to show
+- Frontend can join `friendships` with `profiles` on `requester_id` to get the requester's name/photo for pending requests
+- The `matches` table is the source of truth for the unified friends list (all accepted friends have a match row)
+- The `friendships` table is only needed for pending/declined request queries and determining whether a friendship was manual vs swipe-based
+
+---
+
+## Table: `profile_photos`
+
+**Purpose:** Stores user profile photos with position-based ordering. Position 0 is the primary photo (synced to `profiles.photo_url`).
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | `UUID` | No | `gen_random_uuid()` | Primary key |
+| `user_id` | `UUID` | No | — | FK to `profiles.id` |
+| `photo_url` | `TEXT` | No | — | Public URL of the uploaded photo |
+| `position` | `INTEGER` | No | — | Display order (0-4, 0 is primary) |
+| `created_at` | `TIMESTAMPTZ` | No | `NOW()` | When the photo was uploaded |
+
+### Constraints
+
+| Type | Name | Definition |
+|------|------|------------|
+| Primary Key | `profile_photos_pkey` | `id` |
+| Unique | `profile_photos_user_position_key` | `(user_id, position)` |
+| Check | `profile_photos_position_check` | `position >= 0 AND position <= 4` |
+| Foreign Key | — | `user_id` → `profiles(id)` ON DELETE CASCADE |
+
+### Business Rules
+
+- **Position-based ordering:** Photos are ordered by position (0-4). Position 0 is the primary/lead photo.
+- **Max 5 photos:** Positions 0 through 4. The CHECK constraint prevents positions outside this range.
+- **One photo per position:** The UNIQUE constraint on `(user_id, position)` prevents duplicates.
+- **Primary sync:** When position 0 is uploaded, `profiles.photo_url` is updated to match. This denormalized field enables fast reads on Discover cards and match lists.
+- **Promotion on delete:** When the primary photo (position 0) is deleted, the next photo is promoted to position 0 and `profiles.photo_url` is updated. This is handled client-side in `photoService.ts`.
+- **Immediate upload:** Photos are uploaded immediately when selected (not batched with a save action). This gives users instant visual feedback.
+- **Lifecycle:** Photos are permanent until explicitly deleted by the owner.
+
+### Indexes
+
+| Name | Columns | Purpose |
+|------|---------|---------|
+| `idx_profile_photos_user` | `user_id` | Find all photos for a user |
+| `idx_profile_photos_user_position` | `user_id, position` | Ordered photo lookup |
+
+### RLS: **ENABLED**
+
+### Policies
+
+| Policy Name | Operation | Rule | Reason |
+|-------------|-----------|------|--------|
+| Anyone can view profile photos | `SELECT` | `true` | Photos are public (like profile data) |
+| Users can insert own photos | `INSERT` | `auth.uid() = user_id` | Only upload your own photos |
+| Users can update own photos | `UPDATE` | `auth.uid() = user_id` | Only modify your own photos |
+| Users can delete own photos | `DELETE` | `auth.uid() = user_id` | Only remove your own photos |
+
+### UI Assumptions
+
+- Frontend uses `position` to determine display order (0 = lead photo, 1-4 = thumbnails)
+- Frontend syncs `profiles.photo_url` with position 0 photo URL after upload/delete
+- Frontend handles photo promotion when primary is deleted (reorder remaining photos)
+- Photo URLs are public Supabase Storage URLs (no authentication required to load images)
+
+---
+
+## Storage Bucket: `avatars` (Phase 5)
+
+**Purpose:** Stores user profile photo files uploaded via `expo-image-picker`.
+
+### Configuration
+
+| Setting | Value |
+|---------|-------|
+| Bucket Name | `avatars` |
+| Public | Yes |
+| File Size Limit | 5MB |
+| Allowed MIME Types | `image/jpeg`, `image/png`, `image/webp` |
+
+### File Path Pattern
+
+```
+avatars/{userId}/{position}.jpg
+```
+
+Example: `avatars/abc-123-def/0.jpg` (primary photo for user abc-123-def)
+
+### Storage Policies
+
+```sql
+-- Anyone can view avatar images (public bucket)
+CREATE POLICY "Avatars are publicly viewable"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'avatars');
+
+-- Users can upload their own avatars
+CREATE POLICY "Users can upload own avatar"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Users can update their own avatars
+CREATE POLICY "Users can update own avatar"
+ON storage.objects FOR UPDATE
+USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Users can delete their own avatars
+CREATE POLICY "Users can delete own avatar"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+```
+
+### Business Rules
+
+- **Folder per user:** Each user's photos are stored in `avatars/{userId}/` directory. Storage RLS uses `foldername` to verify ownership.
+- **Position-based naming:** Files are named by position (`0.jpg`, `1.jpg`, etc.). When uploading a new photo to a position, the old file is overwritten.
+- **Public URLs:** Since the bucket is public, photo URLs are accessible without authentication tokens. The URL format is `{SUPABASE_URL}/storage/v1/object/public/avatars/{userId}/{position}.jpg`.
+- **Cleanup on delete:** When a photo is deleted from the DB, the corresponding file should also be removed from storage. This is handled client-side in `photoService.ts`.
+
+---
+
+## Functions (RPC) — Phase 5
+
+### `send_friend_request(p_requester_id UUID, p_recipient_id UUID)`
+
+**Purpose:** Send a friend request from one user to another. Handles mutual pending requests by auto-accepting.
+
+**Returns:** `UUID` (the friendship id) or raises an exception.
+
+**Security:** `SECURITY DEFINER`
+
+**Logic:**
+```
+1. Check p_requester_id <> p_recipient_id → RAISE 'Cannot send request to yourself'
+2. Check if (requester=p_requester_id, recipient=p_recipient_id) row exists:
+   a. If status = 'pending' → RAISE 'Friend request already sent'
+   b. If status = 'accepted' → RAISE 'Already friends'
+   c. If status = 'declined' → RAISE 'Cannot send request to this user'
+3. Check if (requester=p_recipient_id, recipient=p_requester_id) row exists:
+   a. If status = 'pending' → AUTO-ACCEPT:
+      - UPDATE that row SET status = 'accepted', updated_at = NOW()
+      - CALL create_match(p_requester_id, p_recipient_id)
+      - RETURN that row's id
+   b. If status = 'accepted' → RAISE 'Already friends'
+   c. If status = 'declined' → RAISE 'Cannot send request to this user'
+4. INSERT INTO friendships (requester_id, recipient_id, status) VALUES (p_requester_id, p_recipient_id, 'pending')
+5. RETURN new friendship id
+```
+
+**Usage (from client):**
+```typescript
+const { data: friendshipId, error } = await supabase
+  .rpc('send_friend_request', {
+    p_requester_id: currentUserId,
+    p_recipient_id: targetUserId,
+  });
+```
+
+---
+
+### `respond_to_friend_request(p_friendship_id UUID, p_user_id UUID, p_response TEXT)`
+
+**Purpose:** Accept or decline a pending friend request. On accept, creates a match row to enable chat.
+
+**Returns:** `void`
+
+**Security:** `SECURITY DEFINER`
+
+**Logic:**
+```
+1. SELECT friendship WHERE id = p_friendship_id AND status = 'pending'
+2. If not found → RAISE 'Friend request not found or not pending'
+3. Verify p_user_id = recipient_id → RAISE 'Only the recipient can respond'
+4. If p_response = 'accept':
+   a. UPDATE friendships SET status = 'accepted', updated_at = NOW() WHERE id = p_friendship_id
+   b. CALL create_match(requester_id, recipient_id) — idempotent, creates match if not exists
+5. If p_response = 'decline':
+   a. UPDATE friendships SET status = 'declined', updated_at = NOW() WHERE id = p_friendship_id
+6. Otherwise → RAISE 'Invalid response (must be accept or decline)'
+```
+
+**Usage (from client):**
+```typescript
+await supabase.rpc('respond_to_friend_request', {
+  p_friendship_id: friendshipId,
+  p_user_id: currentUserId,
+  p_response: 'accept', // or 'decline'
+});
+```
+
+---
+
+### `get_pending_requests_count(p_user_id UUID)`
+
+**Purpose:** Count pending incoming friend requests for badge display.
+
+**Returns:** `INTEGER`
+
+**Security:** `SECURITY DEFINER`
+
+**Logic:**
+```
+SELECT COUNT(*) FROM friendships
+WHERE recipient_id = p_user_id AND status = 'pending'
+```
+
+**Usage (from client):**
+```typescript
+const { data: count } = await supabase
+  .rpc('get_pending_requests_count', {
+    p_user_id: currentUserId,
+  });
+```
+
+---
+
+## Updated API Endpoints
+
+### Database — Phase 5 Additions
+
+| Method | Table | Purpose |
+|--------|-------|---------|
+| `supabase.from('profiles').update({ phone_number })` | profiles | Save phone number |
+| `supabase.from('profiles').select().or(...)` | profiles | Search users by username/email/phone |
+| `supabase.from('friendships').select()` | friendships | Fetch pending requests |
+| `supabase.from('matches').select()` | matches | Fetch unified friends list (reuses existing) |
+| `supabase.from('work_intents').select()` | work_intents | Check friends' availability (reuses existing) |
+| `supabase.rpc('send_friend_request')` | — | Send a friend request |
+| `supabase.rpc('respond_to_friend_request')` | — | Accept or decline a request |
+| `supabase.rpc('get_pending_requests_count')` | — | Badge count for Profile tab |
+| `supabase.from('profile_photos').select()` | profile_photos | Fetch user's photos |
+| `supabase.from('profile_photos').upsert()` | profile_photos | Insert/update photo record |
+| `supabase.from('profile_photos').delete()` | profile_photos | Remove photo record |
+| `supabase.from('profiles').update()` | profiles | Update profile text fields (tagline, etc.) |
+| `supabase.storage.from('avatars').upload()` | avatars bucket | Upload photo file |
+| `supabase.storage.from('avatars').remove()` | avatars bucket | Delete photo file |
+| `supabase.storage.from('avatars').getPublicUrl()` | avatars bucket | Get public URL for uploaded photo |
+
+---
+
+## Updated Data Flow Diagrams
+
+### Friend Request Flow (Phase 5)
+```
+1. User A opens Add Friend screen, types query
+   ↓
+2. SELECT profiles WHERE username ILIKE '%query%' OR email ILIKE '%query%' OR phone_number ILIKE '%query%'
+   AND id != User A
+   LIMIT 20
+   ↓
+3. Client fetches existing matches + friendships for result user IDs
+   ↓
+4. Client determines relationship status per result (none / pending_sent / pending_received / friends / declined)
+   ↓
+5. User A taps "Add" on User B
+   ↓
+6. RPC send_friend_request(A, B)
+   ↓
+7. Function checks: no existing friendship in either direction
+   ↓
+8. INSERT friendships (requester=A, recipient=B, status='pending')
+   ↓
+9. Return friendship id → client updates button to "Requested"
+```
+
+### Friend Accept Flow (Phase 5)
+```
+1. User B opens Friends screen
+   ↓
+2. SELECT friendships WHERE recipient_id = B AND status = 'pending'
+   JOIN profiles ON requester_id
+   ↓
+3. Shows pending requests section
+   ↓
+4. User B taps "Accept" on User A's request
+   ↓
+5. RPC respond_to_friend_request(friendship_id, B, 'accept')
+   ↓
+6. UPDATE friendships SET status = 'accepted'
+   ↓
+7. CALL create_match(A, B) → orders IDs, inserts match row (idempotent)
+   ↓
+8. Client moves card from pending to friends list
+   ↓
+9. Both users can now chat via the match row
+```
+
+### Unified Friends List Flow (Phase 5)
+```
+1. User opens Friends screen
+   ↓
+2. SELECT matches WHERE user1_id = me OR user2_id = me
+   JOIN profiles ON other_user_id
+   ↓
+3. For each friend: SELECT work_intents WHERE user_id = friend AND intent_date = today
+   ↓
+4. Merge into FriendListItem[] with availability flag
+   ↓
+5. Sort by name alphabetically
+   ↓
+6. Display in friends list with green dot for available friends
+```
+
+### Pending Count Badge Flow (Phase 5)
+```
+1. Profile tab gains focus
+   ↓
+2. RPC get_pending_requests_count(user_id)
+   ↓
+3. Returns integer → set as tabBarBadge on Profile tab
+   ↓
+4. After accepting/declining requests → re-fetch count on next focus
+```
+
+---
+
+### Photo Upload Flow (Phase 5 — Profile Redesign)
+```
+1. User taps empty slot in PhotoSlots (Edit Profile or Onboarding)
+   ↓
+2. expo-image-picker launches (library, square crop, 0.8 quality)
+   ↓
+3. User selects image → returns local URI
+   ↓
+4. Upload to Supabase Storage: avatars/{userId}/{position}.jpg
+   ↓
+5. Get public URL from storage
+   ↓
+6. UPSERT profile_photos (user_id, photo_url, position)
+   ↓
+7. If position = 0: UPDATE profiles SET photo_url = public_url WHERE id = userId
+   ↓
+8. UI updates immediately (photo appears in slot)
+```
+
+### Profile Edit Flow (Phase 5 — Profile Redesign)
+```
+1. User opens Edit Profile screen
+   ↓
+2. SELECT profiles + profile_photos for current user
+   ↓
+3. User modifies text fields (name, tagline, currently_working_on, work, school, work_type)
+   ↓
+4. User taps Save
+   ↓
+5. UPDATE profiles SET tagline=?, currently_working_on=?, work=?, school=?, name=?, work_type=? WHERE id = userId
+   ↓
+6. refreshProfile() → AuthContext updates
+   ↓
+7. goBack() → ProfileScreen refreshes via useFocusEffect
+```
+
+---
+
+## SQL Files — Phase 5
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `supabase/001_profiles_table.sql` | Profiles table + trigger (Phase 1) | ✅ Committed |
+| `supabase/002_discovery_tables.sql` | work_intents, swipes, check_match (Phase 2) | ✅ Committed |
+| `supabase/003_matching_tables.sql` | matches, messages, create_match, mark_chat_read (Phase 3) | ✅ Committed |
+| `supabase/004_sessions_tables.sql` | sessions, session_participants, session RPCs (Phase 4) | ✅ Committed |
+| `supabase/005_sessions_revision.sql` | Session revision: scheduled_date, dual-lock, auto-cancel (Phase 4) | ✅ Committed |
+| `supabase/006_friendships_table.sql` | friendships table, phone_number column, friend RPCs (Phase 5) | 📋 To be created |
+| `supabase/007_profile_photos.sql` | profile_photos table, profile columns, avatars bucket, storage policies (Phase 5) | 📋 To be created |
+
+### Run Order
+
+Execute in Supabase SQL Editor in this order:
+1. `001_profiles_table.sql`
+2. `002_discovery_tables.sql`
+3. `003_matching_tables.sql`
+4. `004_sessions_tables.sql`
+5. `005_sessions_revision.sql`
+6. `006_friendships_table.sql`
+7. `007_profile_photos.sql`
+
+---
+
+## To Be Confirmed
+
+| Item | Question | Impact |
+|------|----------|--------|
+| Phone number privacy | Should phone_number be visible to all authenticated users via the public SELECT policy on profiles? | Currently yes (needed for search). May want a dedicated search RPC that doesn't expose full phone numbers in results. |
+| Phone number uniqueness | Should phone numbers be unique across users? | Currently no. Could cause confusion if two users enter the same number. |
+| Re-request after decline | Should a requester be able to send a new request after being declined? | Currently no. May want a cooldown or allow after X days. |
+| Friendship deletion | Should users be able to unfriend someone? | Not implemented in Phase 5. Would need a new RPC and UI. |
+| Username editability | Auto-generated usernames (`user_abc123...`) are not user-friendly for sharing. Should users be able to set custom usernames? | Not in Phase 5 scope. Would need edit profile UI + uniqueness validation. |
+
+---
+
+## Phase 5 Security Notes
+
+1. **All friendship mutations via SECURITY DEFINER** — No direct INSERT/UPDATE by clients on friendships table
+2. **Recipient-only response** — `respond_to_friend_request` verifies caller is the recipient, not the requester
+3. **No re-request after decline** — Prevents harassment; declined is permanent for MVP
+4. **Phone number publicly readable** — Acceptable for MVP; all profile data is public read. Consider restricting in future.
+5. **Search rate limiting** — No server-side rate limiting on profile search. Client debounces at 300ms. Consider adding for production.
+6. **Match creation is idempotent** — `create_match` uses ON CONFLICT DO NOTHING, safe to call multiple times for same pair
+7. **RLS restricts friendship reads** — Users can only see friendships where they are requester or recipient
+8. **Profile photos publicly readable** — `profile_photos` table has public SELECT policy (same as `profiles`). Photos stored in public storage bucket.
+9. **Storage folder ownership** — Storage RLS restricts writes to `avatars/{userId}/` folder. Users cannot modify other users' photos.
+10. **Photo URLs are permanent** — Public storage URLs do not expire. Deleted photos should have their files removed from storage to prevent stale URLs.

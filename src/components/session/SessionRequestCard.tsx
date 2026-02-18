@@ -142,11 +142,7 @@ export default function SessionRequestCard({
   };
 
   if (session.status === 'cancelled') {
-    return (
-      <View style={styles.cancelledCard}>
-        <Text style={styles.cancelledText}>Invite cancelled</Text>
-      </View>
-    );
+    return null;
   }
 
   if (session.status === 'pending' && isInitiator) {
@@ -275,19 +271,6 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     fontSize: 16,
     fontWeight: '600',
-  },
-  cancelledCard: {
-    backgroundColor: colors.bgSecondary,
-    borderRadius: borderRadius.lg,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    marginVertical: spacing[2],
-  },
-  cancelledText: {
-    fontSize: 13,
-    color: colors.textTertiary,
   },
   activeCard: {
     borderColor: theme.success,

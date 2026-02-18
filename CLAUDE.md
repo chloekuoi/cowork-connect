@@ -62,7 +62,7 @@ npm run android # Run on Android emulator
 Cards showing:
 - Profile photo and name
 - Current project/task
-- Work style tags ("Deep focus", "Happy to chat", "Pomodoro fan")
+- Work style tags ("Deep focus", "Chat mode", "Flexible")
 - Preferred location type (cafe, library, video call)
 - Availability window
 - Distance

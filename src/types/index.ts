@@ -25,13 +25,11 @@ export type AuthContextType = {
 };
 
 // Discovery feature types
-export type WorkStyle = 'Deep focus' | 'Happy to chat' | 'Flexible' | 'Pomodoro fan' | 'Chat mode';
+export type WorkStyle = 'Deep focus' | 'Chat mode' | 'Flexible';
 
 export type LocationType =
   | 'Cafe'
   | 'Library'
-  | 'Anywhere/Other'
-  | 'Video Call'
   | 'Anywhere';
 
 export type WorkIntent = {
