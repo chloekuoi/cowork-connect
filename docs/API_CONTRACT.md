@@ -426,34 +426,9 @@ CREATE TRIGGER on_auth_user_created
 
 ## Storage Buckets
 
-### `avatars` (NOT YET IMPLEMENTED)
+### `avatars`
 
-**Status:** Planned for Phase 3
-
-**Future Configuration:**
-| Setting | Value |
-|---------|-------|
-| Public | No |
-| File size limit | 5MB |
-| Allowed MIME types | `image/jpeg`, `image/png`, `image/webp` |
-
-**Future Policies:**
-```sql
--- Users can upload their own avatar
-CREATE POLICY "Users can upload own avatar"
-ON storage.objects FOR INSERT
-WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
--- Users can update their own avatar
-CREATE POLICY "Users can update own avatar"
-ON storage.objects FOR UPDATE
-USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
-
--- Anyone can view avatars
-CREATE POLICY "Avatars are publicly viewable"
-ON storage.objects FOR SELECT
-USING (bucket_id = 'avatars');
-```
+**Status:** Implemented in Phase 5 (Profile Redesign). See Phase 5 section for full configuration, policies, and file path pattern.
 
 ---
 
@@ -1334,7 +1309,7 @@ Execute in Supabase SQL Editor in this order:
 
 | Table | RLS | Purpose | Phase |
 |-------|-----|---------|-------|
-| `profiles` | Enabled | User profile data | 1 (**modified Phase 5: phone_number**) |
+| `profiles` | Enabled | User profile data | 1 (**modified Phase 5: phone_number, tagline, currently_working_on, work, school**) |
 | `work_intents` | Enabled | Daily work intentions for discovery | 2 |
 | `swipes` | Enabled | Swipe history (right/left) | 2 |
 | `matches` | Enabled | Persistent mutual matches | 3 |
@@ -1343,18 +1318,23 @@ Execute in Supabase SQL Editor in this order:
 | `session_participants` | Enabled | Links users to sessions with role | 4 |
 | `session_events` | Enabled | System events for session timeline | 4 |
 | `friendships` | Enabled | Manual friend requests with accept/decline lifecycle | **5** |
+| `profile_photos` | Enabled | User profile photos with position ordering | **5** |
 
 ---
 
 ## Modification to Existing Table: `profiles`
 
-**Phase 5 adds one column. All existing columns, constraints, indexes, and policies remain unchanged.**
+**Phase 5 adds five columns. All existing columns, constraints, indexes, and policies remain unchanged.**
 
-### New Column
+### New Columns
 
 | Column | Type | Nullable | Default | Description |
 |--------|------|----------|---------|-------------|
 | `phone_number` | `TEXT` | Yes | `NULL` | User's phone number (for friend search) |
+| `tagline` | `TEXT` | Yes | `NULL` | Short bio/tagline (1-2 sentences) |
+| `currently_working_on` | `TEXT` | Yes | `NULL` | Single-line casual description of current project |
+| `work` | `TEXT` | Yes | `NULL` | Work context (company, role — low-pressure, not credentials) |
+| `school` | `TEXT` | Yes | `NULL` | School context (optional, low-pressure) |
 
 ### Business Rules (phone_number)
 
@@ -1364,15 +1344,26 @@ Execute in Supabase SQL Editor in this order:
 - **Searchable:** Used as a search target in Add Friend flow (ILIKE query).
 - **Optional:** Users are not required to set a phone number.
 
+### Business Rules (profile text fields)
+
+- **All optional:** Users are not required to fill in tagline, currently_working_on, work, or school.
+- **No length limits at database level:** UI provides reasonable input constraints.
+- **Publicly readable:** Existing `SELECT` policy (`true`) means all authenticated users can see these fields.
+- **Owner-editable:** Existing `UPDATE` policy (`auth.uid() = id`) restricts editing to the profile owner.
+
 ### Updated RLS Notes
 
-- The existing `SELECT` policy on profiles (`true` — public read) means phone_number is readable by all authenticated users. This is acceptable for MVP since the field is used for friend search.
-- The existing `UPDATE` policy (`auth.uid() = id`) means users can only edit their own phone_number.
+- The existing `SELECT` policy on profiles (`true` — public read) means all new columns are readable by all authenticated users. This is acceptable for MVP.
+- The existing `UPDATE` policy (`auth.uid() = id`) means users can only edit their own profile fields.
 
 ### Migration
 
 ```sql
 ALTER TABLE profiles ADD COLUMN phone_number TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN tagline TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN currently_working_on TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN work TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN school TEXT DEFAULT NULL;
 ```
 
 ---
@@ -1445,6 +1436,120 @@ Supabase Realtime should be enabled on the `friendships` table. Not actively sub
 - Frontend can join `friendships` with `profiles` on `requester_id` to get the requester's name/photo for pending requests
 - The `matches` table is the source of truth for the unified friends list (all accepted friends have a match row)
 - The `friendships` table is only needed for pending/declined request queries and determining whether a friendship was manual vs swipe-based
+
+---
+
+## Table: `profile_photos`
+
+**Purpose:** Stores user profile photos with position-based ordering. Position 0 is the primary photo (synced to `profiles.photo_url`).
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | `UUID` | No | `gen_random_uuid()` | Primary key |
+| `user_id` | `UUID` | No | — | FK to `profiles.id` |
+| `photo_url` | `TEXT` | No | — | Public URL of the uploaded photo |
+| `position` | `INTEGER` | No | — | Display order (0-4, 0 is primary) |
+| `created_at` | `TIMESTAMPTZ` | No | `NOW()` | When the photo was uploaded |
+
+### Constraints
+
+| Type | Name | Definition |
+|------|------|------------|
+| Primary Key | `profile_photos_pkey` | `id` |
+| Unique | `profile_photos_user_position_key` | `(user_id, position)` |
+| Check | `profile_photos_position_check` | `position >= 0 AND position <= 4` |
+| Foreign Key | — | `user_id` → `profiles(id)` ON DELETE CASCADE |
+
+### Business Rules
+
+- **Position-based ordering:** Photos are ordered by position (0-4). Position 0 is the primary/lead photo.
+- **Max 5 photos:** Positions 0 through 4. The CHECK constraint prevents positions outside this range.
+- **One photo per position:** The UNIQUE constraint on `(user_id, position)` prevents duplicates.
+- **Primary sync:** When position 0 is uploaded, `profiles.photo_url` is updated to match. This denormalized field enables fast reads on Discover cards and match lists.
+- **Promotion on delete:** When the primary photo (position 0) is deleted, the next photo is promoted to position 0 and `profiles.photo_url` is updated. This is handled client-side in `photoService.ts`.
+- **Immediate upload:** Photos are uploaded immediately when selected (not batched with a save action). This gives users instant visual feedback.
+- **Lifecycle:** Photos are permanent until explicitly deleted by the owner.
+
+### Indexes
+
+| Name | Columns | Purpose |
+|------|---------|---------|
+| `idx_profile_photos_user` | `user_id` | Find all photos for a user |
+| `idx_profile_photos_user_position` | `user_id, position` | Ordered photo lookup |
+
+### RLS: **ENABLED**
+
+### Policies
+
+| Policy Name | Operation | Rule | Reason |
+|-------------|-----------|------|--------|
+| Anyone can view profile photos | `SELECT` | `true` | Photos are public (like profile data) |
+| Users can insert own photos | `INSERT` | `auth.uid() = user_id` | Only upload your own photos |
+| Users can update own photos | `UPDATE` | `auth.uid() = user_id` | Only modify your own photos |
+| Users can delete own photos | `DELETE` | `auth.uid() = user_id` | Only remove your own photos |
+
+### UI Assumptions
+
+- Frontend uses `position` to determine display order (0 = lead photo, 1-4 = thumbnails)
+- Frontend syncs `profiles.photo_url` with position 0 photo URL after upload/delete
+- Frontend handles photo promotion when primary is deleted (reorder remaining photos)
+- Photo URLs are public Supabase Storage URLs (no authentication required to load images)
+
+---
+
+## Storage Bucket: `avatars` (Phase 5)
+
+**Purpose:** Stores user profile photo files uploaded via `expo-image-picker`.
+
+### Configuration
+
+| Setting | Value |
+|---------|-------|
+| Bucket Name | `avatars` |
+| Public | Yes |
+| File Size Limit | 5MB |
+| Allowed MIME Types | `image/jpeg`, `image/png`, `image/webp` |
+
+### File Path Pattern
+
+```
+avatars/{userId}/{position}.jpg
+```
+
+Example: `avatars/abc-123-def/0.jpg` (primary photo for user abc-123-def)
+
+### Storage Policies
+
+```sql
+-- Anyone can view avatar images (public bucket)
+CREATE POLICY "Avatars are publicly viewable"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'avatars');
+
+-- Users can upload their own avatars
+CREATE POLICY "Users can upload own avatar"
+ON storage.objects FOR INSERT
+WITH CHECK (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Users can update their own avatars
+CREATE POLICY "Users can update own avatar"
+ON storage.objects FOR UPDATE
+USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+
+-- Users can delete their own avatars
+CREATE POLICY "Users can delete own avatar"
+ON storage.objects FOR DELETE
+USING (bucket_id = 'avatars' AND auth.uid()::text = (storage.foldername(name))[1]);
+```
+
+### Business Rules
+
+- **Folder per user:** Each user's photos are stored in `avatars/{userId}/` directory. Storage RLS uses `foldername` to verify ownership.
+- **Position-based naming:** Files are named by position (`0.jpg`, `1.jpg`, etc.). When uploading a new photo to a position, the old file is overwritten.
+- **Public URLs:** Since the bucket is public, photo URLs are accessible without authentication tokens. The URL format is `{SUPABASE_URL}/storage/v1/object/public/avatars/{userId}/{position}.jpg`.
+- **Cleanup on delete:** When a photo is deleted from the DB, the corresponding file should also be removed from storage. This is handled client-side in `photoService.ts`.
 
 ---
 
@@ -1557,6 +1662,13 @@ const { data: count } = await supabase
 | `supabase.rpc('send_friend_request')` | — | Send a friend request |
 | `supabase.rpc('respond_to_friend_request')` | — | Accept or decline a request |
 | `supabase.rpc('get_pending_requests_count')` | — | Badge count for Profile tab |
+| `supabase.from('profile_photos').select()` | profile_photos | Fetch user's photos |
+| `supabase.from('profile_photos').upsert()` | profile_photos | Insert/update photo record |
+| `supabase.from('profile_photos').delete()` | profile_photos | Remove photo record |
+| `supabase.from('profiles').update()` | profiles | Update profile text fields (tagline, etc.) |
+| `supabase.storage.from('avatars').upload()` | avatars bucket | Upload photo file |
+| `supabase.storage.from('avatars').remove()` | avatars bucket | Delete photo file |
+| `supabase.storage.from('avatars').getPublicUrl()` | avatars bucket | Get public URL for uploaded photo |
 
 ---
 
@@ -1636,6 +1748,44 @@ const { data: count } = await supabase
 
 ---
 
+### Photo Upload Flow (Phase 5 — Profile Redesign)
+```
+1. User taps empty slot in PhotoSlots (Edit Profile or Onboarding)
+   ↓
+2. expo-image-picker launches (library, square crop, 0.8 quality)
+   ↓
+3. User selects image → returns local URI
+   ↓
+4. Upload to Supabase Storage: avatars/{userId}/{position}.jpg
+   ↓
+5. Get public URL from storage
+   ↓
+6. UPSERT profile_photos (user_id, photo_url, position)
+   ↓
+7. If position = 0: UPDATE profiles SET photo_url = public_url WHERE id = userId
+   ↓
+8. UI updates immediately (photo appears in slot)
+```
+
+### Profile Edit Flow (Phase 5 — Profile Redesign)
+```
+1. User opens Edit Profile screen
+   ↓
+2. SELECT profiles + profile_photos for current user
+   ↓
+3. User modifies text fields (name, tagline, currently_working_on, work, school, work_type)
+   ↓
+4. User taps Save
+   ↓
+5. UPDATE profiles SET tagline=?, currently_working_on=?, work=?, school=?, name=?, work_type=? WHERE id = userId
+   ↓
+6. refreshProfile() → AuthContext updates
+   ↓
+7. goBack() → ProfileScreen refreshes via useFocusEffect
+```
+
+---
+
 ## SQL Files — Phase 5
 
 | File | Purpose | Status |
@@ -1646,6 +1796,7 @@ const { data: count } = await supabase
 | `supabase/004_sessions_tables.sql` | sessions, session_participants, session RPCs (Phase 4) | ✅ Committed |
 | `supabase/005_sessions_revision.sql` | Session revision: scheduled_date, dual-lock, auto-cancel (Phase 4) | ✅ Committed |
 | `supabase/006_friendships_table.sql` | friendships table, phone_number column, friend RPCs (Phase 5) | 📋 To be created |
+| `supabase/007_profile_photos.sql` | profile_photos table, profile columns, avatars bucket, storage policies (Phase 5) | 📋 To be created |
 
 ### Run Order
 
@@ -1656,6 +1807,7 @@ Execute in Supabase SQL Editor in this order:
 4. `004_sessions_tables.sql`
 5. `005_sessions_revision.sql`
 6. `006_friendships_table.sql`
+7. `007_profile_photos.sql`
 
 ---
 
@@ -1680,3 +1832,6 @@ Execute in Supabase SQL Editor in this order:
 5. **Search rate limiting** — No server-side rate limiting on profile search. Client debounces at 300ms. Consider adding for production.
 6. **Match creation is idempotent** — `create_match` uses ON CONFLICT DO NOTHING, safe to call multiple times for same pair
 7. **RLS restricts friendship reads** — Users can only see friendships where they are requester or recipient
+8. **Profile photos publicly readable** — `profile_photos` table has public SELECT policy (same as `profiles`). Photos stored in public storage bucket.
+9. **Storage folder ownership** — Storage RLS restricts writes to `avatars/{userId}/` folder. Users cannot modify other users' photos.
+10. **Photo URLs are permanent** — Public storage URLs do not expire. Deleted photos should have their files removed from storage to prevent stale URLs.

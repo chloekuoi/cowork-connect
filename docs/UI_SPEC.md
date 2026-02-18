@@ -1655,3 +1655,373 @@ Renders one of 5 states based on conditions:
 | Profile friends count | 16px | 400 | `#756C62` |
 | Empty state title | 24px | 600 | `#2D3A2D` |
 | Empty state text | 16px | 400 | `#756C62` |
+
+---
+---
+
+# Phase 5: Profile Redesign
+
+**Added:** 2026-02-16
+
+---
+
+## Navigation Update
+
+### ProfileStack (Updated)
+
+**File:** `src/navigation/ProfileStack.tsx`
+
+**Screens (updated):**
+
+| Screen | Route Name | Params |
+|--------|-----------|--------|
+| ProfileScreen | `Profile` | None |
+| FriendsScreen | `Friends` | None |
+| AddFriendScreen | `AddFriend` | None |
+| EditProfileScreen | `EditProfile` | None |
+
+---
+
+## Screens
+
+### 9. ProfileScreen (Redesigned)
+
+**File:** `src/screens/profile/ProfileScreen.tsx`
+
+**Purpose:** Display the user's profile with photos, extended fields, and entry points to edit profile, friends, and settings
+
+**Layout:**
+```
+┌─────────────────────────┐
+│ SafeAreaView (ScrollView)│
+│                          │
+│ ┌──────────────────────┐ │
+│ │                      │ │  Lead photo (~200px)
+│ │    Primary Photo     │ │  or initials on #E8E7E4
+│ │    or Initials       │ │
+│ │                      │ │
+│ └──────────────────────┘ │
+│                          │
+│ [img1] [img2] [img3] [4] │  Thumbnail row (60px, horizontal)
+│                          │
+│   Alex Chen              │  Name: 24px, weight 700
+│   "Building cool things" │  Tagline: 16px, italic, #756C62
+│                          │
+│ CURRENTLY WORKING ON     │  Section label (12px, uppercase, #968D82)
+│ "A productivity app for  │  16px, weight 400, #2D3A2D
+│  remote workers"         │
+│                          │
+│ 💼 Freelancer            │  Work type (pill, sm tag)
+│ 🏢 Acme Corp             │  Work (if set), 14px, #756C62
+│ 🎓 Stanford              │  School (if set), 14px, #756C62
+│                          │
+│ [    Edit Profile    ]   │  Secondary button, full width
+│                          │
+│ ┌──────────────────────┐ │
+│ │ 📱 Phone Number      │ │  Tappable row (from P5-07)
+│ │    555-987-6543    > │ │
+│ └──────────────────────┘ │
+│ ┌──────────────────────┐ │
+│ │ 👥 My Friends   (5) >│ │  Tappable row (from P5-07)
+│ └──────────────────────┘ │
+│                          │
+│ [    Sign Out    ]       │  Ghost button, destructive
+│                          │
+└─────────────────────────┘
+```
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `loading` | Profile data fetching | Centered spinner |
+| `loaded` | Profile data available | Full layout as above |
+| `no_photos` | Profile loaded but no photos | Migration banner card above "Edit Profile" button |
+
+**Migration Banner:**
+- Shown when user has no photos uploaded
+- Gentle prompt card: "Add a photo so people know who they're meeting!"
+- Tapping the banner navigates to EditProfile
+- Card styling: `#FFFFFF` bg, 1.5px `#E8DCD0` border, 16px padding, 16px border radius
+
+**Lead Photo:**
+- Height: ~200px, full width (minus 32px horizontal margin)
+- Border radius: 16px
+- If photo exists: `expo-image` with `contentFit="cover"`
+- If no photo: `#E8E7E4` background with initials (64px, weight 700, `#6F8268`)
+
+**Thumbnail Row:**
+- Horizontal FlatList/ScrollView
+- Each thumbnail: 60 x 60px, border radius 8px
+- 8px gap between thumbnails
+- Only shows if user has 2+ photos
+- Tapping a thumbnail could swap the lead photo (stretch goal, not required for MVP)
+
+**Data Refresh:**
+- `useFocusEffect` calls `getFullProfile()` to refresh data after navigating back from EditProfile
+
+**Interactions:**
+- "Edit Profile" → navigate to EditProfile screen
+- Phone Number row → existing P5-07 behavior
+- My Friends row → existing P5-07 behavior (navigate to FriendsScreen)
+- Sign Out → existing sign out behavior
+
+---
+
+### 10. EditProfileScreen
+
+**File:** `src/screens/profile/EditProfileScreen.tsx`
+
+**Purpose:** Edit profile photos and text fields
+
+**Layout:**
+```
+┌─────────────────────────┐
+│ ┌─────────────────────┐ │
+│ │Cancel          Save │ │  Header buttons
+│ └─────────────────────┘ │
+│                          │
+│ ┌──────────────────────┐ │
+│ │ ┌────────────────┐   │ │  PhotoSlots grid
+│ │ │                │   │ │  Large primary slot
+│ │ │  Primary (0)   │   │ │
+│ │ │                │   │ │
+│ │ └────────────────┘   │ │
+│ │ ┌──┐ ┌──┐ ┌──┐ ┌──┐ │ │  4 smaller slots (2x2)
+│ │ │1 │ │2 │ │3 │ │4 │ │ │
+│ │ └──┘ └──┘ └──┘ └──┘ │ │
+│ └──────────────────────┘ │
+│                          │
+│ Name                     │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ Alex Chen            │ │
+│ └──────────────────────┘ │
+│                          │
+│ Tagline                  │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ Building cool things │ │
+│ └──────────────────────┘ │
+│                          │
+│ Currently Working On     │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ A productivity app   │ │
+│ └──────────────────────┘ │
+│                          │
+│ Work                     │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ Acme Corp            │ │
+│ └──────────────────────┘ │
+│                          │
+│ School                   │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ Stanford             │ │
+│ └──────────────────────┘ │
+│                          │
+│ Work Type                │  Label + pill selection
+│ [Freelancer] [Remote]    │
+│ [Founder] [Student]      │
+│ [Hybrid] [Other]         │
+│                          │
+└─────────────────────────┘
+```
+
+**Header:**
+- Cancel (left): 16px, weight 500, `#756C62`. Navigates back without saving text changes.
+- Save (right): 16px, weight 600, `#A8B5A2`. Saves text fields, refreshes profile, navigates back.
+- Save disabled while saving (opacity 0.5, shows spinner)
+
+**TextInput Styling:**
+- Background: `#EEEDEA` (input bg)
+- Border radius: 12px
+- Padding: 12px horizontal, 10px vertical
+- Font: 16px, weight 400, color `#2D3A2D`
+- Placeholder color: `#968D82`
+- Label: 14px, weight 600, color `#2D3A2D`, 8px margin-bottom
+
+**Photo Behavior:**
+- Tapping an empty slot → `pickImage()` → `uploadPhoto()` (immediate upload)
+- Tapping a filled slot → Action Sheet: "Change Photo" / "Remove Photo" / "Set as Primary" (if not position 0) / "Cancel"
+- Photos upload/delete immediately, not batched with Save
+- If Cancel is tapped after uploading photos, the photos persist (they were already uploaded)
+
+**Work Type Pills:**
+- Single selection (same options as onboarding: Freelancer, Remote Employee, Founder, Student, Hybrid, Other)
+- Selected state: sage bg `#A8B5A2`, white text
+- Unselected state: white bg, `#E8DCD0` border
+
+**Interactions:**
+- Cancel → `goBack()` (text changes discarded, photo changes persist)
+- Save → `updateProfile(userId, fields)` → `refreshProfile()` → `goBack()`
+- Photo add/remove → immediate (not part of Save flow)
+
+**Edge Cases:**
+
+| Scenario | Behavior |
+|----------|----------|
+| Save with no changes | Still calls updateProfile (no-op), navigates back |
+| Upload fails | Alert with error, slot stays empty |
+| Delete last photo | Allowed (photos are soft requirement after onboarding) |
+| Cancel after photo upload | Photos persist (already saved) |
+| Network error on save | Alert with error, stays on screen |
+
+---
+
+## Components
+
+### PhotoSlots
+
+**File:** `src/components/profile/PhotoSlots.tsx`
+
+**Purpose:** Reusable photo grid shared between EditProfileScreen and Onboarding Step 4
+
+**Props:**
+- `photos`: ProfilePhoto[] (current photos)
+- `totalSlots`: number (default 5)
+- `onAddPhoto`: (position: number) => void
+- `onRemovePhoto?`: (position: number) => void
+- `onSetPrimary?`: (position: number) => void
+- `prompts?`: string[] (placeholder text for empty slots)
+- `editable?`: boolean (default true)
+
+**Layout:**
+```
+┌────────────────────────────┐
+│ ┌──────────────────────┐   │
+│ │                      │   │  Primary slot (position 0)
+│ │   "A clear photo     │   │  ~160px height
+│ │    of your face"     │   │  or filled photo
+│ │                      │   │
+│ └──────────────────────┘   │
+│ ┌─────┐ ┌─────┐           │
+│ │  1  │ │  2  │           │  4 smaller slots in 2x2 grid
+│ │     │ │     │           │  ~80px each
+│ └─────┘ └─────┘           │
+│ ┌─────┐ ┌─────┐           │
+│ │  3  │ │  4  │           │
+│ │     │ │     │           │
+│ └─────┘ └─────┘           │
+└────────────────────────────┘
+```
+
+**Empty Slot Styling:**
+- Dashed border: 2px dashed `#E4E3E0`
+- Background: `#F5F4F1`
+- Border radius: 12px (primary), 8px (small)
+- "+" icon: 24px, `#9B9B9B`
+- Prompt text: 12px, `#9B9B9B`, centered below icon
+
+**Filled Slot Styling:**
+- Photo via `expo-image`, `contentFit="cover"`
+- Border radius matches empty slots
+- If editable: small "×" remove button (20px circle, `#B85C4D` bg, white ×, top-right corner)
+
+**Default Prompts:**
+- Position 0: "A clear photo of your face"
+- Position 1: "A photo of you working"
+- Position 2: "A photo that shows your vibe"
+- Position 3: "" (no prompt)
+- Position 4: "" (no prompt)
+
+---
+
+## SwipeCard Update
+
+**File:** `src/components/discover/SwipeCard.tsx` (modified)
+
+**Change:** Add tagline display below work_type in the photo overlay section.
+
+**Updated Overlay Layout:**
+```
+┌─────────────────────────┐
+│ ┌─────────────────────┐ │
+│ │ Name          1.2km │ │
+│ │ Work type           │ │  Existing
+│ │ "Building cool..."  │ │  NEW: tagline (13px, white, italic)
+│ └─────────────────────┘ │
+```
+
+**Tagline Styling:**
+- Size: 13px
+- Weight: 400
+- Color: `rgba(255,255,255,0.7)` (slightly dimmer than work_type)
+- Style: italic
+- numberOfLines: 1 (truncated)
+- Only renders if tagline is non-null and non-empty
+
+---
+
+## Onboarding Update
+
+**File:** `src/screens/auth/OnboardingScreen.tsx` (modified)
+
+**Change:** Add Step 4 for photo upload. `totalSteps` changes from 3 to 4.
+
+**Step 4 Layout:**
+```
+┌─────────────────────────┐
+│ SafeAreaView             │
+│                          │
+│   ● ● ● ●              │  Progress dots (4 total)
+│                          │
+│   "Add a photo"          │  Title: 28px, weight 700
+│   "So people know who    │  Subtitle: 16px, weight 400, #756C62
+│   they're meeting"       │
+│                          │
+│ ┌──────────────────────┐ │
+│ │     PhotoSlots       │ │  PhotoSlots component
+│ │   (1 required)       │ │  Only shows primary slot prominently
+│ └──────────────────────┘ │
+│                          │
+│ [   Get Started   ]      │  Primary button
+│                          │  Disabled until 1 photo uploaded
+│                          │
+│   ← Back                 │  Back button to Step 3
+└─────────────────────────┘
+```
+
+**Behavior:**
+- "Get Started" button disabled until at least 1 photo is uploaded to position 0
+- Photo uploads immediately via `uploadPhoto()` when selected
+- After tapping "Get Started": sets `onboarding_complete = true`, navigates to main app
+- Existing Steps 1-3 unchanged
+
+---
+
+## Profile Redesign Typography Additions
+
+| Element | Size | Weight | Color |
+|---------|------|--------|-------|
+| Profile lead photo initials | 64px | 700 | `#6F8268` |
+| Profile name | 24px | 700 | `#2D3A2D` |
+| Profile tagline | 16px | 400 italic | `#756C62` |
+| Profile section label | 12px | 500 | `#968D82` (uppercase) |
+| Profile currently working on | 16px | 400 | `#2D3A2D` |
+| Profile work/school | 14px | 400 | `#756C62` |
+| Migration banner text | 14px | 500 | `#2D3A2D` |
+| Edit Profile header Cancel | 16px | 500 | `#756C62` |
+| Edit Profile header Save | 16px | 600 | `#A8B5A2` |
+| Edit Profile input label | 14px | 600 | `#2D3A2D` |
+| Edit Profile input text | 16px | 400 | `#2D3A2D` |
+| Edit Profile input placeholder | 16px | 400 | `#968D82` |
+| PhotoSlot prompt text | 12px | 400 | `#9B9B9B` |
+| PhotoSlot "+" icon | 24px | 400 | `#9B9B9B` |
+| SwipeCard tagline | 13px | 400 italic | `rgba(255,255,255,0.7)` |
+| Onboarding Step 4 title | 28px | 700 | `#2D3A2D` |
+| Onboarding Step 4 subtitle | 16px | 400 | `#756C62` |
+
+---
+
+## Profile Redesign Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| User has no photos | Profile shows initials fallback, migration banner appears |
+| User has 1 photo | Lead photo shown, no thumbnail row |
+| User has 5 photos | All slots filled, no empty slots in EditProfile |
+| Delete primary photo with others remaining | Next photo promoted to position 0, profiles.photo_url updated |
+| Delete last photo | Allowed — initials shown everywhere, migration banner reappears |
+| Very long tagline | Truncated with numberOfLines={1} on SwipeCard |
+| All text fields empty | Profile shows only name and work type (graceful null handling) |
+| Upload fails mid-onboarding | Alert with error, user can retry. Cannot proceed without 1 photo. |
+| Existing user logs in (no photos) | Migration banner on Profile screen, onboarding NOT re-triggered |
+| Photo URL becomes stale (deleted from storage) | expo-image shows fallback/empty. User can re-upload via EditProfile. |
