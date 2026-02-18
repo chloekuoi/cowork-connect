@@ -62,10 +62,10 @@ const styles = StyleSheet.create({
     maxHeight: 100,
   },
   sendButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
     marginLeft: spacing[2],
-    borderRadius: 20,
+    borderRadius: 18,
     backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',

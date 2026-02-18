@@ -45,11 +45,16 @@ const styles = StyleSheet.create({
   bubble: {
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
-    borderRadius: 16,
+    borderRadius: 14,
   },
   bubbleSent: {
-    backgroundColor: colors.accentPrimary,
+    backgroundColor: colors.accentSecondary,
     borderBottomRightRadius: 4,
+    shadowColor: colors.accentSecondary,
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   bubbleReceived: {
     backgroundColor: colors.bgCard,
@@ -62,7 +67,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   textSent: {
-    color: '#FFFFFF',
+    color: colors.accentSecondaryText,
   },
   textReceived: {
     color: colors.textPrimary,
