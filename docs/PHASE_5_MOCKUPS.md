@@ -1,69 +1,103 @@
-# Phase 5: Friends & Polish — UI Mockups
+# Phase 5: Friends & Polish + Profile Redesign — UI Mockups
 
 **Created:** 2026-02-15
+**Updated:** 2026-02-18
 **Design System:** Digital Matcha
 
 ---
 
-## 1. Profile Screen (Updated)
+## 1. Profile Screen — Hinge-Style (Redesigned)
 
 ```
 ┌──────────────────────────────────────┐
 │ ░░░░░░░░░░ STATUS BAR ░░░░░░░░░░░░░ │  System status bar
 ├──────────────────────────────────────┤
 │                                      │
-│            ┌────────┐                │
-│            │        │                │
-│            │  A C   │  80x80px       │  Initials on #E8E7E4
-│            │        │                │  or profile photo
-│            └────────┘                │
+│ ┌──────────────────────────────────┐ │
+│ │                                  │ │
+│ │                                  │ │  Lead photo (~400px)
+│ │                                  │ │  Full width (minus 32px margin)
+│ │        [Lead Photo]              │ │  borderRadius: 16
+│ │                                  │ │  contentFit: cover
+│ │                                  │ │
+│ │                                  │ │
+│ │                                  │ │
+│ │  Alex Chen                       │ │  Name overlaid, bottom-left
+│ │                                  │ │  28px, w700, white
+│ └──────────────────────────────────┘ │  textShadow: 0 1px 4px rgba(0,0,0,0.5)
 │                                      │
-│           Alex Chen                  │  20px, w700, #1A1A1A
-│           Freelancer                 │  14px, w400, #6B6B6B
-│        alex@email.com                │  14px, w400, #9B9B9B
+│   27 · East Village · New York       │  16px, w400, #756C62
+│                                      │  Age from birthday, neighborhood, city
+│ ┌──────────────────────────────────┐ │
+│ │                                  │ │  Info Card
+│ │  💼  Freelancer                  │ │  Work type pill
+│ │                                  │ │
+│ │  "Building cool things for       │ │  Tagline: 16px, italic, #756C62
+│ │   remote workers"                │ │
+│ │                                  │ │
+│ │  CURRENTLY WORKING ON            │ │  12px, w500, #968D82, uppercase
+│ │  A productivity app for          │ │  16px, w400, #2D3A2D
+│ │  remote teams                    │ │
+│ │                                  │ │
+│ │  🏢  Acme Corp                   │ │  Work: 14px, w400, #756C62
+│ │  🎓  Stanford                    │ │  School: 14px, w400, #756C62
+│ │                                  │ │
+│ └──────────────────────────────────┘ │  bg: #FFFFFF, border: 1px #E8DCD0
+│                                      │  borderRadius: 16, padding: 20
+│ ┌──────────────────────────────────┐ │
+│ │                                  │ │  Photo 2 (full width)
+│ │        [Photo 2]                 │ │  borderRadius: 16
+│ │                                  │ │  ~300px height
+│ └──────────────────────────────────┘ │
+│                                      │
+│ ┌──────────────────────────────────┐ │
+│ │                                  │ │  Photo 3 (full width)
+│ │        [Photo 3]                 │ │  borderRadius: 16
+│ │                                  │ │  ~300px height
+│ └──────────────────────────────────┘ │
 │                                      │
 │  ┌────────────────────────────────┐  │
-│  │ ☕  Deep focus · Cafe          │  │  Interest tags
-│  └────────────────────────────────┘  │
-│                                      │
-│ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │  Separator #E4E3E0
-│                                      │
-│  📱  Phone Number                    │  14px, w500, #9B9B9B
-│      +1 555-123-4567             >   │  16px, w400, #1A1A1A
-│                                      │  Chevron #9B9B9B
-│ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │
-│                                      │
-│  👥  My Friends                (5)   │  16px, w600, #1A1A1A
-│                                  >   │  Count: 16px, w400, #6B6B6B
-│                                      │
-│ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ │
-│                                      │
+│  │         Edit Profile           │  │  Secondary button, full width
+│  └────────────────────────────────┘  │  #E8DCD0 bg, #2D3A2D text
+│                                      │  16px, w600, borderRadius: 12
 │  ┌────────────────────────────────┐  │
 │  │         Sign Out               │  │  Ghost button, #B85C4D
 │  └────────────────────────────────┘  │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile ❶   │  Tab bar
-│     🔍          💬        👤        │  Badge: #B85C4D, white text
+│ Discover  Friends ❶  Chat  Profile  │  4-tab bar
+│    🔍       👥        💬     👤     │  Badge on Friends: #B85C4D
 └──────────────────────────────────────┘
 ```
 
-**Phone number not yet set:**
+**No photos (migration banner):**
 ```
-│  📱  Phone Number                    │
-│      Add phone number            >   │  16px, w400, italic, #9B9B9B
+│ ┌──────────────────────────────────┐ │
+│ │                                  │ │  Banner card
+│ │  📷 Add a photo so people know   │ │  bg: #FFFFFF
+│ │     who they're meeting!         │ │  border: 1.5px #E8DCD0
+│ │                                  │ │  borderRadius: 16, padding: 16
+│ └──────────────────────────────────┘ │  Tappable → EditProfile
+│                                      │
+│ ┌──────────────────────────────────┐ │
+│ │                                  │ │  Initials fallback (~400px)
+│ │           A C                    │ │  bg: #E8E7E4
+│ │                                  │ │  initials: 64px, w700, #6F8268
+│ └──────────────────────────────────┘ │
+│                                      │
+│   Alex Chen                          │  Name below (not overlaid when
+│                                      │  no photo)
 ```
 
 ---
 
-## 2. Friends Screen — Empty State
+## 2. Friends Screen — Empty State (Friends Tab)
 
 ```
 ┌──────────────────────────────────────┐
 │ ░░░░░░░░░░ STATUS BAR ░░░░░░░░░░░░░ │
 ├──────────────────────────────────────┤
-│  ← Back        Friends          [+]  │  Header
-│                                      │  ← 16px #3F5443
+│             Friends             [+]  │  Header (no back button — tab root)
 │                                      │  Title: 28px, w700, #1A1A1A
 │                                      │  [+] 24px, #3F5443
 │                                      │
@@ -86,23 +120,61 @@
 │                                      │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile      │
+│ Discover  Friends    Chat   Profile  │  4-tab bar
+│    🔍       👥        💬     👤     │
 └──────────────────────────────────────┘
 ```
 
 ---
 
-## 3. Friends Screen — With Pending Requests + Friends
+## 3. Friends Screen — Default State (Collapsed Sections)
 
 ```
 ┌──────────────────────────────────────┐
 │ ░░░░░░░░░░ STATUS BAR ░░░░░░░░░░░░░ │
 ├──────────────────────────────────────┤
-│  ← Back        Friends          [+]  │
+│             Friends             [+]  │
 ├──────────────────────────────────────┤
 │                                      │
-│  PENDING REQUESTS (2)                │  14px, w600, #9B9B9B
-│                                      │  uppercase, letterSpacing 0.5
+│  ▶ PENDING REQUESTS          🔴     │  Collapsed, red dot = has pending
+│  ─────────────────────────────────── │  14px, w600, #9B9B9B, uppercase
+│                                      │  Red dot: 8px, #B85C4D
+│  ▼ AVAILABLE TODAY (2)               │  Expanded by default
+│  ─────────────────────────────────── │
+│  ┌────────────────────────────────┐  │
+│  │ ┌────┐                        │  │
+│  │ │    │  Jordan Kim            │  │  Name: 16px, w600, #1A1A1A
+│  │ │ JK │  14:00–18:00 · Cafe   │  │  Intent: 14px, w400, #6B6B6B
+│  │ └────┘                        │  │
+│  ├──────────────────────── ──────┤  │  Separator inset 80px
+│  │ ┌────┐                        │  │
+│  │ │ 📷 │  Riley Johnson         │  │  Has photo_url
+│  │ │    │  09:00–13:00 · Blue... │  │
+│  │ └────┘                        │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  ▶ NOT AVAILABLE (2)                 │  Collapsed by default
+│  ─────────────────────────────────── │
+│                                      │
+├──────────────────────────────────────┤
+│ Discover  Friends    Chat   Profile  │
+│    🔍       👥        💬     👤     │
+└──────────────────────────────────────┘
+```
+
+---
+
+## 3b. Friends Screen — All Sections Expanded
+
+```
+┌──────────────────────────────────────┐
+│ ░░░░░░░░░░ STATUS BAR ░░░░░░░░░░░░░ │
+├──────────────────────────────────────┤
+│             Friends             [+]  │
+├──────────────────────────────────────┤
+│                                      │
+│  ▼ PENDING REQUESTS (2)             │  Expanded (user tapped header)
+│  ─────────────────────────────────── │
 │  ┌────────────────────────────────┐  │
 │  │ ┌────┐                        │  │
 │  │ │ SC │  Sam Chen              │  │  Name: 16px, w600, #1A1A1A
@@ -113,44 +185,43 @@
 │  │         └────────┘ └────────┘ │  │  Decline: ghost, #B85C4D
 │  ├────────────────────────────────┤  │  Separator: #E4E3E0
 │  │ ┌────┐                        │  │
-│  │ │    │  Morgan Lee            │  │
-│  │ │ ML │  @morganlee            │  │
-│  │ │    │                        │  │
+│  │ │ ML │  Morgan Lee            │  │
+│  │ │    │  @morganlee            │  │
 │  │ └────┘                        │  │
 │  │         ┌────────┐ ┌────────┐ │  │
 │  │         │ Accept │ │Decline │ │  │
 │  │         └────────┘ └────────┘ │  │
 │  └────────────────────────────────┘  │
 │                                      │
-│  YOUR FRIENDS (4)                    │  14px, w600, #9B9B9B
-│                                      │  uppercase
+│  ▼ AVAILABLE TODAY (2)               │
+│  ─────────────────────────────────── │
 │  ┌────────────────────────────────┐  │
 │  │ ┌────┐                        │  │
-│  │ │    │  Jordan Kim        🟢  │  │  Name: 16px, w600, #1A1A1A
-│  │ │ JK │  Writing blog posts... │  │  Subtitle: 14px, w400, #6B6B6B
-│  │ │    │                        │  │  Green dot: 10px, #3F5443
-│  │ └────┘                        │  │
-│  ├──────────────────────── ──────┤  │  Separator inset 80px
+│  │ │ JK │  Jordan Kim            │  │  Name: 16px, w600, #1A1A1A
+│  │ │    │  14:00–18:00 · Cafe    │  │  Intent: 14px, w400, #6B6B6B
+│  │ └────┘                        │  │  time window + location
+│  ├──────────────────────── ──────┤  │
 │  │ ┌────┐                        │  │
-│  │ │    │  Taylor Park           │  │
-│  │ │ TP │  Not available today   │  │  14px, w400, italic, #9B9B9B
-│  │ │    │                        │  │  No green dot
+│  │ │ 📷 │  Riley Johnson         │  │
+│  │ │    │  09:00–13:00 · Blue... │  │
+│  │ └────┘                        │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  ▼ NOT AVAILABLE (2)                 │  Expanded (user tapped header)
+│  ─────────────────────────────────── │
+│  ┌────────────────────────────────┐  │
+│  │ ┌────┐                        │  │
+│  │ │ TP │  Taylor Park           │  │  Name only, no subtitle
 │  │ └────┘                        │  │
 │  ├──────────────────────── ──────┤  │
 │  │ ┌────┐                        │  │
-│  │ │ 📷 │  Riley Johnson     🟢  │  │  Has photo_url
-│  │ │    │  Deep focus session... │  │
-│  │ └────┘                        │  │
-│  ├──────────────────────── ──────┤  │
-│  │ ┌────┐                        │  │
-│  │ │    │  Casey Williams        │  │
-│  │ │ CW │  Not available today   │  │
-│  │ │    │                        │  │
+│  │ │ CW │  Casey Williams        │  │  Name only, no subtitle
 │  │ └────┘                        │  │
 │  └────────────────────────────────┘  │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile      │
+│ Discover  Friends    Chat   Profile  │
+│    🔍       👥        💬     👤     │
 └──────────────────────────────────────┘
 ```
 
@@ -162,32 +233,25 @@
 ┌──────────────────────────────────────┐
 │ ░░░░░░░░░░ STATUS BAR ░░░░░░░░░░░░░ │
 ├──────────────────────────────────────┤
-│  ← Back        Friends          [+]  │
+│             Friends             [+]  │
 ├──────────────────────────────────────┤
 │                                      │
-│  PENDING REQUESTS (1)                │
+│  ▶ PENDING REQUESTS          🔴     │  Collapsed, red dot
+│  ─────────────────────────────────── │
 │                                      │
-│  ┌────────────────────────────────┐  │
-│  │ ┌────┐                        │  │
-│  │ │    │  Sam Chen              │  │
-│  │ │ SC │  @samchen              │  │
-│  │ │    │                        │  │
-│  │ └────┘                        │  │
-│  │         ┌────────┐ ┌────────┐ │  │
-│  │         │ Accept │ │Decline │ │  │
-│  │         └────────┘ └────────┘ │  │
-│  └────────────────────────────────┘  │
-│                                      │
-│  YOUR FRIENDS (0)                    │
+│  ▼ AVAILABLE TODAY (0)               │  Expanded but empty
+│  ─────────────────────────────────── │
 │                                      │
 │         No friends yet.              │  16px, w400, #6B6B6B
 │   Accept requests or add friends     │  centered
 │         to get started!              │
 │                                      │
-│                                      │
+│  ▶ NOT AVAILABLE (0)                 │  Collapsed
+│  ─────────────────────────────────── │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile      │
+│ Discover  Friends    Chat   Profile  │
+│    🔍       👥        💬     👤     │
 └──────────────────────────────────────┘
 ```
 
@@ -199,7 +263,7 @@
 ┌──────────────────────────────────────┐
 │ ░░░░░░░░░░ STATUS BAR ░░░░░░░░░░░░░ │
 ├──────────────────────────────────────┤
-│  ← Back        Friends          [+]  │
+│             Friends             [+]  │
 ├──────────────────────────────────────┤
 │                                      │
 │                                      │
@@ -215,7 +279,8 @@
 │                                      │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile      │
+│ Discover  Friends    Chat   Profile  │
+│    🔍       👥        💬     👤     │
 └──────────────────────────────────────┘
 ```
 
@@ -252,7 +317,8 @@
 │                                      │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile      │
+│ Discover  Friends    Chat   Profile  │
+│    🔍       👥        💬     👤     │
 └──────────────────────────────────────┘
 ```
 
@@ -280,7 +346,8 @@
 │                                      │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile      │
+│ Discover  Friends    Chat   Profile  │
+│    🔍       👥        💬     👤     │
 └──────────────────────────────────────┘
 ```
 
@@ -326,7 +393,8 @@
 │  └────────────────────────────────┘  │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile      │
+│ Discover  Friends    Chat   Profile  │
+│    🔍       👥        💬     👤     │
 └──────────────────────────────────────┘
 ```
 
@@ -358,32 +426,84 @@
 │                                      │
 │                                      │
 ├──────────────────────────────────────┤
-│  Discover    Matches    Profile      │
+│ Discover  Friends    Chat   Profile  │
+│    🔍       👥        💬     👤     │
 └──────────────────────────────────────┘
 ```
 
 ---
 
-## 10. Phone Number Edit (iOS Alert.prompt)
+## 10. Edit Profile Screen
 
 ```
 ┌──────────────────────────────────────┐
+│ ░░░░░░░░░░ STATUS BAR ░░░░░░░░░░░░░ │
+├──────────────────────────────────────┤
+│  Cancel                       Save   │  Cancel: 16px, w500, #756C62
+│                                      │  Save: 16px, w600, #A8B5A2
+├──────────────────────────────────────┤
 │                                      │
-│   ┌──────────────────────────────┐   │
-│   │                              │   │  Alert overlay
-│   │       Phone Number           │   │  Title: 17px, w600
-│   │                              │   │
-│   │  Enter your phone number     │   │  Subtitle: 13px, w400
-│   │  so friends can find you     │   │
-│   │                              │   │
-│   │ ┌──────────────────────────┐ │   │
-│   │ │ +1 555-123-4567          │ │   │  TextInput
-│   │ └──────────────────────────┘ │   │  keyboardType: phone-pad
-│   │                              │   │  maxLength: 20
-│   ├──────────────────────────────┤   │
-│   │    Cancel    │     Save      │   │  Cancel: default
-│   │              │               │   │  Save: bold, #3F5443
-│   └──────────────────────────────┘   │
+│ ┌──────────────────────────────────┐ │
+│ │ ┌──────────────────────────────┐ │ │  PhotoSlots grid
+│ │ │                              │ │ │
+│ │ │    Primary Photo (pos 0)     │ │ │  ~160px, borderRadius 12
+│ │ │                              │ │ │  or dashed border + prompt
+│ │ └──────────────────────────────┘ │ │
+│ │ ┌──────┐ ┌──────┐ ┌──────┐ ┌──┐ │ │  4 smaller slots (~80px)
+│ │ │  1   │ │  2   │ │  3   │ │4 │ │ │  borderRadius 8
+│ │ └──────┘ └──────┘ └──────┘ └──┘ │ │
+│ └──────────────────────────────────┘ │
+│                                      │
+│  Name                                │  Label: 14px, w600, #2D3A2D
+│  ┌────────────────────────────────┐  │
+│  │ Alex Chen                     │  │  Input: bg #EEEDEA, 16px
+│  └────────────────────────────────┘  │  borderRadius 12, padding 12h 10v
+│                                      │
+│  Tagline                             │
+│  ┌────────────────────────────────┐  │
+│  │ Building cool things          │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  Currently Working On                │
+│  ┌────────────────────────────────┐  │
+│  │ A productivity app            │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  Work                                │
+│  ┌────────────────────────────────┐  │
+│  │ Acme Corp                     │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  School                              │
+│  ┌────────────────────────────────┐  │
+│  │ Stanford                      │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  Birthday                            │
+│  ┌────────────────────────────────┐  │
+│  │ 📅  January 15, 1999         │  │  Date picker
+│  └────────────────────────────────┘  │
+│                                      │
+│  Neighborhood                        │
+│  ┌────────────────────────────────┐  │
+│  │ East Village                  │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  City                                │
+│  ┌────────────────────────────────┐  │
+│  │ New York                      │  │
+│  └────────────────────────────────┘  │
+│                                      │
+│  Work Type                           │
+│  ┌───────────┐ ┌──────────┐         │  Selected: #A8B5A2 bg, white
+│  │Freelancer │ │ Remote   │         │  Unselected: white bg, #E8DCD0
+│  └───────────┘ └──────────┘         │  border
+│  ┌──────────┐ ┌──────────┐          │
+│  │ Founder  │ │ Student  │          │
+│  └──────────┘ └──────────┘          │
+│  ┌──────────┐ ┌──────────┐          │
+│  │ Hybrid   │ │  Other   │          │
+│  └──────────┘ └──────────┘          │
 │                                      │
 └──────────────────────────────────────┘
 ```
@@ -460,57 +580,65 @@
 
 ```
 ┌───────────────────────────────────────────────────────┐
-│  FRIEND CARD — AVAILABLE                              │
+│  FRIEND CARD — AVAILABLE (variant: 'available')       │
 │                                                       │
-│  Row height: 72px                                     │
+│  Row height: 64px                                     │
 │  Padding: 16px horizontal                             │
 │  Touchable: opacity reduction on press                │
 │                                                       │
 │  ┌────────────────────────────────────────────────┐   │
-│  │ ┌────┐                                    🟢  │   │
+│  │ ┌────┐                                         │   │
 │  │ │    │  Jordan Kim                             │   │
-│  │ │ JK │  Writing blog posts about produc...     │   │
+│  │ │ JK │  14:00–18:00 · Blue Bottle Coffee      │   │
 │  │ │    │                                         │   │
 │  │ └────┘  Name: 16px, w600, #1A1A1A             │   │
-│  │         Subtitle: 14px, w400, #6B6B6B          │   │
+│  │         Intent: 14px, w400, #6B6B6B            │   │
+│  │         Format: "HH:MM–HH:MM · location"      │   │
 │  │         numberOfLines={1}                      │   │
-│  │         Green dot: 10px, #3F5443, right-align  │   │
 │  └────────────────────────────────────────────────┘   │
 │  ──────────────────────────────────────────── ────    │
 │  Separator: 1px, #E4E3E0, left inset 80px            │
 │                                                       │
-│  FRIEND CARD — NOT AVAILABLE                          │
+│  FRIEND CARD — SIMPLE (variant: 'simple')             │
+│                                                       │
+│  Row height: 56px                                     │
+│  Padding: 16px horizontal                             │
 │                                                       │
 │  ┌────────────────────────────────────────────────┐   │
 │  │ ┌────┐                                         │   │
 │  │ │    │  Taylor Park                            │   │
-│  │ │ TP │  Not available today                    │   │
+│  │ │ TP │                                         │   │
 │  │ │    │                                         │   │
 │  │ └────┘  Name: 16px, w600, #1A1A1A             │   │
-│  │         Subtitle: 14px, w400, italic, #9B9B9B  │   │
-│  │         No green dot                           │   │
+│  │         No subtitle                            │   │
 │  └────────────────────────────────────────────────┘   │
+│                                                       │
+│  Section headers are collapsible:                     │
+│  ▶ Collapsed  /  ▼ Expanded                          │
+│  Chevron: 14px, #9B9B9B                              │
+│  Title: 14px, w600, #9B9B9B, uppercase               │
+│  Pending header: red dot (8px, #B85C4D) when count>0 │
 └───────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 14. Tab Bar — Badge on Profile Tab
+## 14. Tab Bar — Badge on Friends Tab
 
 ```
 ┌──────────────────────────────────────┐
 │                                      │
-│  ┌──────────┬──────────┬──────────┐  │
-│  │          │          │    ❷     │  │  Badge: 16px circle
-│  │    🔍    │    💬    │   👤    │  │  bg: #B85C4D
-│  │ Discover │ Matches  │ Profile  │  │  text: white, 11px, w700
-│  │          │          │          │  │  positioned top-right
-│  └──────────┴──────────┴──────────┘  │  of tab icon
+│ ┌────────┬────────┬────────┬───────┐ │
+│ │        │   ❷   │        │       │ │  Badge: 16px circle
+│ │   🔍   │  👥   │   💬   │  👤  │ │  bg: #B85C4D
+│ │Discover│Friends │  Chat  │Profile│ │  text: white, 11px, w700
+│ │        │        │        │       │ │  positioned top-right
+│ └────────┴────────┴────────┴───────┘ │  of Friends tab icon
 │                                      │
 └──────────────────────────────────────┘
 
-Badge visible:    ❷  (pending count > 0)
-Badge hidden:     👤  (pending count = 0)
+Badge visible:    ❷  (pending friend request count > 0)
+Badge hidden:     👥  (pending count = 0)
 ```
 
 ---
@@ -518,33 +646,53 @@ Badge hidden:     👤  (pending count = 0)
 ## 15. Navigation Flow Diagram
 
 ```
-┌─────────────┐
-│  Profile     │  (MainTabs, Profile tab)
-│  Screen      │
-│              │
-│ [Phone #]────┼──→ Alert.prompt (edit phone)
-│              │
-│ [My Friends]─┼──→ ┌──────────────┐
-│              │    │  Friends      │
-│              │    │  Screen       │
-│              │    │              │
-│              │    │ [+] ─────────┼──→ ┌──────────────┐
-│              │    │              │    │  Add Friend   │
-│              │    │              │    │  Screen       │
-│              │    │              │    │              │
-│              │    │              │    │ [Add] → RPC  │
-│              │    │              │    │ [Accept]→RPC │
-│              │    │              │    │              │
-│              │    │ [Accept]→RPC│    │  ← Back      │
-│              │    │ [Decline]→RC│    └──────┬───────┘
-│              │    │              │           │
-│              │    │ [Tap Friend]─┼──→ Cross-tab nav
-│              │    │              │    to Matches tab
-│              │    │  ← Back      │    → Chat screen
-│              │    └──────┬───────┘
-└──────────────┘           │
-                           ▼
-                    Back to Profile
+┌─────────────────────────────────────────────────────────┐
+│                      MainTabs (4 Tabs)                   │
+│                                                          │
+│  ┌───────────┐  ┌───────────┐  ┌─────────┐  ┌────────┐ │
+│  │ Discover  │  │ Friends   │  │  Chat   │  │Profile │ │
+│  │ Tab       │  │ Tab  ❷   │  │  Tab    │  │ Tab    │ │
+│  └─────┬─────┘  └─────┬─────┘  └────┬────┘  └───┬────┘ │
+│        │              │              │            │      │
+│        ▼              ▼              ▼            ▼      │
+│  DiscoverStack   FriendsStack   ChatStack    ProfileStack│
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+
+FriendsStack:
+
+┌──────────────┐
+│  Friends      │  (Tab root — no back button)
+│  Screen       │
+│               │
+│ [+] ──────────┼──→ ┌──────────────┐
+│               │    │  Add Friend   │
+│               │    │  Screen       │
+│               │    │               │
+│ [Accept]→ RPC │    │ [Add] → RPC  │
+│ [Decline]→RPC │    │ [Accept]→RPC │
+│               │    │               │
+│ [Tap Friend]──┼──→ Cross-tab nav  │    │  ← Back      │
+│               │    to Chat tab    └──────┬───────┘
+│               │    → Chat screen          │
+└──────────────┘                    Back to Friends
+
+ProfileStack:
+
+┌──────────────┐
+│  Profile      │  (Tab root — no back button)
+│  Screen       │
+│               │
+│ [Edit Profile]┼──→ ┌──────────────┐
+│               │    │ EditProfile   │
+│ [Sign Out]    │    │  Screen       │
+│               │    │               │
+│               │    │ [Save] → RPC │
+│               │    │ [Cancel]      │
+│               │    │  ← Back      │
+│               │    └──────┬───────┘
+└──────────────┘            │
+                     Back to Profile
 ```
 
 ---
@@ -558,11 +706,11 @@ Badge hidden:     👤  (pending count = 0)
 | `#1A1A1A` | Text primary | Names, titles, headings |
 | `#6B6B6B` | Text secondary | Usernames, subtitles, friend counts |
 | `#9B9B9B` | Text muted | Section headers, placeholders, "Not available" |
-| `#9B9B9B` | Placeholder | "Add phone number", chevrons |
+| `#9B9B9B` | Placeholder | Empty input placeholders |
 | `#E8E7E4` | Initials bg | Avatar fallback background |
 | `#3F5443` | Initials text | Avatar initials text |
 | `#3F5443` | Success green | Availability dot |
-| `#B85C4D` | Error red | Decline button text, Profile tab badge |
+| `#B85C4D` | Error red | Decline button text, Friends tab badge |
 | `#E4E3E0` | Border | Separators, disabled button bg |
 | `#EEEDEA` | Input bg | Search input background |
 | `#F5F4F1` | App bg | Screen backgrounds |

@@ -1194,25 +1194,44 @@ Renders one of 5 states based on conditions:
 
 ## Navigation
 
+### Tab Bar (4 Tabs)
+
+| Tab | Label | Stack | Icon |
+|-----|-------|-------|------|
+| Discover | "Discover" | DiscoverScreen (direct) | 🔍 |
+| Friends | "Friends" | FriendsStack | 👥 |
+| Chat | "Chat" | ChatStack (renamed MatchesStack) | 💬 |
+| Profile | "Profile" | ProfileStack | 👤 |
+
+### FriendsStack
+
+**File:** `src/navigation/FriendsStack.tsx`
+
+**Purpose:** Stack navigator for the Friends tab
+
+**Screens:**
+
+| Screen | Route Name | Params |
+|--------|-----------|--------|
+| FriendsScreen | `Friends` | None |
+| AddFriendScreen | `AddFriend` | None |
+
 ### ProfileStack
 
 **File:** `src/navigation/ProfileStack.tsx`
 
-**Purpose:** Stack navigator for the Profile tab, enabling navigation to Friends and Add Friend screens
+**Purpose:** Stack navigator for the Profile tab
 
 **Screens:**
 
 | Screen | Route Name | Params |
 |--------|-----------|--------|
 | ProfileScreen | `Profile` | None |
-| FriendsScreen | `Friends` | None |
-| AddFriendScreen | `AddFriend` | None |
+| EditProfileScreen | `EditProfile` | None |
 
-**Behavior:**
-- Initial route: `Profile`
-- Stack headers hidden (each screen renders its own header)
-- Default stack transition animations
-- MainTabs Profile tab renders this stack (replaces direct ProfileScreen reference)
+### ChatStack (renamed from MatchesStack)
+
+Existing MatchesStack behavior, just tab label renamed from "Matches" to "Chat".
 
 ---
 
@@ -1220,35 +1239,67 @@ Renders one of 5 states based on conditions:
 
 ### 7. FriendsScreen
 
-**File:** `src/screens/profile/FriendsScreen.tsx`
+**File:** `src/screens/friends/FriendsScreen.tsx`
 
-**Purpose:** Display pending friend requests and unified list of all friends (matched + manually added) with availability status
+**Purpose:** Display pending friend requests and friends split into two collapsible categories — "Available Today" (with intent) and "Not Available" (without intent)
 
 **Layout:**
 ```
 ┌─────────────────────────┐
 │ SafeAreaView             │
 │ ┌─────────────────────┐  │
-│ │ ← Back  "Friends" [+]│  │  Header: back + title + add button
+│ │    "Friends"     [+] │  │  Header: title + add button
 │ └─────────────────────┘  │
 │                          │
-│ PENDING REQUESTS (2)     │  Section header (conditional)
+│ ▶ Pending Requests   🔴  │  Collapsed by default, red dot when count > 0
+│                          │
+│ ▼ Available Today (3)    │  Expanded by default
 │ ┌──────────────────────┐ │
-│ │ FriendRequestCard    │ │
-│ │ ──────────────────── │ │  Separator
-│ │ FriendRequestCard    │ │
+│ │ FriendCard (avail)   │ │  Photo + name + time · location
+│ │ ──────────────────── │ │
+│ │ FriendCard (avail)   │ │
+│ │ ──────────────────── │ │
+│ │ FriendCard (avail)   │ │
 │ └──────────────────────┘ │
 │                          │
-│ YOUR FRIENDS (5)         │  Section header
-│ ┌──────────────────────┐ │
-│ │ FriendCard           │ │
-│ │ ──────────────────── │ │
-│ │ FriendCard           │ │
-│ │ ──────────────────── │ │
-│ │ ...                  │ │
-│ └──────────────────────┘ │
+│ ▶ Not Available (2)      │  Collapsed by default
+│                          │
 └─────────────────────────┘
 ```
+
+**Expanded Pending Requests:**
+```
+│ ▼ Pending Requests (2)   │  Tap header to expand
+│ ┌──────────────────────┐ │
+│ │ FriendRequestCard    │ │
+│ │ ──────────────────── │ │
+│ │ FriendRequestCard    │ │
+│ └──────────────────────┘ │
+```
+
+**Expanded Not Available:**
+```
+│ ▼ Not Available (2)      │  Tap header to expand
+│ ┌──────────────────────┐ │
+│ │ FriendCard (simple)  │ │  Photo + name only
+│ │ ──────────────────── │ │
+│ │ FriendCard (simple)  │ │
+│ └──────────────────────┘ │
+```
+
+**Section Header Styling:**
+- Tappable row with chevron indicator (▼ expanded, ▶ collapsed)
+- Chevron: 14px, `#9B9B9B`
+- Title: 14px, weight 600, `#968D82`, uppercase, letterSpacing 0.5
+- Count in parentheses
+- Red dot on "Pending Requests" header: 8px diameter, `#B85C4D`, only visible when count > 0
+- Padding: 12px vertical, 16px horizontal
+- Background: transparent
+
+**Default Collapse State:**
+- Pending Requests: **collapsed** (red dot visible if pending > 0)
+- Available Today: **expanded**
+- Not Available: **collapsed**
 
 **States:**
 
@@ -1256,14 +1307,15 @@ Renders one of 5 states based on conditions:
 |-------|-----------|-----|
 | `loading` | Initial fetch in progress | Centered spinner + "Loading friends..." |
 | `empty` | No friends and no pending requests | Centered illustration + "No friends yet" + "Match with people on Discover or add them here!" + "Add Friend" button |
-| `list` | Has friends or pending requests | SectionList with conditional sections |
+| `list` | Has friends or pending requests | ScrollView with collapsible sections |
 
 **Interactions:**
 - "+" button in header → navigate to AddFriendScreen
-- Accept on FriendRequestCard → calls `respondToFriendRequest('accept')` → card moves from pending to friends list
+- Tap section header → toggle expand/collapse for that section
+- Accept on FriendRequestCard → calls `respondToFriendRequest('accept')` → card moves from pending to available/not-available
 - Decline on FriendRequestCard → calls `respondToFriendRequest('decline')` → card removed from pending
 - Tap a FriendCard → navigate to ChatScreen with `matchId` and `otherUser` params
-- Pull-to-refresh → refetch both pending requests and friends list
+- Pull-to-refresh → refetch pending requests and both friend categories
 - Screen focus → refetch data (useFocusEffect)
 
 **Edge Cases:**
@@ -1271,18 +1323,20 @@ Renders one of 5 states based on conditions:
 | Scenario | Behavior |
 |----------|----------|
 | 0 friends, 0 pending | Empty state with encouragement text and add button |
-| 0 friends, has pending | Only pending section shows, no friends section |
-| Has friends, 0 pending | Only friends section shows, no pending section |
+| 0 friends, has pending | Only pending section header shows (collapsed, red dot) |
+| Has friends, 0 pending | Pending section header hidden entirely |
+| All friends available | "Not Available" section header shows with count (0), collapsed |
+| No friends available | "Available Today" section shows with count (0), expanded but empty |
 | Accept fails (network) | Alert with error, card stays in pending state |
 | Decline fails (network) | Alert with error, card stays in pending state |
-| New request arrives while viewing | Visible on next pull-to-refresh or screen refocus |
+| New request arrives while viewing | Visible on next pull-to-refresh or screen refocus; red dot appears |
 | Friend's availability changes | Updates on next pull-to-refresh or screen refocus |
 
 ---
 
 ### 8. AddFriendScreen
 
-**File:** `src/screens/profile/AddFriendScreen.tsx`
+**File:** `src/screens/friends/AddFriendScreen.tsx`
 
 **Purpose:** Search for existing users and send friend requests
 
@@ -1400,26 +1454,27 @@ Renders one of 5 states based on conditions:
 
 **File:** `src/components/friends/FriendCard.tsx`
 
-**Purpose:** Single row in the friends list showing a friend with availability status
+**Purpose:** Single row in the friends list showing a friend. Two variants: "available" (with intent summary) and "simple" (name + photo only).
 
 **Props:**
 - `friend`: FriendListItem
 - `onPress`: () => void
+- `variant`: 'available' | 'simple' (default: 'simple')
 
-**Layout — Available:**
+**Layout — Available (in "Available Today" section):**
 ```
 ┌─────────────────────────────────────┐
-│ ┌────┐  Jordan Kim            🟢   │  Row height: 72px
-│ │photo│  Writing blog posts...      │  Green dot = has intent today
-│ └────┘                              │  Task description, 1 line
+│ ┌────┐  Jordan Kim                  │  Row height: 64px
+│ │photo│  14:00–18:00 · Blue Bottle  │  Time window + location
+│ └────┘                              │
 └─────────────────────────────────────┘
 ```
 
-**Layout — Not Available:**
+**Layout — Simple (in "Not Available" section):**
 ```
 ┌─────────────────────────────────────┐
-│ ┌────┐  Taylor Swift                │  Row height: 72px
-│ │photo│  Not available today        │  Muted text, no dot
+│ ┌────┐  Taylor Swift                │  Row height: 56px
+│ │photo│                             │  Name only, no subtitle
 │ └────┘                              │
 └─────────────────────────────────────┘
 ```
@@ -1430,21 +1485,23 @@ Renders one of 5 states based on conditions:
 - If no photo_url: initials on `#D4DCD1` background
 - Initials: 18px, weight 600, color `#6F8268`
 
-**Text:**
+**Text — Available variant:**
 - Name: 16px, weight 600, color `#2D3A2D`
-- Available subtitle: 14px, weight 400, color `#756C62`, numberOfLines={1}
-- Not available subtitle: 14px, weight 400, color `#968D82`, italic
+- Intent summary: 14px, weight 400, color `#756C62`, numberOfLines={1}
+- Format: `"{available_from}–{available_until} · {location_name || location_type}"`
+- Example: "14:00–18:00 · Blue Bottle Coffee" or "09:00–13:00 · Library"
+- If no location_name, falls back to location_type (e.g. "Cafe", "Library", "Anywhere")
 
-**Availability Indicator:**
-- Green dot: 10px diameter, `#6B9B6B`, positioned right side, vertically centered
-- Only visible when friend has a work_intent for today
+**Text — Simple variant:**
+- Name: 16px, weight 600, color `#2D3A2D`
+- No subtitle
 
 **Separator:**
 - 1px line, color `#E2DDD6`
 - Left inset: 80px (aligned past the photo)
 
 **Touch:**
-- Minimum height: 72px
+- Minimum height: 64px (available) / 56px (simple)
 - Touchable feedback: opacity reduction on press
 
 ---
@@ -1502,53 +1559,96 @@ Renders one of 5 states based on conditions:
 
 ---
 
-## Profile Screen Additions
+## Profile Screen (Redesigned — Hinge-Style)
 
-**File:** `src/screens/profile/ProfileScreen.tsx` (modified)
+**File:** `src/screens/profile/ProfileScreen.tsx` (rewritten)
 
-**New Rows (appended below existing profile content):**
+**Purpose:** Show user's profile with Hinge-style interleaved photos and info cards
 
+**Layout:**
 ```
-│ ┌──────────────────────┐ │
-│ │ 📱 Phone Number      │ │  Tappable row
-│ │    +1 555-123-4567 > │ │  Shows current value or placeholder
-│ └──────────────────────┘ │
-│                          │
-│ ┌──────────────────────┐ │
-│ │ 👥 My Friends   (5) >│ │  Tappable row with friend count
-│ └──────────────────────┘ │
+┌──────────────────────────────┐
+│ ← My Profile            ✏️  │  Header
+├──────────────────────────────┤
+│ ScrollView                   │
+│                              │
+│ ┌──────────────────────────┐ │
+│ │                          │ │  Lead photo (~400px)
+│ │      📷 Photo 1          │ │  borderRadius: 16
+│ │                          │ │
+│ │  Alex Chen               │ │  Name overlaid bottom-left
+│ └──────────────────────────┘ │  White text, text shadow
+│                              │
+│  27 · East Village · NYC    │  Age · Neighborhood · City
+│                              │
+│ ┌──────────────────────────┐ │  Info card
+│ │ 💼 Freelancer            │ │  Work type
+│ │ "Building cool things"   │ │  Tagline (italic)
+│ │                          │ │
+│ │ CURRENTLY WORKING ON     │ │
+│ │ "A productivity app..."  │ │
+│ │ 🏢 Acme Corp             │ │  Work
+│ │ 🎓 Stanford              │ │  School
+│ └──────────────────────────┘ │
+│                              │
+│ ┌──────────────────────────┐ │  Photo 2 (if exists)
+│ │      📷 Photo 2          │ │
+│ └──────────────────────────┘ │
+│                              │
+│ ┌──────────────────────────┐ │  Photo 3 (if exists)
+│ │      📷 Photo 3          │ │
+│ └──────────────────────────┘ │
+│                              │
+│ [Edit Profile]  [Sign Out]  │
+└──────────────────────────────┘
 ```
 
-**Phone Number Row:**
-- Label: "Phone Number", 14px, weight 500, color `#968D82`
-- Value: current phone number or "Add phone number" (placeholder, italic, `#B5ADA3`)
-- Chevron: ">" right-aligned, color `#B5ADA3`
-- Tap → opens an Alert.prompt (iOS) or modal with TextInput to enter/edit phone number
-- On confirm → saves to `profiles.phone_number`
-- Row height: 56px, padding 16px horizontal
+**States:**
 
-**My Friends Row:**
-- Label: "My Friends", 16px, weight 600, color `#2D3A2D`
-- Count: "(N)" right side, 16px, weight 400, color `#756C62`
-- Chevron: ">" right-aligned, color `#B5ADA3`
-- Tap → navigate to FriendsScreen
-- Row height: 56px, padding 16px horizontal
+| State | Condition | UI |
+|-------|-----------|-----|
+| `loading` | Profile data fetching | Centered spinner |
+| `no_photos` | User has no photos | Initials fallback + migration banner |
+| `complete` | Profile loaded with photos | Full Hinge-style layout |
 
-**Separator:**
-- 1px line, color `#E2DDD6`, 16px left inset
+**Info Card Styling:**
+- Background: white (`#FFFFFF`)
+- Border radius: 16px
+- Padding: 16px
+- Subtle shadow (same as card shadow)
+- Section labels: 12px, weight 500, uppercase, color `#968D82`
+
+**Name Overlay:**
+- Position: absolute, bottom-left of lead photo
+- Font: 28px, weight 700, color white
+- Text shadow for readability
+
+**Age · Location Line:**
+- Format: `{age} · {neighborhood} · {city}`
+- Only parts that exist are shown (e.g. just "27 · New York" if no neighborhood)
+- Font: 16px, weight 400, color `#756C62`
+
+**Migration Banner (no photos):**
+- Shown when user has 0 photos
+- Card with camera emoji + "Add a photo so people know who they're meeting!"
+- Tapping navigates to EditProfile
+- Card styling: `#FFFFFF` bg, 1.5px `#E8DCD0` border, 16px padding, 16px border radius
+
+**Removed from Profile screen:**
+- Phone Number row (deferred to Settings)
+- My Friends row (moved to Friends tab)
 
 ---
 
-## Profile Tab Badge
+## Friends Tab Badge
 
 **File:** `src/navigation/MainTabs.tsx` (modified)
 
 **Behavior:**
-- Profile tab icon shows numeric badge when pending friend request count > 0
-- Badge color: `#B57070` (error/attention red) — same as unread message badge
-- Badge fetched via `getPendingRequestsCount(userId)` on Profile tab focus
+- Friends tab icon shows numeric badge when pending friend request count > 0
+- Badge color: `#B57070` (same pattern as chat unread badge)
+- Badge fetched via `getPendingRequestsCount(userId)` on Friends tab focus
 - Badge disappears when count is 0
-- Pattern matches existing Matches tab unread badge implementation
 
 ---
 
@@ -1556,7 +1656,7 @@ Renders one of 5 states based on conditions:
 
 ### Search and Send Friend Request Flow
 
-1. User navigates to Profile → My Friends → "+" (Add Friend)
+1. User navigates to Friends tab → "+" (Add Friend)
 2. Types query in search input (minimum 3 characters)
 3. After 300ms debounce, search fires
 4. Results appear with relationship-aware action buttons
@@ -1568,7 +1668,7 @@ Renders one of 5 states based on conditions:
 
 ### Accept Friend Request Flow
 
-1. User B opens Friends screen (or Profile tab badge prompts them)
+1. User B opens Friends screen (or Friends tab badge prompts them)
 2. Pending requests section shows at top
 3. User B taps "Accept" on User A's request
 4. `respondToFriendRequest(friendshipId, userId, 'accept')` called
@@ -1667,67 +1767,54 @@ Renders one of 5 states based on conditions:
 
 ## Navigation Update
 
-### ProfileStack (Updated)
-
-**File:** `src/navigation/ProfileStack.tsx`
-
-**Screens (updated):**
-
-| Screen | Route Name | Params |
-|--------|-----------|--------|
-| ProfileScreen | `Profile` | None |
-| FriendsScreen | `Friends` | None |
-| AddFriendScreen | `AddFriend` | None |
-| EditProfileScreen | `EditProfile` | None |
+Navigation restructured as described in Phase 5: Friends & Polish Navigation section above. ProfileStack now contains only ProfileScreen and EditProfileScreen. FriendsScreen and AddFriendScreen moved to FriendsStack (new dedicated tab).
 
 ---
 
 ## Screens
 
-### 9. ProfileScreen (Redesigned)
+### 9. ProfileScreen (Redesigned — Hinge-Style)
 
-**File:** `src/screens/profile/ProfileScreen.tsx`
+**File:** `src/screens/profile/ProfileScreen.tsx` (rewritten)
 
-**Purpose:** Display the user's profile with photos, extended fields, and entry points to edit profile, friends, and settings
+**Purpose:** Show user's profile with Hinge-style interleaved photos and info cards
 
 **Layout:**
 ```
-┌─────────────────────────┐
-│ SafeAreaView (ScrollView)│
-│                          │
-│ ┌──────────────────────┐ │
-│ │                      │ │  Lead photo (~200px)
-│ │    Primary Photo     │ │  or initials on #E8E7E4
-│ │    or Initials       │ │
-│ │                      │ │
-│ └──────────────────────┘ │
-│                          │
-│ [img1] [img2] [img3] [4] │  Thumbnail row (60px, horizontal)
-│                          │
-│   Alex Chen              │  Name: 24px, weight 700
-│   "Building cool things" │  Tagline: 16px, italic, #756C62
-│                          │
-│ CURRENTLY WORKING ON     │  Section label (12px, uppercase, #968D82)
-│ "A productivity app for  │  16px, weight 400, #2D3A2D
-│  remote workers"         │
-│                          │
-│ 💼 Freelancer            │  Work type (pill, sm tag)
-│ 🏢 Acme Corp             │  Work (if set), 14px, #756C62
-│ 🎓 Stanford              │  School (if set), 14px, #756C62
-│                          │
-│ [    Edit Profile    ]   │  Secondary button, full width
-│                          │
-│ ┌──────────────────────┐ │
-│ │ 📱 Phone Number      │ │  Tappable row (from P5-07)
-│ │    555-987-6543    > │ │
-│ └──────────────────────┘ │
-│ ┌──────────────────────┐ │
-│ │ 👥 My Friends   (5) >│ │  Tappable row (from P5-07)
-│ └──────────────────────┘ │
-│                          │
-│ [    Sign Out    ]       │  Ghost button, destructive
-│                          │
-└─────────────────────────┘
+┌──────────────────────────────┐
+│ ← My Profile            ✏️  │  Header
+├──────────────────────────────┤
+│ ScrollView                   │
+│                              │
+│ ┌──────────────────────────┐ │
+│ │                          │ │  Lead photo (~400px)
+│ │      📷 Photo 1          │ │  borderRadius: 16
+│ │                          │ │
+│ │  Alex Chen               │ │  Name overlaid bottom-left
+│ └──────────────────────────┘ │  White text, text shadow
+│                              │
+│  27 · East Village · NYC    │  Age · Neighborhood · City
+│                              │
+│ ┌──────────────────────────┐ │  Info card
+│ │ 💼 Freelancer            │ │  Work type
+│ │ "Building cool things"   │ │  Tagline (italic)
+│ │                          │ │
+│ │ CURRENTLY WORKING ON     │ │
+│ │ "A productivity app..."  │ │
+│ │ 🏢 Acme Corp             │ │  Work
+│ │ 🎓 Stanford              │ │  School
+│ └──────────────────────────┘ │
+│                              │
+│ ┌──────────────────────────┐ │  Photo 2 (if exists)
+│ │      📷 Photo 2          │ │
+│ └──────────────────────────┘ │
+│                              │
+│ ┌──────────────────────────┐ │  Photo 3 (if exists)
+│ │      📷 Photo 3          │ │
+│ └──────────────────────────┘ │
+│                              │
+│ [Edit Profile]  [Sign Out]  │
+└──────────────────────────────┘
 ```
 
 **States:**
@@ -1735,35 +1822,53 @@ Renders one of 5 states based on conditions:
 | State | Condition | UI |
 |-------|-----------|-----|
 | `loading` | Profile data fetching | Centered spinner |
-| `loaded` | Profile data available | Full layout as above |
-| `no_photos` | Profile loaded but no photos | Migration banner card above "Edit Profile" button |
+| `no_photos` | User has no photos | Initials fallback + migration banner |
+| `complete` | Profile loaded with photos | Full Hinge-style layout |
 
-**Migration Banner:**
-- Shown when user has no photos uploaded
-- Gentle prompt card: "Add a photo so people know who they're meeting!"
-- Tapping the banner navigates to EditProfile
-- Card styling: `#FFFFFF` bg, 1.5px `#E8DCD0` border, 16px padding, 16px border radius
+**Info Card Styling:**
+- Background: white (`#FFFFFF`)
+- Border radius: 16px
+- Padding: 16px
+- Subtle shadow (same as card shadow)
+- Section labels: 12px, weight 500, uppercase, color `#968D82`
+
+**Name Overlay:**
+- Position: absolute, bottom-left of lead photo
+- Font: 28px, weight 700, color white
+- Text shadow for readability
 
 **Lead Photo:**
-- Height: ~200px, full width (minus 32px horizontal margin)
+- Height: ~400px, full width (minus 32px horizontal margin)
 - Border radius: 16px
 - If photo exists: `expo-image` with `contentFit="cover"`
 - If no photo: `#E8E7E4` background with initials (64px, weight 700, `#6F8268`)
 
-**Thumbnail Row:**
-- Horizontal FlatList/ScrollView
-- Each thumbnail: 60 x 60px, border radius 8px
-- 8px gap between thumbnails
-- Only shows if user has 2+ photos
-- Tapping a thumbnail could swap the lead photo (stretch goal, not required for MVP)
+**Age · Location Line:**
+- Format: `{age} · {neighborhood} · {city}`
+- Only parts that exist are shown (e.g. just "27 · New York" if no neighborhood)
+- Font: 16px, weight 400, color `#756C62`
+
+**Additional Photos:**
+- Photos 2+ rendered as full-width images interspersed after the info card
+- Each photo: full width (minus 32px horizontal margin), border radius 16px
+- Photos displayed sequentially, not as thumbnails
+
+**Migration Banner (no photos):**
+- Shown when user has 0 photos
+- Card with camera emoji + "Add a photo so people know who they're meeting!"
+- Tapping navigates to EditProfile
+- Card styling: `#FFFFFF` bg, 1.5px `#E8DCD0` border, 16px padding, 16px border radius
 
 **Data Refresh:**
 - `useFocusEffect` calls `getFullProfile()` to refresh data after navigating back from EditProfile
 
+**Removed from Profile screen:**
+- Phone Number row (deferred to Settings)
+- My Friends row (moved to Friends tab)
+- Thumbnail row (photos are full-width interspersed instead)
+
 **Interactions:**
 - "Edit Profile" → navigate to EditProfile screen
-- Phone Number row → existing P5-07 behavior
-- My Friends row → existing P5-07 behavior (navigate to FriendsScreen)
 - Sign Out → existing sign out behavior
 
 ---
@@ -1797,6 +1902,11 @@ Renders one of 5 states based on conditions:
 │ │ Alex Chen            │ │
 │ └──────────────────────┘ │
 │                          │
+│ Birthday                 │  Label + date picker
+│ ┌──────────────────────┐ │
+│ │ Jan 15, 1999         │ │
+│ └──────────────────────┘ │
+│                          │
 │ Tagline                  │  Label + TextInput
 │ ┌──────────────────────┐ │
 │ │ Building cool things │ │
@@ -1815,6 +1925,16 @@ Renders one of 5 states based on conditions:
 │ School                   │  Label + TextInput
 │ ┌──────────────────────┐ │
 │ │ Stanford             │ │
+│ └──────────────────────┘ │
+│                          │
+│ Neighborhood             │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ East Village         │ │
+│ └──────────────────────┘ │
+│                          │
+│ City                     │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ New York             │ │
 │ └──────────────────────┘ │
 │                          │
 │ Work Type                │  Label + pill selection

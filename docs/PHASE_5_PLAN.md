@@ -1,6 +1,6 @@
 # Phase 5: Friends & Polish + Profile Redesign
 
-**Goal:** Users can manually add friends via search, manage friend requests, and see all friends in a unified list. Additionally, users can upload photos, edit their profile (tagline, currently working on, work, school), and present themselves authentically for IRL meetups.
+**Goal:** Users can manually add friends via search, manage friend requests, and see all friends in a unified list. Additionally, users can upload photos, edit their profile (tagline, currently working on, work, school, birthday, neighborhood, city), and present themselves authentically for IRL meetups.
 
 **Entry Criteria:** Phase 4 complete (sessions with invite flow, dual-lock, auto-cancel)
 
@@ -60,7 +60,7 @@ The Friends screen shows a **unified list** of both types. The `friendships` tab
 **Scope:**
 - Included: `FriendshipStatus` union type ('pending' | 'accepted' | 'declined')
 - Included: `Friendship` type matching friendships table schema
-- Included: `FriendListItem` type for unified friend display (photo, name, availability, match_id)
+- Included: `FriendListItem` type for unified friend display (photo, name, match_id, has_intent_today, available_from, available_until, location_type, location_name)
 - Included: `UserSearchResult` type for search results (profile + relationship status)
 - Included: `RelationshipStatus` union type ('none' | 'pending_sent' | 'pending_received' | 'friends')
 - Excluded: Modifying existing Phase 3 or Phase 4 types
@@ -86,7 +86,6 @@ The Friends screen shows a **unified list** of both types. The `friendships` tab
 - Included: `fetchPendingRequests(userId)` — returns pending incoming friend requests with requester profile info
 - Included: `getPendingRequestsCount(userId)` — calls get_pending_requests_count RPC
 - Included: `getRelationshipStatuses(currentUserId, userIds)` — returns relationship status for each user (for search result buttons)
-- Included: `updatePhoneNumber(userId, phoneNumber)` — updates profiles.phone_number
 - Excluded: Friendship deletion or blocking
 - Excluded: Real-time subscription for friend requests (polling on screen focus is sufficient for MVP)
 
@@ -97,37 +96,37 @@ The Friends screen shows a **unified list** of both types. The `friendships` tab
 - [ ] `searchUsers` returns profiles matching query across username, email, and phone_number fields; excludes self; max 20 results
 - [ ] `sendFriendRequest` returns friendship id on success, or error message on failure
 - [ ] `respondToFriendRequest` updates status and creates match on accept
-- [ ] `fetchFriends` returns unified deduplicated list from matches table, sorted by name, with today's work_intent status per friend
+- [ ] `fetchFriends` returns unified deduplicated list from matches table, sorted by name, with today's work_intent data per friend (has_intent_today, available_from, available_until, location_type, location_name)
 - [ ] `fetchPendingRequests` returns pending incoming requests with requester profile info (id, name, photo_url, username)
 - [ ] `getPendingRequestsCount` returns integer count
 - [ ] `getRelationshipStatuses` checks both matches and friendships tables to determine status per user
-- [ ] `updatePhoneNumber` updates profiles.phone_number for the current user
 - [ ] All functions handle errors gracefully (return error message, no unhandled rejections)
 
 ---
 
-### P5-04: Create ProfileStack Navigator
+### P5-04: Set Up 4-Tab Navigation + Stack Navigators
 
-**Goal:** Enable navigation between Profile, Friends, and Add Friend screens within the Profile tab.
+**Goal:** Set up 4-tab navigation (Discover, Friends, Chat, Profile) and create necessary stack navigators.
 
 **Scope:**
-- Included: Create `ProfileStack` navigator with screens: Profile (initial), Friends, AddFriend
-- Included: Define `ProfileStackParamList` with route params
-- Included: Update MainTabs to use ProfileStack component instead of ProfileScreen directly
-- Included: Stack headers hidden (each screen manages its own header)
-- Excluded: Changing existing Profile screen layout or behavior
+- Included: Change MainTabs from 3 tabs to 4: Discover, Friends, Chat, Profile
+- Included: Rename existing MatchesStack tab label from "Matches" to "Chat" (keep existing MatchesStack behavior)
+- Included: Create `FriendsStack` navigator with screens: Friends (initial), AddFriend
+- Included: Create `ProfileStack` navigator with screens: Profile (initial), EditProfile
+- Included: Define param lists for each stack
+- Excluded: Chat tab restructuring (keep existing MatchesStack behavior, just rename tab)
 - Excluded: Deep linking
-- Excluded: Adding or removing tabs
 
 **Dependencies:** None
 
 **Definition of Done:**
-- [ ] `src/navigation/ProfileStack.tsx` created with 3 screens registered
-- [ ] `ProfileStackParamList` exported from navigation types
-- [ ] MainTabs Profile tab renders ProfileStack
-- [ ] Back navigation works from Friends → Profile and AddFriend → Friends
-- [ ] Existing Profile screen behavior unchanged
-- [ ] Three tabs remain: Discover, Matches, Profile
+- [ ] MainTabs has 4 tabs: Discover, Friends, Chat, Profile
+- [ ] FriendsStack created at `src/navigation/FriendsStack.tsx`
+- [ ] ProfileStack created at `src/navigation/ProfileStack.tsx` with 2 screens
+- [ ] Friends tab renders FriendsStack
+- [ ] Chat tab renders existing MatchesStack (renamed label)
+- [ ] Profile tab renders ProfileStack
+- [ ] Back navigation works in all stacks
 
 ---
 
@@ -149,7 +148,7 @@ The Friends screen shows a **unified list** of both types. The `friendships` tab
 **Dependencies:** P5-03, P5-04
 
 **Definition of Done:**
-- [ ] Screen created at `src/screens/profile/AddFriendScreen.tsx`
+- [ ] Screen created at `src/screens/friends/AddFriendScreen.tsx`
 - [ ] Search input triggers debounced query after 3+ characters typed
 - [ ] Results show correct action button based on relationship status
 - [ ] Tapping "Add" calls `sendFriendRequest`, button changes to "Requested" immediately (optimistic)
@@ -164,14 +163,18 @@ The Friends screen shows a **unified list** of both types. The `friendships` tab
 
 ### P5-06: Build Friends Screen
 
-**Goal:** Show pending friend requests and a unified friends list with availability status.
+**Goal:** Show pending friend requests (collapsed) and friends split into two collapsible categories — "Available Today" and "Not Available" — in a dedicated Friends tab.
 
 **Scope:**
-- Included: Pending requests section at top (only visible when pending requests exist)
-- Included: Each request shows photo/initials, name, username, Accept and Decline buttons
-- Included: Friends list section showing all accepted friends (matches + manual)
-- Included: Each friend shows photo/initials, name, availability indicator (green dot + task description if today's intent exists; "Not available today" otherwise)
-- Included: Tap a friend → navigate to ChatScreen with correct matchId and otherUser params
+- Included: Pending requests section at top, **collapsed by default**, with red dot indicator when count > 0; tap header to expand/collapse
+- Included: Each request (when expanded) shows photo/initials, name, username, Accept and Decline buttons
+- Included: "Available Today" collapsible section — **expanded by default** — showing friends with today's work_intent
+- Included: Each available friend shows photo/initials, name, and intent summary (availability time window + location type/name)
+- Included: "Not Available" collapsible section — **collapsed by default** — showing friends without today's intent
+- Included: Each not-available friend shows photo/initials and name only
+- Included: Section headers are tappable to expand/collapse with chevron indicator (▼ expanded, ▶ collapsed)
+- Included: Section headers show count (e.g. "Available Today (3)")
+- Included: Tap a friend → navigate to Chat tab
 - Included: "+" button in header to navigate to AddFriendScreen
 - Included: Pull-to-refresh
 - Included: Empty state when no friends yet
@@ -183,43 +186,40 @@ The Friends screen shows a **unified list** of both types. The `friendships` tab
 **Dependencies:** P5-03, P5-04
 
 **Definition of Done:**
-- [ ] Screen created at `src/screens/profile/FriendsScreen.tsx`
-- [ ] Pending requests section shows when count > 0, hides when 0
+- [ ] Screen created at `src/screens/friends/FriendsScreen.tsx`
+- [ ] Pending requests section: collapsed by default, red dot on header when count > 0, tap to expand/collapse
+- [ ] When expanded, pending requests show Accept/Decline buttons per request
 - [ ] Accept button calls `respondToFriendRequest('accept')`, removes from pending, adds to friends list
 - [ ] Decline button calls `respondToFriendRequest('decline')`, removes from pending list
-- [ ] Friends list shows unified deduplicated list of all matches (swipe + manual friend matches)
-- [ ] Each friend shows green dot + task description (truncated, 1 line) if they have a work_intent for today
-- [ ] Each friend shows "Not available today" in muted text if no intent
-- [ ] Tapping a friend navigates to ChatScreen with correct matchId and otherUser params
+- [ ] "Available Today" section: expanded by default, shows friends with today's work_intent
+- [ ] Each available friend shows: profile photo/initials, name, availability time + location (e.g. "14:00–18:00 · Blue Bottle Coffee")
+- [ ] "Not Available" section: collapsed by default, shows friends without today's intent
+- [ ] Each not-available friend shows: profile photo/initials, name only
+- [ ] All three sections have tappable headers with chevron + count
+- [ ] Tapping a friend navigates to Chat tab
 - [ ] "+" header button navigates to AddFriendScreen
-- [ ] Pull-to-refresh reloads both pending requests and friends list
+- [ ] Pull-to-refresh reloads pending requests and both friend categories
 - [ ] Empty state shows when no friends and no pending requests
 - [ ] Screen refreshes on focus (useFocusEffect)
+- [ ] Friends tab shows pending request badge count
 
 ---
 
-### P5-07: Update Profile Screen + Pending Requests Badge
+### P5-07: Pending Requests Badge on Friends Tab
 
-**Goal:** Add entry points to Friends and phone number editing on Profile screen, and show badge for pending friend requests on the Profile tab.
+**Goal:** Show badge for pending friend requests on the Friends tab.
 
 **Scope:**
-- Included: Add "My Friends" row on Profile screen (tappable, shows friend count, navigates to FriendsScreen)
-- Included: Add "Phone Number" row on Profile screen (tappable, opens inline edit or modal to add/edit phone number)
-- Included: Phone number saves to `profiles.phone_number`
-- Included: Pending friend requests badge on Profile tab in MainTabs (numeric, same pattern as Matches unread badge)
-- Included: Badge updates on Profile tab focus
-- Excluded: Full Edit Profile screen
-- Excluded: Editing other profile fields (name, work_type, interests)
+- Included: Friends tab in MainTabs shows numeric badge when pending request count > 0
+- Included: Badge updates on tab focus (useFocusEffect)
+- Excluded: Phone number UI on Profile screen (deferred)
+- Excluded: Friends list on Profile screen (moved to Friends tab)
 
 **Dependencies:** P5-03, P5-04
 
 **Definition of Done:**
-- [ ] Profile screen shows "My Friends" row with friend count
-- [ ] Tapping "My Friends" navigates to FriendsScreen
-- [ ] Profile screen shows "Phone Number" row with current value or "Add phone number" placeholder
-- [ ] Tapping phone number opens editable input; saves to profiles table on confirm
-- [ ] MainTabs Profile tab shows numeric badge when pending request count > 0
-- [ ] Badge updates on Profile tab focus (useFocusEffect)
+- [ ] Friends tab shows numeric badge when pending request count > 0
+- [ ] Badge updates on tab focus
 - [ ] Badge disappears when no pending requests
 
 ---
@@ -270,7 +270,7 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 **Goal:** Store profile photos with position-based ordering and add new profile text fields. Set up Supabase Storage for photo uploads.
 
 **Scope:**
-- Included: Add columns to `profiles` table: `tagline TEXT`, `currently_working_on TEXT`, `work TEXT`, `school TEXT`
+- Included: Add columns to `profiles` table: `tagline TEXT`, `currently_working_on TEXT`, `work TEXT`, `school TEXT`, `birthday DATE`, `neighborhood TEXT`, `city TEXT`
 - Included: Create `profile_photos` table (id, user_id, photo_url, position 0-4, created_at)
 - Included: `UNIQUE(user_id, position)` constraint on `profile_photos`
 - Included: RLS on `profile_photos`: anyone SELECT, owner INSERT/UPDATE/DELETE
@@ -284,6 +284,7 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 
 **Definition of Done:**
 - [ ] `profiles` table has `tagline`, `currently_working_on`, `work`, `school` columns (nullable TEXT)
+- [ ] `profiles` table has `birthday` (nullable DATE), `neighborhood` (nullable TEXT), `city` (nullable TEXT) columns
 - [ ] `profile_photos` table created with all columns, constraints, and indexes
 - [ ] RLS on `profile_photos`: public SELECT, owner INSERT/UPDATE/DELETE
 - [ ] `avatars` storage bucket created (public, 5MB limit)
@@ -298,14 +299,14 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 
 **Scope:**
 - Included: `ProfilePhoto` type: `{ id, user_id, photo_url, position, created_at }`
-- Included: Add fields to `Profile` type: `tagline`, `currently_working_on`, `work`, `school` (all `string | null`)
+- Included: Add fields to `Profile` type: `tagline`, `currently_working_on`, `work`, `school`, `birthday`, `neighborhood`, `city` (all `string | null`)
 - Excluded: Modifying existing Phase 5 friend types
 
 **Dependencies:** P5-09
 
 **Definition of Done:**
 - [ ] `ProfilePhoto` type exported from `src/types/index.ts`
-- [ ] `Profile` type updated with new nullable fields
+- [ ] `Profile` type updated with new nullable fields (`tagline`, `currently_working_on`, `work`, `school`, `birthday`, `neighborhood`, `city`)
 - [ ] No TypeScript compilation errors
 
 ---
@@ -351,7 +352,7 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 
 **Definition of Done:**
 - [ ] Service created at `src/services/profileService.ts`
-- [ ] `updateProfile` updates any subset of profile text fields (name, tagline, currently_working_on, work, school, work_type)
+- [ ] `updateProfile` updates any subset of profile text fields (name, tagline, currently_working_on, work, school, work_type, birthday, neighborhood, city)
 - [ ] `getFullProfile` returns profile data + photos array in a single call
 - [ ] Follows existing service patterns (e.g., `discoveryService.ts`)
 
@@ -386,39 +387,36 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 
 ### P5-14: ProfileStack + ProfileScreen Redesign
 
-**Goal:** Redesign the Profile screen with photos, extended fields, and an Edit Profile entry point. Update ProfileStack to include EditProfile screen.
+**Goal:** Redesign the Profile screen with Hinge-style interleaved photos and info cards.
 
 **Scope:**
-- Included: Update `ProfileStack` to add `EditProfile` screen (in addition to existing Profile, Friends, AddFriend)
+- Included: Create `ProfileStack` with 2 screens: Profile, EditProfile
 - Included: Rewrite `ProfileScreen` with ScrollView layout:
-  - Lead photo (~200px) or initials fallback on `#E8E7E4` bg
-  - Photo thumbnail row (horizontal, 60px squares)
-  - Name (heading-xl)
-  - Tagline (body, secondary color, italic)
-  - "Currently working on" section
-  - Work / School (if set)
-  - Work type badge (pill)
-  - "Edit Profile" button → navigates to EditProfile
-  - Phone Number row (existing from P5-07)
-  - My Friends row (existing from P5-07)
+  - Lead photo (~400px) with name overlaid at bottom-left (white text, text shadow)
+  - Age · Neighborhood · City line below lead photo
+  - Info card: work type + tagline + currently working on + work + school
+  - Additional photos (2-5) interspersed after info card
+  - "Edit Profile" button
   - Sign Out at bottom
-- Included: `useFocusEffect` → `getFullProfile()` for fresh data after edits
-- Included: Migration banner: if no photos, show gentle prompt card linking to EditProfile
-- Excluded: Full profile modal (tap to expand from Discover)
-- Excluded: Removing existing P5-07 rows (Phone Number, My Friends)
+- Included: `useFocusEffect` → `getFullProfile()` for fresh data
+- Included: Migration banner if no photos
+- Excluded: Phone Number row (removed)
+- Excluded: My Friends row (moved to Friends tab)
+- Excluded: Full profile modal from Discover
 
 **Dependencies:** P5-10, P5-11, P5-12
 
 **Definition of Done:**
-- [ ] `ProfileStack` has 4 screens: Profile, Friends, AddFriend, EditProfile
-- [ ] ProfileScreen shows lead photo or initials fallback
-- [ ] Photo thumbnail row displays additional photos
-- [ ] Name, tagline, currently working on, work/school displayed when set
-- [ ] "Edit Profile" button navigates to EditProfile screen
-- [ ] Existing Phone Number and My Friends rows preserved
-- [ ] Sign Out button at bottom
-- [ ] Screen refreshes data on focus via `useFocusEffect`
-- [ ] Migration banner shows when user has no photos
+- [ ] ProfileStack has 2 screens: Profile, EditProfile
+- [ ] ProfileScreen shows lead photo with name overlay
+- [ ] Age, neighborhood, city shown below photo
+- [ ] Info card with work type, tagline, currently working on, work, school
+- [ ] Additional photos shown below info card
+- [ ] Edit Profile button navigates to EditProfile
+- [ ] Sign Out at bottom
+- [ ] Screen refreshes on focus
+- [ ] Migration banner shows when no photos
+- [ ] No Phone Number or My Friends rows
 
 ---
 
@@ -429,7 +427,8 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 **Scope:**
 - Included: Header: Cancel (left) / Save (right)
 - Included: PhotoSlots grid (editable=true, action sheet on tap: Change/Remove/Set Primary)
-- Included: TextInputs: Name, Tagline, Currently Working On, Work, School
+- Included: TextInputs: Name, Tagline, Currently Working On, Work, School, Neighborhood, City
+- Included: Birthday date picker
 - Included: Work type single-select pills
 - Included: Photos upload/delete immediately (not batched with save) for instant feedback
 - Included: Save button updates text fields only via `updateProfile()`, then `refreshProfile()` + `goBack()`
@@ -442,7 +441,8 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 **Definition of Done:**
 - [ ] Screen created at `src/screens/profile/EditProfileScreen.tsx`
 - [ ] PhotoSlots shows current photos with add/remove/set-primary actions
-- [ ] TextInputs for name, tagline, currently working on, work, school
+- [ ] TextInputs for name, tagline, currently working on, work, school, neighborhood, city
+- [ ] Birthday date picker
 - [ ] Work type pills for single selection
 - [ ] Photos upload/delete immediately on interaction
 - [ ] Save updates text fields and navigates back
@@ -451,12 +451,13 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 
 ---
 
-### P5-16: SwipeCard Tagline Update
+### P5-16: SwipeCard Tagline + Age + Neighborhood Update
 
-**Goal:** Show user tagline on Discover cards.
+**Goal:** Show user tagline, age, and neighborhood on Discover cards.
 
 **Scope:**
 - Included: Add tagline below work_type in the card overlay (13px, white, italic)
+- Included: Add age + neighborhood to the card overlay
 - Included: Photos already handled (existing `photo_url` support on SwipeCard)
 - Excluded: Changes to tags row (keep existing work_style + location_type tags)
 - Excluded: Interest tags display
@@ -465,8 +466,9 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 
 **Definition of Done:**
 - [ ] Tagline displays below work_type in SwipeCard overlay
+- [ ] Age and neighborhood display in SwipeCard overlay
 - [ ] Tagline styled: 13px, white, italic
-- [ ] No tagline → nothing renders (graceful null handling)
+- [ ] No tagline/age/neighborhood → nothing renders (graceful null handling)
 - [ ] Existing card layout and behavior unchanged
 
 ---
@@ -495,22 +497,22 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 Phase 5 is complete when all tickets are done and:
 
 ### Friends
-1. Users can add a phone number to their profile
-2. Users can search for other users by username, email, or phone number
-3. Users can send friend requests
-4. Recipients can accept or decline friend requests
-5. Accepting a friend request creates a match row (enables chat)
-6. Mutual pending requests auto-accept
-7. Friends screen shows pending requests section and unified friends list
-8. Friends show availability status (green dot + task if they have today's intent)
-9. Tapping a friend navigates to their chat
-10. Profile tab badge shows pending request count
+1. Users can search for other users by username, email, or phone number
+2. Users can send friend requests
+3. Recipients can accept or decline friend requests
+4. Accepting a friend request creates a match row (enables chat)
+5. Mutual pending requests auto-accept
+6. Friends tab shows pending requests section and unified friends list
+7. Friends show availability status (green dot + task if they have today's intent)
+8. Tapping a friend navigates to their chat
+9. Friends tab badge shows pending request count
 
 ### Profile Redesign
-11. New users upload at least 1 photo during onboarding (Step 4)
+10. New users upload at least 1 photo during onboarding (Step 4)
+11. Users can set birthday, neighborhood, and city on their profile
 12. Users can edit their profile (name, tagline, currently working on, work, school, work type)
 13. Users can upload up to 5 photos, with position 0 synced to `profiles.photo_url`
-14. Profile screen shows lead photo, thumbnail row, tagline, and extended fields
+14. Profile screen shows Hinge-style layout with name on photo, age/location line, interleaved photos and info cards
 15. Edit Profile screen allows photo management (add/remove/set primary) and text field editing
 16. Discover cards display tagline below work type
 17. Existing avatar components (MatchCard, MatchModal) show photos automatically
@@ -525,18 +527,18 @@ Phase 5 is complete when all tickets are done and:
 
 Run the app and complete this test flow:
 
-1. Login as User A, navigate to Profile → My Friends
+1. Login as User A, navigate to Friends tab
 2. Verify empty state ("No friends yet")
 3. Tap "+" to add friend
 4. Search for User B by email
 5. Verify User B appears in results with "Add" button
 6. Tap "Add" → verify button changes to "Requested"
-7. Login as User B, navigate to Profile tab
-8. Verify badge shows "1" on Profile tab
-9. Navigate to My Friends → verify pending request from User A
+7. Login as User B, navigate to Friends tab
+8. Verify badge shows "1" on Friends tab
+9. Verify pending request from User A
 10. Tap "Accept" → verify User A moves to friends list with availability
 11. Tap User A → verify chat screen opens
-12. Login as User A, navigate to My Friends
+12. Login as User A, navigate to Friends tab
 13. Verify User B now appears in friends list
 14. Test decline: User A searches for User C, sends request, User C declines
 15. Verify declined request disappears from User C's pending list
@@ -545,7 +547,7 @@ Run the app and complete this test flow:
 ### Profile Redesign Test Flow
 
 1. **New user onboarding** — create account, complete all 4 steps (name → work type → interests → photo upload), verify photo uploads and profile creates correctly
-2. **Profile screen** — verify lead photo, thumbnail row, name, tagline, work/school displayed
+2. **Profile screen** — verify Hinge-style layout with name overlay on lead photo, age/location line, info card, interleaved photos
 3. **Edit profile** — tap "Edit Profile", change all text fields, verify saves persist after navigation
 4. **Photo management** — add/remove/reorder photos in Edit Profile, verify primary syncs to `profiles.photo_url`
 5. **Discover cards** — verify photo and tagline appear on SwipeCard

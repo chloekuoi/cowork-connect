@@ -37,7 +37,7 @@
 ### Intended Behavior
 - `FriendshipStatus` union type: 'pending' | 'accepted' | 'declined'
 - `Friendship` type mirrors `friendships` table schema
-- `FriendListItem` type for unified friend display: id, name, photo_url, match_id, has_intent_today, task_description
+- `FriendListItem` type for unified friend display: id, name, photo_url, match_id, has_intent_today, available_from, available_until, location_type, location_name
 - `UserSearchResult` type: profile fields + relationship_status
 - `RelationshipStatus` union type: 'none' | 'pending_sent' | 'pending_received' | 'friends' | 'declined'
 
@@ -62,7 +62,6 @@
 - `fetchPendingRequests(userId)` queries friendships WHERE recipient_id = userId AND status = 'pending', joins requester profile
 - `getPendingRequestsCount(userId)` calls `get_pending_requests_count` RPC
 - `getRelationshipStatuses(currentUserId, userIds)` checks matches and friendships tables to determine status per user
-- `updatePhoneNumber(userId, phoneNumber)` updates profiles.phone_number
 
 ### Expected File Paths
 - `src/services/friendsService.ts` (created)
@@ -78,23 +77,22 @@
 
 ---
 
-## P5-04: Create ProfileStack Navigator
+## P5-04: Navigation — 4 Tabs + Stack Navigators
 
 ### Intended Behavior
-- Stack navigator with 3 screens: Profile (initial), Friends, AddFriend
-- `ProfileStackParamList` defines route params (all undefined for Phase 5)
-- MainTabs Profile tab renders ProfileStack instead of ProfileScreen directly
-- Stack headers hidden; each screen manages its own header
+- MainTabs changes from 3 tabs to 4: Discover, Friends, Chat, Profile
+- Chat tab is the existing MatchesStack with renamed tab label
+- `FriendsStack` created with 2 screens: Friends (initial), AddFriend
+- `ProfileStack` created with 2 screens: Profile (initial), EditProfile
 - Default React Navigation stack transition animations
 
 ### Expected File Paths
+- `src/navigation/FriendsStack.tsx` (created)
 - `src/navigation/ProfileStack.tsx` (created)
-- `src/navigation/MainTabs.tsx` (modified — import ProfileStack)
+- `src/navigation/MainTabs.tsx` (modified — 4 tabs, import new stacks)
 
 ### Verification
-- Navigate Profile → Friends → AddFriend → back → back
-- Verify back button behavior on each screen
-- Verify three tabs remain unchanged
+- Navigate all 4 tabs, navigate within stacks, verify back buttons
 
 ### Known Risks / TODOs
 - React Navigation 7 requires `id` prop — ensure ProfileStack has unique id
@@ -114,7 +112,7 @@
 - States: initial (prompt), searching (spinner), results (list), no_results (empty state)
 
 ### Expected File Paths
-- `src/screens/profile/AddFriendScreen.tsx` (created)
+- `src/screens/friends/AddFriendScreen.tsx` (created)
 - `src/components/friends/UserSearchResultCard.tsx` (created)
 
 ### Verification
@@ -130,52 +128,48 @@
 ## P5-06: Build Friends Screen
 
 ### Intended Behavior
-- SectionList with two conditional sections: "Pending Requests" and "Your Friends"
-- Pending section shows when pending request count > 0; each item has Accept/Decline buttons
-- Friends section shows unified list (all matches) with availability indicator
-- Available friends: green dot + task description (truncated, 1 line)
-- Not available friends: "Not available today" in muted italic text
-- Tap friend → navigate to ChatScreen with matchId + otherUser params
+- Three collapsible sections: "Pending Requests", "Available Today", "Not Available"
+- **Pending Requests**: collapsed by default, red dot indicator on header when count > 0; when expanded, each item has Accept/Decline buttons
+- **Available Today**: expanded by default, shows friends with today's work_intent; each shows photo, name, and intent summary (time window + location)
+- **Not Available**: collapsed by default, shows friends without today's intent; each shows photo and name only
+- Section headers are tappable with chevron indicator (▶ collapsed, ▼ expanded) and count
+- Tapping a friend navigates to Chat tab
 - "+" header button → navigate to AddFriendScreen
 - Pull-to-refresh, refresh on focus (useFocusEffect)
+- Friends Screen is now its own tab (Friends tab)
 
 ### Expected File Paths
-- `src/screens/profile/FriendsScreen.tsx` (created)
+- `src/screens/friends/FriendsScreen.tsx` (created)
 - `src/components/friends/FriendRequestCard.tsx` (created)
-- `src/components/friends/FriendCard.tsx` (created)
+- `src/components/friends/FriendCard.tsx` (created — two variants: 'available' and 'simple')
+- `src/components/friends/CollapsibleSection.tsx` (created — reusable expand/collapse header)
 
 ### Verification
 - RUNBOOK: Phase 5 Flows 22–25
 
 ### Known Risks / TODOs
-- Cross-tab navigation from Friends (Profile tab) to Chat (Matches tab) — need to use `navigation.navigate('Matches', { screen: 'Chat', params })` pattern
-- SectionList with conditional sections: need to handle empty sections gracefully
-- Availability data requires fetching work_intents for all friends — batch query needed
-- Accept action must also update the friends list (move card from pending to friends section)
+- Cross-tab navigation from Friends tab to Chat tab — need to use `navigation.navigate('Matches', { screen: 'Chat', params })` pattern
+- Collapsible sections: use `LayoutAnimation` or `Animated` for smooth expand/collapse transitions
+- Availability data requires fetching work_intents for all friends — batch query needed; must include `available_from`, `available_until`, `location_type`, `location_name` for the intent summary
+- Accept action must move card from pending section to the appropriate friends category (available or not available)
+- Red dot on pending header: should use the same `getPendingRequestsCount` as the tab badge
 
 ---
 
-## P5-07: Update Profile Screen + Pending Requests Badge
+## P5-07: Pending Requests Badge on Friends Tab
 
 ### Intended Behavior
-- Profile screen gains two new tappable rows: "Phone Number" and "My Friends"
-- Phone Number row: shows current value or "Add phone number" placeholder; tap opens edit input; saves to profiles.phone_number
-- My Friends row: shows friend count; tap navigates to FriendsScreen
-- MainTabs Profile tab shows numeric badge when pending friend request count > 0
-- Badge updates on tab focus (same pattern as Matches tab unread badge)
+- Friends tab in MainTabs shows numeric badge when pending friend request count > 0
+- Badge updates on tab focus (useFocusEffect)
 
 ### Expected File Paths
-- `src/screens/profile/ProfileScreen.tsx` (modified — add rows)
-- `src/navigation/MainTabs.tsx` (modified — add Profile tab badge)
+- `src/navigation/MainTabs.tsx` (modified — add Friends tab badge)
 
 ### Verification
 - RUNBOOK: Phase 5 Flow 23 — Pending requests badge
-- Visual verification of Profile screen rows
 
 ### Known Risks / TODOs
-- Phone number edit: `Alert.prompt` is iOS-only. For cross-platform, may need a modal with TextInput instead.
 - Badge fetch pattern: reuse the `useFocusEffect` approach from Matches tab
-- Friend count requires calling `fetchFriends` or a separate count query — consider a dedicated count to avoid loading all friends just for the number
 
 ---
 
@@ -190,9 +184,8 @@
 - Smooth default navigation transitions between ProfileStack screens
 
 ### Expected File Paths
-- `src/screens/profile/FriendsScreen.tsx` (modified — loading/error/empty states)
-- `src/screens/profile/AddFriendScreen.tsx` (modified — loading/error/empty states)
-- `src/screens/profile/ProfileScreen.tsx` (modified — error handling for phone save)
+- `src/screens/friends/FriendsScreen.tsx` (modified — loading/error/empty states)
+- `src/screens/friends/AddFriendScreen.tsx` (modified — loading/error/empty states)
 
 ### Verification
 - RUNBOOK: Phase 5 Flow 26 — Polish verification
@@ -210,7 +203,7 @@
 ## P5-09: Database & Storage — profile_photos Table, Profile Columns, Avatars Bucket
 
 ### Intended Behavior
-- `profiles` table gains nullable TEXT columns: `tagline`, `currently_working_on`, `work`, `school`
+- `profiles` table gains nullable columns: `tagline TEXT`, `currently_working_on TEXT`, `work TEXT`, `school TEXT`, `birthday DATE`, `neighborhood TEXT`, `city TEXT`
 - `profile_photos` table stores photos with position-based ordering (0-4)
 - `UNIQUE(user_id, position)` prevents duplicate positions
 - RLS: anyone SELECT, owner INSERT/UPDATE/DELETE on `profile_photos`
@@ -234,7 +227,7 @@
 
 ### Intended Behavior
 - `ProfilePhoto` type: `{ id, user_id, photo_url, position, created_at }`
-- `Profile` type gains nullable fields: `tagline`, `currently_working_on`, `work`, `school`
+- `Profile` type gains nullable fields: `tagline`, `currently_working_on`, `work`, `school`, `birthday`, `neighborhood`, `city`
 
 ### Expected File Paths
 - `src/types/index.ts` (modified — add ProfilePhoto type, extend Profile)
@@ -317,16 +310,22 @@
 
 ---
 
-## P5-14: ProfileStack + ProfileScreen Redesign
+## P5-14: ProfileStack + ProfileScreen Redesign (Hinge-Style)
 
 ### Intended Behavior
-- ProfileStack gains `EditProfile` screen (4 screens total: Profile, Friends, AddFriend, EditProfile)
-- ProfileScreen rewritten with ScrollView layout: lead photo, thumbnails, name, tagline, currently working on, work/school, work type, edit profile button, phone number, my friends, sign out
-- `useFocusEffect` refreshes profile data via `getFullProfile()`
-- Migration banner shown when user has no photos
+- ProfileStack has 2 screens: Profile, EditProfile
+- ProfileScreen uses Hinge-style ScrollView layout:
+  - Lead photo (~400px) with name overlaid at bottom-left
+  - Age · Neighborhood · City line below lead photo
+  - Info card with work type, tagline, currently working on, work, school
+  - Additional photos interspersed after info card
+  - Edit Profile button and Sign Out at bottom
+- `useFocusEffect` refreshes via `getFullProfile()`
+- Migration banner when no photos
+- No Phone Number or My Friends rows
 
 ### Expected File Paths
-- `src/navigation/ProfileStack.tsx` (modified — add EditProfile screen)
+- `src/navigation/ProfileStack.tsx` (modified — EditProfile screen)
 - `src/screens/profile/ProfileScreen.tsx` (rewritten)
 
 ### Verification
@@ -334,7 +333,6 @@
 - Navigate Profile → EditProfile → back, verify data refreshes
 
 ### Known Risks / TODOs
-- ProfileScreen rewrite must preserve existing P5-07 functionality (Phone Number row, My Friends row, badge)
 - Lead photo fallback must match existing initials pattern (consistent with SwipeCard, MatchCard)
 - `getFullProfile` call on every focus could feel slow — consider caching or conditional refresh
 
@@ -345,7 +343,8 @@
 ### Intended Behavior
 - Header: Cancel (left) / Save (right)
 - PhotoSlots grid (editable=true, action sheet: Change/Remove/Set Primary)
-- TextInputs: Name, Tagline, Currently Working On, Work, School
+- TextInputs: Name, Tagline, Currently Working On, Work, School, Neighborhood, City
+- Birthday (date picker)
 - Work type single-select pills
 - Photos upload/delete immediately (not on save)
 - Save updates text fields via `updateProfile()`, then `refreshProfile()` + `goBack()`
@@ -369,6 +368,7 @@
 
 ### Intended Behavior
 - Tagline displays below work_type in SwipeCard photo overlay
+- Age + neighborhood displayed in the overlay
 - 13px, white, italic, numberOfLines={1}
 - Graceful null handling (nothing renders if tagline is null/empty)
 
@@ -423,28 +423,27 @@ npm start
 ```
 
 ### Friends End-to-End Test Flow
-1. Login as User A, navigate to Profile
-2. Add phone number → verify it saves
-3. Tap "My Friends" → verify Friends screen (empty state)
-4. Tap "+" → Add Friend screen
-5. Search for User B by email → verify result with "Add" button
-6. Tap "Add" → verify button changes to "Requested"
-7. Login as User B, check Profile tab badge → verify "1"
-8. Navigate to My Friends → verify pending request from User A
-9. Tap "Accept" → verify User A moves to friends list with availability
-10. Tap User A → verify chat opens
-11. Login as User A → verify User B in friends list
-12. Test decline: send request to User C, User C declines → card disappears
-13. Test mutual auto-accept: User D requests User E, User E requests User D → both friends
+1. Login as User A, navigate to Friends tab
+2. Verify Friends screen (empty state)
+3. Tap "+" → Add Friend screen
+4. Search for User B by email → verify result with "Add" button
+5. Tap "Add" → verify button changes to "Requested"
+6. Login as User B, check Friends tab badge → verify "1"
+7. Navigate to Friends tab → verify pending request from User A
+8. Tap "Accept" → verify User A moves to friends list with availability
+9. Tap User A → verify chat opens
+10. Login as User A → verify User B in friends list
+11. Test decline: send request to User C, User C declines → card disappears
+12. Test mutual auto-accept: User D requests User E, User E requests User D → both friends
 
 ### Profile Redesign End-to-End Test Flow
 1. Create new account → complete onboarding with 4 steps (name → work type → interests → photo)
 2. Verify photo uploads to Supabase Storage and profile_photos table
-3. Navigate to Profile screen → verify lead photo, name displayed
+3. Navigate to Profile screen → verify Hinge-style layout: lead photo with name overlay, age · neighborhood · city line, info card, additional photos
 4. Tap "Edit Profile" → verify PhotoSlots and text fields populated
 5. Change tagline, currently working on, work, school → Save
 6. Verify changes persist on Profile screen
 7. Add/remove photos in EditProfile → verify immediate upload/delete
-8. Navigate to Discover → verify SwipeCard shows photo and tagline
+8. Navigate to Discover → verify SwipeCard shows photo, tagline, age + neighborhood
 9. Navigate to Matches → verify MatchCard shows photo
 10. Login as existing user without photos → verify migration banner on Profile screen
