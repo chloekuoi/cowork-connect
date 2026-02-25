@@ -15,7 +15,8 @@ import { Image } from 'expo-image';
 import { colors, theme, spacing, borderRadius, touchTarget, shadows } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
 import { getFullProfile } from '../../services/profileService';
-import { Profile, ProfilePhoto } from '../../types';
+import { getTodayIntent } from '../../services/discoveryService';
+import { Profile, ProfilePhoto, WorkIntent } from '../../types';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
 
 const PHOTO_PROMPTS = [
@@ -25,6 +26,27 @@ const PHOTO_PROMPTS = [
   'Currently building something...',
 ];
 
+const WORK_STYLE_EMOJI: Record<string, string> = {
+  'Deep focus': '🎧',
+  'Chat mode': '💬',
+  'Flexible': '✌️',
+};
+
+const LOCATION_EMOJI: Record<string, string> = {
+  'Cafe': '☕️',
+  'Library': '📚',
+  'Anywhere': '📍',
+};
+
+function formatDisplayTime(value: string): string {
+  const [hourStr, minuteStr] = value.split(':');
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  const period = hour >= 12 ? 'PM' : 'AM';
+  const displayHour = hour % 12 === 0 ? 12 : hour % 12;
+  return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
+}
+
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -33,6 +55,7 @@ export default function ProfileScreen() {
   const [photos, setPhotos] = useState<ProfilePhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [todayIntent, setTodayIntent] = useState<WorkIntent | null>(null);
 
   const loadProfile = useCallback(async () => {
     if (!user) {
@@ -41,7 +64,10 @@ export default function ProfileScreen() {
     }
 
     setLoading(true);
-    const result = await getFullProfile(user.id);
+    const [result, intent] = await Promise.all([
+      getFullProfile(user.id),
+      getTodayIntent(user.id),
+    ]);
     if (result.error) {
       setError(result.error);
       setProfileData(profile);
@@ -51,6 +77,7 @@ export default function ProfileScreen() {
       setProfileData(result.data.profile || profile);
       setPhotos(result.data.photos);
     }
+    setTodayIntent(intent);
     setLoading(false);
   }, [profile, user]);
 
@@ -161,6 +188,43 @@ export default function ProfileScreen() {
             ) : null}
           </View>
         </View>
+
+        {/* ── Today's Intent card ── */}
+        {todayIntent ? (
+          <View style={styles.intentCard}>
+            <View style={styles.intentCardHeader}>
+              <Text style={styles.intentLabel}>TODAY'S FOCUS</Text>
+              <View style={styles.intentDot} />
+            </View>
+            <Text style={styles.intentTask}>{todayIntent.task_description}</Text>
+            <View style={styles.intentMeta}>
+              <Text style={styles.intentMetaText}>
+                {WORK_STYLE_EMOJI[todayIntent.work_style] ?? ''} {todayIntent.work_style}
+              </Text>
+              <Text style={styles.intentMetaDivider}>·</Text>
+              <Text style={styles.intentMetaText}>
+                {LOCATION_EMOJI[todayIntent.location_type] ?? ''} {todayIntent.location_type}
+                {todayIntent.location_name ? ` · ${todayIntent.location_name}` : ''}
+              </Text>
+              <Text style={styles.intentMetaDivider}>·</Text>
+              <Text style={styles.intentMetaText}>
+                {formatDisplayTime(todayIntent.available_from)} – {formatDisplayTime(todayIntent.available_until)}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <View style={[styles.intentCard, styles.intentCardEmpty]}>
+            <Text style={styles.intentLabel}>TODAY'S FOCUS</Text>
+            <Text style={styles.intentEmptyText}>Share what you're working on today</Text>
+            <TouchableOpacity
+              style={styles.intentCta}
+              onPress={() => navigation.getParent()?.navigate('Discover' as never)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.intentCtaText}>Set Today's Focus</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         <View style={styles.infoCard}>
           {profileData?.tagline ? <Text style={styles.tagline}>{profileData.tagline}</Text> : null}
@@ -395,5 +459,78 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.error,
     fontWeight: '500',
+  },
+  intentCard: {
+    marginTop: spacing[4],
+    marginHorizontal: spacing[4],
+    backgroundColor: colors.accentPrimaryLight,
+    borderRadius: borderRadius.xl,
+    padding: spacing[4],
+    borderWidth: 1,
+    borderColor: '#D4E4D8',
+  },
+  intentCardEmpty: {
+    backgroundColor: theme.surface,
+    borderColor: colors.borderDefault,
+  },
+  intentCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: spacing[2],
+  },
+  intentLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.accentPrimary,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  intentDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.accentPrimary,
+  },
+  intentTask: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: theme.text,
+    lineHeight: 24,
+    marginBottom: spacing[3],
+  },
+  intentMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing[2],
+  },
+  intentMetaText: {
+    fontSize: 13,
+    color: theme.textSecondary,
+  },
+  intentMetaDivider: {
+    fontSize: 13,
+    color: colors.textTertiary,
+  },
+  intentEmptyText: {
+    fontSize: 15,
+    color: theme.textSecondary,
+    marginTop: spacing[1],
+    marginBottom: spacing[3],
+  },
+  intentCta: {
+    backgroundColor: colors.accentPrimary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  intentCtaText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
 });
