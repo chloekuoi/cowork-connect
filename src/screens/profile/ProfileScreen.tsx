@@ -12,7 +12,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { colors, theme, spacing, borderRadius, touchTarget, shadows } from '../../constants';
+import { colors, theme, spacing, borderRadius, touchTarget } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
 import { getFullProfile } from '../../services/profileService';
 import { getTodayIntent } from '../../services/discoveryService';
@@ -37,6 +37,12 @@ const LOCATION_EMOJI: Record<string, string> = {
   'Library': '📚',
   'Anywhere': '📍',
 };
+
+function formatBirthdayDisplay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+}
 
 function formatDisplayTime(value: string): string {
   const [hourStr, minuteStr] = value.split(':');
@@ -132,6 +138,44 @@ export default function ProfileScreen() {
     .filter(Boolean)
     .join(' · ');
 
+  const aboutYouRows = [
+    { label: 'Name', value: profileData?.name },
+    { label: 'Username', value: profileData?.username ? `@${profileData.username}` : null },
+    { label: 'Tagline', value: profileData?.tagline },
+    { label: 'Currently working on', value: profileData?.currently_working_on },
+  ].filter((r): r is { label: string; value: string } => Boolean(r.value));
+
+  const workSchoolRows = [
+    { label: 'Work', value: profileData?.work },
+    { label: 'School', value: profileData?.school },
+  ].filter((r): r is { label: string; value: string } => Boolean(r.value));
+
+  const locationRows = [
+    { label: 'Neighbourhood', value: profileData?.neighborhood },
+    { label: 'City', value: profileData?.city },
+    {
+      label: 'Birthday',
+      value: profileData?.birthday ? formatBirthdayDisplay(profileData.birthday) : null,
+    },
+  ].filter((r): r is { label: string; value: string } => Boolean(r.value));
+
+  const workTypeRows = [
+    { label: 'Work type', value: profileData?.work_type },
+  ].filter((r): r is { label: string; value: string } => Boolean(r.value));
+
+  const renderGroup = (rows: { label: string; value: string }[]) => {
+    if (rows.length === 0) return null;
+    return rows.map((row, index) => (
+      <React.Fragment key={row.label}>
+        <View style={styles.fieldRow}>
+          <Text style={styles.fieldLabel}>{row.label}</Text>
+          <Text style={styles.fieldValue}>{row.value}</Text>
+        </View>
+        {index < rows.length - 1 ? <View style={styles.rowSep} /> : null}
+      </React.Fragment>
+    ));
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -226,39 +270,21 @@ export default function ProfileScreen() {
           </View>
         )}
 
-        <View style={styles.infoCard}>
-          {profileData?.tagline ? <Text style={styles.tagline}>{profileData.tagline}</Text> : null}
+        {/* ── Field rows ── */}
+        {(aboutYouRows.length > 0 || workSchoolRows.length > 0 || locationRows.length > 0 || workTypeRows.length > 0) ? (
+          <View style={styles.fieldsArea}>
+            {renderGroup(aboutYouRows)}
 
-          {profileData?.currently_working_on ? (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Currently Working On</Text>
-              <Text style={styles.infoValue}>{profileData.currently_working_on}</Text>
-            </View>
-          ) : null}
+            {aboutYouRows.length > 0 && workSchoolRows.length > 0 ? <View style={styles.groupSep} /> : null}
+            {renderGroup(workSchoolRows)}
 
-          {profileData?.work ? (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Work</Text>
-              <Text style={styles.infoValue}>{profileData.work}</Text>
-            </View>
-          ) : null}
+            {workSchoolRows.length > 0 && locationRows.length > 0 ? <View style={styles.groupSep} /> : null}
+            {renderGroup(locationRows)}
 
-          {profileData?.school ? (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>School</Text>
-              <Text style={styles.infoValue}>{profileData.school}</Text>
-            </View>
-          ) : null}
-
-          {!profileData?.tagline &&
-          !profileData?.currently_working_on &&
-          !profileData?.work &&
-          !profileData?.school ? (
-            <Text style={styles.emptyInfoText}>Add profile details to help people get to know you.</Text>
-          ) : null}
-        </View>
-
-        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {locationRows.length > 0 && workTypeRows.length > 0 ? <View style={styles.groupSep} /> : null}
+            {renderGroup(workTypeRows)}
+          </View>
+        ) : null}
 
         <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
           <Text style={styles.editButtonText}>Edit Profile</Text>
@@ -389,48 +415,36 @@ const styles = StyleSheet.create({
     color: colors.accentPrimary,
     fontWeight: '600',
   },
-  infoCard: {
-    marginTop: spacing[4],
-    marginHorizontal: spacing[4],
+  fieldsArea: {
     backgroundColor: theme.surface,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    padding: spacing[4],
-    ...shadows.card,
+    marginHorizontal: -spacing[4],
+    paddingBottom: spacing[4],
+    marginTop: spacing[3],
   },
-  tagline: {
-    fontSize: 18,
-    lineHeight: 24,
-    fontStyle: 'italic',
-    color: theme.text,
-    marginBottom: spacing[4],
+  fieldRow: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    minHeight: 56,
+    justifyContent: 'center',
   },
-  infoRow: {
-    marginBottom: spacing[3],
-  },
-  infoLabel: {
-    fontSize: 12,
+  fieldLabel: {
+    fontSize: 15,
     fontWeight: '600',
-    color: theme.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.6,
-    marginBottom: spacing[1],
-  },
-  infoValue: {
-    fontSize: 16,
     color: theme.text,
-    lineHeight: 22,
+    marginBottom: 2,
   },
-  emptyInfoText: {
+  fieldValue: {
     fontSize: 14,
-    color: theme.textMuted,
+    color: theme.textSecondary,
   },
-  errorText: {
-    marginTop: spacing[4],
+  rowSep: {
+    height: 1,
+    backgroundColor: colors.borderDefault,
     marginHorizontal: spacing[4],
-    color: theme.error,
-    fontSize: 13,
+  },
+  groupSep: {
+    height: 8,
+    backgroundColor: colors.bgSecondary,
   },
   editButton: {
     marginTop: spacing[5],
