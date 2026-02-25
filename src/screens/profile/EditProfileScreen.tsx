@@ -377,6 +377,8 @@ export default function EditProfileScreen({ navigation }: Props) {
           onRemovePhoto={onPhotoSlotRemove}
           onSetPrimary={onPhotoSlotSetPrimary}
           prompts={PHOTO_PROMPTS}
+          promptSubtitles={PHOTO_SUBTITLES}
+          layout="stack"
           editable={!saving && !photoBusy}
         />
 
