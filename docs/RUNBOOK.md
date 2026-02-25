@@ -989,3 +989,745 @@ WHERE s.status IN ('pending', 'active');
 | Session card at wrong position in chat | Check created_at sorting in timeline merge |
 | Duration shows negative or NaN | Check accepted_at and completed_at are both non-null |
 | Auto-complete not running | Check AuthContext calls autoCompleteStaleSessions after auth |
+
+---
+---
+
+# Phase 5: Friends & Polish — Verification Flows
+
+**Added:** 2026-02-15
+
+---
+
+## Database Setup (Phase 5)
+
+Before testing Phase 5, run the SQL migration in Supabase SQL Editor:
+
+6. `supabase/006_friendships_table.sql` — friendships table, phone_number column on profiles, friend RPCs
+
+After running, verify:
+1. Go to Table Editor → verify `friendships` table exists
+2. Go to Table Editor → verify `profiles` table has `phone_number` column
+3. Go to Authentication → Policies → verify RLS policy on `friendships` table
+4. Go to Database → Functions → verify `send_friend_request`, `respond_to_friend_request`, `get_pending_requests_count` exist
+5. Go to Database → Replication → verify `friendships` table has Realtime enabled
+
+---
+
+### 20. Verify Phase 5 Database
+
+**Preconditions:** SQL migration `006_friendships_table.sql` executed
+
+**Steps:**
+1. Open Supabase SQL Editor
+2. Run: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';`
+3. **Expected:** `friendships` listed alongside existing tables
+4. Run: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'phone_number';`
+5. **Expected:** One row: `phone_number`, `text`
+6. Run: `SELECT routine_name FROM information_schema.routines WHERE routine_schema = 'public';`
+7. **Expected:** `send_friend_request`, `respond_to_friend_request`, `get_pending_requests_count` listed
+8. Run: `SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = 'friendships';`
+9. **Expected:** At least one RLS policy listed
+10. Test send_friend_request:
+    ```sql
+    -- Use two existing user IDs from profiles table
+    SELECT send_friend_request('USER_A_UUID'::uuid, 'USER_B_UUID'::uuid);
+    ```
+11. **Expected:** Returns a UUID (the friendship ID)
+12. Check friendships table: `SELECT * FROM friendships;`
+13. **Expected:** One row with requester_id=A, recipient_id=B, status='pending'
+14. Test respond_to_friend_request:
+    ```sql
+    SELECT respond_to_friend_request('FRIENDSHIP_UUID'::uuid, 'USER_B_UUID'::uuid, 'accept');
+    ```
+15. **Expected:** No error. Friendship status changes to 'accepted'.
+16. Check matches table: `SELECT * FROM matches WHERE user1_id = LEAST('USER_A_UUID', 'USER_B_UUID')::uuid AND user2_id = GREATEST('USER_A_UUID', 'USER_B_UUID')::uuid;`
+17. **Expected:** A match row exists (created by accept)
+18. Test get_pending_requests_count:
+    ```sql
+    SELECT get_pending_requests_count('USER_B_UUID'::uuid);
+    ```
+19. **Expected:** Returns 0 (no pending requests left)
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| "function send_friend_request does not exist" | SQL not run | Execute `006_friendships_table.sql` |
+| "permission denied for table friendships" | RLS blocking | Verify SECURITY DEFINER on functions |
+| Match not created on accept | `create_match` not called inside RPC | Check `respond_to_friend_request` function body |
+| Duplicate friendship error | Previous test data | Clean up: `DELETE FROM friendships;` |
+
+---
+
+### 21. Search Users and Send Friend Request
+
+**Preconditions:** At least two user accounts exist; User B has set email and/or phone_number on their profile
+
+**Steps:**
+1. Login as User A
+2. Navigate to Friends tab → tap "+" (Add Friend)
+3. **Expected:** Add Friend screen with search input and initial prompt
+4. Type 2 characters in search input
+5. **Expected:** No search triggered (minimum 3 characters)
+6. Type User B's email (or partial email, 3+ chars)
+7. **Expected:** Loading spinner briefly, then results appear
+8. Verify User B appears with:
+   - Profile photo or initials
+   - Name
+   - Username (e.g., @user_abc123...)
+   - "Add" button
+9. Tap "Add"
+10. **Expected:** Button changes to "Requested" immediately
+11. Check Supabase `friendships` table
+12. **Expected:** Row with requester_id=A, recipient_id=B, status='pending'
+13. Try searching for User B again
+14. **Expected:** User B appears with "Requested" button (disabled)
+
+**Search by Phone Number:**
+1. First, add a phone number to User B's profile: `UPDATE profiles SET phone_number = '555-1234' WHERE id = 'USER_B_UUID';`
+2. As User A, search "555-1234"
+3. **Expected:** User B appears in results
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No results for valid query | ILIKE not matching | Check query uses `%query%` wildcard |
+| Self appears in results | Not filtering current user | Check `neq('id', currentUserId)` in query |
+| "Add" does nothing | sendFriendRequest not called | Check onAdd handler |
+| Button doesn't change to "Requested" | Optimistic update not implemented | Check local state update after send |
+| Error "Cannot send request to this user" | Previously declined | Check friendships table for existing declined row |
+
+---
+
+### 22. Accept Friend Request
+
+**Preconditions:** User A has sent a friend request to User B (pending)
+
+**Steps:**
+1. Login as User B
+2. Check Friends tab
+3. **Expected:** Badge with "1" on Friends tab icon
+4. Navigate to Friends tab
+5. **Expected:** Friends screen with "Pending Requests (1)" section at top
+6. Verify request card shows:
+   - User A's photo/initials
+   - User A's name
+   - User A's username
+   - "Accept" and "Decline" buttons
+7. Tap "Accept"
+8. **Expected:**
+   - Request card moves from pending section to friends list
+   - User A appears in "Your Friends" section
+9. Check Supabase `friendships` table
+10. **Expected:** status='accepted', updated_at is recent
+11. Check Supabase `matches` table
+12. **Expected:** Match row exists for User A + User B (user1_id=LEAST, user2_id=GREATEST)
+13. **Expected:** Badge gone on Friends tab (0 pending requests)
+14. Login as User A, navigate to Friends tab
+16. **Expected:** User B appears in friends list
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No badge on Friends tab | getPendingRequestsCount not called on focus | Check MainTabs useFocusEffect |
+| Badge shows wrong number | Count query incorrect | Check get_pending_requests_count RPC |
+| Accept does nothing | respondToFriendRequest not called | Check onAccept handler |
+| Match not created | create_match not called in RPC | Check respond_to_friend_request function body |
+| User A doesn't see User B in friends | Matches query doesn't pick up new match | Check fetchFriends query |
+
+---
+
+### 23. Decline Friend Request
+
+**Preconditions:** User A has sent a friend request to User C (pending)
+
+**Steps:**
+1. Login as User C
+2. Navigate to Friends tab
+3. **Expected:** Pending request from User A visible
+4. Tap "Decline"
+5. **Expected:** Request card removed from pending section
+6. Check Supabase `friendships` table
+7. **Expected:** status='declined', updated_at is recent
+8. Check Supabase `matches` table
+9. **Expected:** No match row created for A + C
+10. Login as User A
+11. Navigate to Add Friend, search for User C
+12. **Expected:** User C appears with "Declined" button (disabled, not tappable)
+13. **Expected:** User A cannot re-send a request to User C
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Decline does nothing | respondToFriendRequest not called | Check onDecline handler |
+| Request card still visible after decline | State not refreshed | Check local state removal |
+| User A can still send request | "Declined" status not checked in search | Check getRelationshipStatuses logic |
+
+---
+
+### 24. Mutual Request Auto-Accept
+
+**Preconditions:** User D and User E both have accounts, not currently friends or matched
+
+**Steps:**
+1. Login as User D
+2. Navigate to Add Friend, search for User E, tap "Add"
+3. **Expected:** Button changes to "Requested"
+4. Check Supabase: friendship (D→E, pending)
+5. Login as User E
+6. Navigate to Add Friend, search for User D
+7. **Expected:** User D appears with "Accept" button (because D→E is pending_received from E's perspective)
+8. **Alternative test:** Tap "Add" (instead of "Accept")
+9. **Expected:** Auto-accept triggers — button changes to "Friends ✓"
+10. Check Supabase `friendships` table
+11. **Expected:** D→E row status='accepted' (no E→D row created)
+12. Check Supabase `matches` table
+13. **Expected:** Match row exists for D + E
+14. Login as User D, navigate to Friends tab
+15. **Expected:** User E appears in friends list
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Second request creates duplicate | Mutual detection not working | Check send_friend_request RPC logic for reverse check |
+| "Friend request already sent" error | RPC checking wrong direction | Verify step 3 checks (recipient→requester) direction |
+| Match not created on auto-accept | create_match not called in auto-accept path | Check send_friend_request auto-accept branch |
+
+---
+
+### 25. Friends List with Availability
+
+**Preconditions:** User A has at least two friends (matched or manually added). One friend has set a work_intent for today, the other has not.
+
+**Setup:**
+1. Ensure User B has a work_intent for today (e.g., "Writing blog posts")
+2. Ensure User C does NOT have a work_intent for today
+
+**Steps:**
+1. Login as User A
+2. Navigate to Friends tab
+3. **Expected:** Both User B and User C appear in the friends list
+4. Verify User B shows:
+   - Profile photo/initials
+   - Name
+   - Green dot (🟢) on right side
+   - Task description: "Writing blog posts..." (truncated, 1 line)
+5. Verify User C shows:
+   - Profile photo/initials
+   - Name
+   - No green dot
+   - "Not available today" in muted italic text
+6. Tap User B
+7. **Expected:** Navigates to ChatScreen with User B (Matches tab, Chat screen)
+8. Verify chat opens with correct match and user info
+9. Press back → returns to Matches list (not Friends screen, since we navigated cross-tab)
+10. Pull-to-refresh on Friends screen
+11. **Expected:** List refreshes (loading indicator briefly visible)
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| No availability indicator | work_intents not fetched | Check fetchFriends joins work_intents |
+| All friends show "Not available" | intent_date filter wrong | Check `intent_date = CURRENT_DATE` in query |
+| Tap friend doesn't navigate | match_id missing on FriendListItem | Check fetchFriends includes match_id |
+| Navigation crash | Wrong params passed to Chat screen | Check matchId and otherUser shape matches MatchesStackParamList |
+| Cross-tab navigation fails | Wrong navigator path | Check `navigation.navigate('Matches', { screen: 'Chat', params })` |
+
+---
+
+### 26. Profile Screen Verification
+
+**Preconditions:** Logged in, has at least 1 photo uploaded
+
+**Steps:**
+1. Navigate to Profile tab
+2. Verify Hinge-style layout:
+   - Lead photo (~400px) with name overlaid at bottom-left
+   - Age · Neighborhood · City line below photo (if set)
+   - Info card with work type, tagline, currently working on
+   - Work and school (if set)
+   - Additional photos interspersed
+3. Tap "Edit Profile"
+4. **Expected:** EditProfileScreen opens
+5. Navigate back
+6. Verify "Sign Out" button at bottom
+
+**No Phone / No Friends rows on this screen.**
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Lead photo not rendering at 400px | Style not applied | Check ProfileScreen lead photo height |
+| Name not overlaid on photo | Absolute positioning missing | Check name overlay styles |
+| Age not showing | Birthday not set or not calculated | Check birthday-to-age logic |
+| Info cards not displaying | Profile data not loaded | Check getFullProfile on focus |
+
+---
+
+## Updated Quick Verification Checklist
+
+Run through this after Phase 5 implementation:
+
+```
+Phase 1+2 (existing):
+[ ] App launches without crash
+[ ] Welcome screen renders
+[ ] Can create account
+[ ] Onboarding completes
+[ ] Main tabs appear
+[ ] Discover tab requests location
+[ ] Intent form works
+[ ] Cards display (with test data)
+[ ] Swipe gestures work
+[ ] Swipe buttons work
+[ ] Swipes recorded in database
+
+Phase 3 (existing):
+[ ] Mutual right swipe creates match row in database
+[ ] Match modal appears (not native Alert)
+[ ] Match modal shows both users' info
+[ ] "Send Message" navigates to chat
+[ ] "Keep Swiping" dismisses modal
+[ ] Matches list shows matches with previews
+[ ] Chat screen opens from match card
+[ ] Can send and receive messages in real time
+[ ] Unread badge shows and clears correctly
+
+Phase 4 (existing):
+[ ] "Send Cowork Invite" button visible in chat header
+[ ] Invite card includes date selection
+[ ] Accepting shows system message with emoji
+[ ] Dual-lock card appears after acceptance
+[ ] Both locks → "🔒❤️" toast and session completed
+[ ] Declining and cancelling update card correctly
+[ ] Multiple pending invites across matches allowed
+[ ] Stale sessions auto-cancel after 24h
+
+Phase 5 (new):
+[ ] Profile screen shows Hinge-style layout with name on photo, info cards
+[ ] Friends screen shows empty state when no friends
+[ ] Can navigate to Add Friend screen via "+"
+[ ] Search works by username, email, and phone number
+[ ] Search results show correct relationship-aware buttons
+[ ] Can send friend request ("Add" → "Requested")
+[ ] Recipient sees badge on Friends tab
+[ ] Pending requests section shows on Friends screen
+[ ] Can accept friend request → moves to friends list
+[ ] Can decline friend request → removed from pending
+[ ] Mutual requests auto-accept
+[ ] Friends list shows availability status (green dot + task)
+[ ] Tapping friend navigates to chat
+[ ] Pull-to-refresh works on Friends screen
+[ ] No crashes or unhandled errors in all flows
+[ ] 4-tab bar: Discover, Friends, Chat, Profile
+[ ] Friends tab shows friends list and pending requests
+[ ] Profile screen shows Hinge-style interleaved photos and info cards
+[ ] Edit profile works (all text fields + photos)
+[ ] Birthday, neighborhood, city fields in Edit Profile
+```
+
+---
+
+## Phase 5 Debugging Tips
+
+### Check Friend Functions
+```sql
+-- Test send_friend_request directly
+SELECT send_friend_request('USER_A_UUID'::uuid, 'USER_B_UUID'::uuid);
+
+-- Test respond_to_friend_request
+SELECT respond_to_friend_request('FRIENDSHIP_UUID'::uuid, 'RECIPIENT_UUID'::uuid, 'accept');
+
+-- Test get_pending_requests_count
+SELECT get_pending_requests_count('USER_UUID'::uuid);
+
+-- Check all friendships
+SELECT f.id, f.status, f.created_at,
+       p1.name as requester_name, p2.name as recipient_name
+FROM friendships f
+JOIN profiles p1 ON f.requester_id = p1.id
+JOIN profiles p2 ON f.recipient_id = p2.id
+ORDER BY f.created_at DESC;
+
+-- Check if match was created on accept
+SELECT m.id, p1.name as user1, p2.name as user2
+FROM matches m
+JOIN profiles p1 ON m.user1_id = p1.id
+JOIN profiles p2 ON m.user2_id = p2.id
+ORDER BY m.created_at DESC;
+
+-- Search users (simulate client search)
+SELECT id, name, username, email, phone_number
+FROM profiles
+WHERE username ILIKE '%query%'
+   OR email ILIKE '%query%'
+   OR phone_number ILIKE '%query%';
+
+-- Check phone number column exists
+SELECT phone_number FROM profiles LIMIT 5;
+```
+
+### Common Phase 5 Issues
+
+| Issue | Solution |
+|-------|----------|
+| "function send_friend_request does not exist" | Run `supabase/006_friendships_table.sql` |
+| "Cannot send request to this user" | Check friendships table for existing declined row |
+| Match not created on accept | Verify `create_match` is called inside `respond_to_friend_request` |
+| Badge not showing on Friends tab | Check `getPendingRequestsCount` call in MainTabs on Friends focus |
+| Search returns no results | Check ILIKE wildcards and that profile fields are populated |
+| Friends list empty despite matches existing | Check `fetchFriends` query filters (should return ALL matches) |
+| Cross-tab navigation crash | Verify Chat screen params match `MatchesStackParamList` |
+| Phone number not saving | Check profiles UPDATE RLS policy allows `auth.uid() = id` |
+| "Already friends" error on add | Users are already matched via swiping — expected behavior |
+
+---
+---
+
+# Phase 5: Profile Redesign — Verification Flows
+
+**Added:** 2026-02-16
+
+---
+
+## Database Setup (Profile Redesign)
+
+Before testing profile redesign features, run the SQL migration in Supabase SQL Editor:
+
+7. `supabase/007_profile_photos.sql` — profile_photos table, profile columns (tagline, currently_working_on, work, school, birthday, neighborhood, city), avatars bucket, storage policies
+
+After running, verify:
+1. Go to Table Editor → verify `profile_photos` table exists
+2. Go to Table Editor → verify `profiles` table has `tagline`, `currently_working_on`, `work`, `school`, `birthday`, `neighborhood`, `city` columns
+3. Go to Authentication → Policies → verify RLS policies on `profile_photos` table
+4. Go to Storage → verify `avatars` bucket exists (public)
+5. Go to Storage → Policies → verify read/write policies on `avatars` bucket
+
+---
+
+### 27. Verify Profile Redesign Database
+
+**Preconditions:** SQL migration `007_profile_photos.sql` executed
+
+**Steps:**
+1. Open Supabase SQL Editor
+2. Run: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';`
+3. **Expected:** `profile_photos` listed alongside existing tables
+4. Run: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profiles' AND column_name IN ('tagline', 'currently_working_on', 'work', 'school', 'birthday', 'neighborhood', 'city');`
+5. **Expected:** Seven rows: `tagline` (text), `currently_working_on` (text), `work` (text), `school` (text), `birthday` (date), `neighborhood` (text), `city` (text)
+6. Run: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profile_photos';`
+7. **Expected:** Columns: `id` (uuid), `user_id` (uuid), `photo_url` (text), `position` (integer), `created_at` (timestamp with time zone)
+8. Run: `SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = 'profile_photos';`
+9. **Expected:** RLS policies for SELECT (public), INSERT, UPDATE, DELETE (owner only)
+10. Test inserting a profile photo directly:
+    ```sql
+    INSERT INTO profile_photos (user_id, photo_url, position)
+    VALUES ('USER_UUID'::uuid, 'https://example.com/test.jpg', 0);
+    ```
+11. **Expected:** Row inserted successfully
+12. Test unique constraint:
+    ```sql
+    INSERT INTO profile_photos (user_id, photo_url, position)
+    VALUES ('USER_UUID'::uuid, 'https://example.com/test2.jpg', 0);
+    ```
+13. **Expected:** Error — duplicate key violation (user_id, position)
+14. Verify storage bucket:
+    ```sql
+    SELECT * FROM storage.buckets WHERE id = 'avatars';
+    ```
+15. **Expected:** One row, public = true
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| profile_photos table not found | SQL not run | Execute `007_profile_photos.sql` |
+| Storage bucket not found | Bucket creation failed or needs Dashboard | Create `avatars` bucket via Supabase Dashboard → Storage |
+| Storage upload fails | Storage policies not applied | Apply storage policies via Dashboard → Storage → Policies |
+| Profile columns missing | ALTER TABLE failed | Check for syntax errors in migration SQL |
+
+---
+
+### 28. New User Onboarding with Photo Upload
+
+**Preconditions:** Fresh account (not onboarded)
+
+**Steps:**
+1. Create a new account (email + password)
+2. Complete Step 1 — enter name
+3. Complete Step 2 — select work type
+4. Complete Step 3 — select interests
+5. **Expected:** Step 4 appears: "Add a photo" with PhotoSlots grid
+6. **Expected:** "Get Started" button is disabled (no photo uploaded yet)
+7. Tap the primary photo slot
+8. **Expected:** Photo picker opens (device library)
+9. Select a photo
+10. **Expected:** Photo appears in the primary slot
+11. **Expected:** "Get Started" button becomes enabled
+12. Tap "Get Started"
+13. **Expected:** Navigated to main app (Discover tab)
+14. Check Supabase `profile_photos` table
+15. **Expected:** One row with user_id, position=0, photo_url pointing to avatars bucket
+16. Check Supabase `profiles` table
+17. **Expected:** `photo_url` matches the uploaded photo URL, `onboarding_complete = true`
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Photo picker doesn't open | expo-image-picker not installed | Run `npx expo install expo-image-picker` |
+| Photo picker permissions denied | iOS permissions not configured | Check app.json for photo library permission |
+| Upload fails | Storage bucket not configured | Check avatars bucket exists and policies are set |
+| "Get Started" always disabled | Photo upload state not tracked | Check state management in onboarding Step 4 |
+| Profile photo_url not synced | uploadPhoto not updating profiles table | Check photoService.ts syncs photo_url for position 0 |
+
+---
+
+### 29. Profile Screen Visual Verification
+
+**Preconditions:** User is logged in with profile data and at least one photo
+
+**Steps:**
+1. Navigate to Profile tab
+2. **Expected:** Lead photo displayed prominently (~200px height)
+3. If 2+ photos: **Expected:** Thumbnail row visible below lead photo
+4. **Expected:** Name displayed (24px, bold)
+5. If tagline set: **Expected:** Tagline in italic below name
+6. If "currently working on" set: **Expected:** Section with label and text
+7. If work/school set: **Expected:** Displayed below working on section
+8. **Expected:** Work type badge (pill) visible
+9. **Expected:** "Edit Profile" button visible
+10. **Expected:** "Phone Number" and "My Friends" rows visible (from P5-07)
+11. **Expected:** "Sign Out" button at bottom
+
+**No Photos Test:**
+1. Login as user with no photos
+2. **Expected:** Initials shown in lead photo area on `#E8E7E4` background
+3. **Expected:** Migration banner visible: "Add a photo so people know who they're meeting!"
+4. Tap migration banner
+5. **Expected:** Navigates to EditProfile screen
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Lead photo not showing | getFullProfile not called on focus | Check useFocusEffect |
+| Thumbnails not visible | Only 1 photo exists | Expected — thumbnails only show for 2+ photos |
+| Migration banner always visible | Photo check logic wrong | Verify checking profile_photos count, not profiles.photo_url |
+| Edit Profile button missing | Layout not updated | Check ProfileScreen rewrite |
+
+---
+
+### 30. Edit Profile Flow
+
+**Preconditions:** User is logged in, on Profile screen
+
+**Steps:**
+1. Tap "Edit Profile"
+2. **Expected:** Edit Profile screen opens with Cancel/Save header
+3. **Expected:** PhotoSlots grid shows current photos (or empty slots)
+4. **Expected:** Text fields pre-populated with current values
+5. Change tagline to "Building the future"
+6. Change currently working on to "A new social app"
+7. Change work to "Startup Co"
+8. Change school to "MIT"
+9. Select a different work type
+10. Tap "Save"
+11. **Expected:** Navigates back to Profile screen
+12. **Expected:** All changes visible on Profile screen
+13. Check Supabase `profiles` table
+14. **Expected:** Updated values for tagline, currently_working_on, work, school, work_type
+
+**Photo Management in Edit Profile:**
+1. Open Edit Profile
+2. Tap an empty photo slot
+3. **Expected:** Photo picker opens
+4. Select a photo
+5. **Expected:** Photo appears in the slot immediately (uploaded right away)
+6. Check Supabase: new row in `profile_photos`, file in `avatars` bucket
+7. Tap a filled photo slot
+8. **Expected:** Action sheet: "Change Photo" / "Remove Photo" / "Set as Primary" (if not position 0) / "Cancel"
+9. Tap "Remove Photo"
+10. **Expected:** Photo removed from slot immediately
+11. Check Supabase: row removed from `profile_photos`, file removed from storage
+12. Tap "Cancel" (header button)
+13. **Expected:** Navigates back — text changes discarded, but photo changes persist
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Fields not pre-populated | Profile data not loaded | Check initial state from navigation params or fetch |
+| Save does nothing | updateProfile not called | Check save handler |
+| Photo upload fails silently | Storage policy issue | Check avatars bucket policies |
+| Changes lost after save | refreshProfile not called before goBack | Check save flow calls refreshProfile |
+| Cancel reverts photo uploads | Photos should persist | Ensure photos upload immediately, not batched |
+
+---
+
+### 31. Discover Card with Photo and Tagline
+
+**Preconditions:** User has profile with photo and tagline, another user is discovering
+
+**Steps:**
+1. Login as User A (has photo and tagline set)
+2. Set a work intent for today
+3. Login as User B (different user)
+4. Set a work intent, then view Discover feed
+5. Find User A's card
+6. **Expected:** User A's photo displayed in card photo area (not initials)
+7. **Expected:** Tagline visible below work type in overlay (italic, white text)
+8. **Expected:** Existing card elements unchanged (name, distance, task, tags, meta)
+
+**No Tagline Test:**
+1. Login as User C (has photo but no tagline)
+2. Discover User C's card
+3. **Expected:** Photo shows, but no tagline line in overlay (graceful null handling)
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Photo not showing on card | photo_url not populated on profiles table | Check photoService syncs profiles.photo_url |
+| Tagline not visible | Not added to SwipeCard overlay | Check SwipeCard.tsx modification |
+| Card layout broken | Tagline line taking too much space | Check numberOfLines={1} and styling |
+
+---
+
+### 32. Avatar Verification (MatchCard + MatchModal)
+
+**Preconditions:** User A has uploaded a photo (profiles.photo_url is set). User A is matched with User B.
+
+**Steps:**
+1. Login as User B
+2. Navigate to Matches tab
+3. Find User A's match card
+4. **Expected:** User A's photo visible (circular, 48x48px) instead of initials
+5. Trigger a new match with a user who has a photo
+6. **Expected:** MatchModal shows the matched user's photo (circular, 80x80px)
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| MatchCard still shows initials | photo_url not set on profiles | Check profiles table for photo_url value |
+| MatchModal shows initials | matchedUser prop missing photo_url | Check profile data passed to modal |
+| Photo shows as broken image | URL is stale or storage bucket is private | Check avatars bucket is public |
+
+---
+
+### 33. Editable Username (P5-18 Add-On)
+
+**Preconditions:** User is logged in and on Profile screen
+
+**Steps:**
+1. Tap "Edit Profile"
+2. **Expected:** Username field is visible and pre-populated with current username
+3. Change username to a new valid value (example: `chloeguokuoi`)
+4. Tap "Save"
+5. **Expected:** Navigates back to Profile screen with no error
+6. Check Supabase:
+   ```sql
+   SELECT username
+   FROM profiles
+   WHERE id = 'USER_UUID';
+   ```
+7. **Expected:** `username` is updated to the new value
+8. Return to Add Friend screen from another user account
+9. Search for the updated username
+10. **Expected:** User appears in results with updated handle
+
+**Duplicate Username Test:**
+1. Open Edit Profile as User B
+2. Enter a username already used by User A
+3. Tap "Save"
+4. **Expected:** Clear user-facing error (e.g., "Username is already taken")
+5. **Expected:** Existing username remains unchanged in `profiles`
+
+**Invalid Username Test:**
+1. Enter invalid values (too short, spaces, unsupported symbols)
+2. Tap "Save"
+3. **Expected:** Validation error shown; no update sent/applied
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Username not saved | Field not included in update payload | Include `username` in update service payload |
+| Duplicate username allowed | DB uniqueness missing | Add/verify unique constraint on `profiles.username` |
+| Duplicate error shown as generic failure | Conflict not parsed | Map DB conflict to user-friendly "Username is already taken" |
+| Search doesn't find updated username | Search query/filter mismatch | Verify user search includes `username` ILIKE filter |
+
+---
+
+## Updated Quick Verification Checklist
+
+Run through this after profile redesign implementation:
+
+```
+Phase 5 Profile Redesign (new):
+[ ] Database: profile_photos table exists with correct columns
+[ ] Database: profiles table has tagline, currently_working_on, work, school columns
+[ ] Storage: avatars bucket exists (public, 5MB limit)
+[ ] New user onboarding has 4 steps
+[ ] Step 4 requires at least 1 photo to proceed
+[ ] Photo uploads to Supabase Storage + profile_photos table
+[ ] profiles.photo_url synced when position 0 photo uploaded
+[ ] Profile screen shows lead photo or initials fallback
+[ ] Profile screen shows thumbnail row for 2+ photos
+[ ] Profile screen shows tagline, currently working on, work, school
+[ ] Migration banner shows for users without photos
+[ ] Edit Profile screen opens from Profile screen
+[ ] Edit Profile shows PhotoSlots with current photos
+[ ] Can upload photos (immediate)
+[ ] Can remove photos (immediate)
+[ ] Can edit text fields and save
+[ ] Save persists changes to database
+[ ] Cancel discards text changes, preserves photo changes
+[ ] SwipeCard shows photo and tagline
+[ ] MatchCard shows photo
+[ ] MatchModal shows photos
+[ ] Users can update username (valid + unique)
+[ ] No crashes or unhandled errors
+```
+
+---
+
+## Profile Redesign Debugging Tips
+
+### Check Profile Data
+```sql
+-- Check profile fields
+SELECT id, name, tagline, currently_working_on, work, school, work_type, photo_url
+FROM profiles
+WHERE id = 'USER_UUID';
+
+-- Check profile photos
+SELECT * FROM profile_photos WHERE user_id = 'USER_UUID' ORDER BY position;
+
+-- Check storage files
+SELECT name, bucket_id, created_at
+FROM storage.objects
+WHERE bucket_id = 'avatars'
+ORDER BY created_at DESC;
+```
+
+### Common Profile Redesign Issues
+
+| Issue | Solution |
+|-------|----------|
+| Photo picker doesn't open | Run `npx expo install expo-image-picker`, check iOS permissions |
+| Upload fails with 403 | Check storage bucket policies, verify user is authenticated |
+| Photo URL returns 404 | Check file was actually uploaded, verify bucket is public |
+| Profile changes don't persist | Check updateProfile query, verify RLS allows UPDATE |
+| Username update fails | Check unique constraint + username validation + update payload |
+| Onboarding stuck on Step 3 | Check totalSteps changed from 3 to 4 |
+| EditProfile save doesn't navigate back | Check goBack() called after updateProfile resolves |
+| Tagline not on SwipeCard | Check SwipeCard.tsx was modified to include tagline |

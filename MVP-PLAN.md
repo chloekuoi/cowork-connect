@@ -72,12 +72,23 @@ Build a React Native/Expo app for finding co-working partners. Swipe-based disco
 ---
 
 ### Phase 5: Friends & Polish
-**Goal:** Complete MVP
+**Goal:** Users can manually add friends and see all friends (matched + manual) in one place
 
-1. Create `friendships` table
-2. Build Add Friend prompt (after session ends)
-3. Build Friends screen
-4. Polish: loading states, error handling, animations
+**Context:** In CoWork Connect, "friends" come from two sources:
+- **Auto-friends:** Mutual swipe match in discovery (already stored in `matches` table)
+- **Manual friends:** Added by username, email, or phone number (Phase 5)
+
+1. Create `friendships` table with status field (`pending` / `accepted` / `declined`); `matches` table unchanged
+2. Add optional `phone_number` field to `profiles` table
+3. Build "Add Friend" screen — search existing users by username, email, or phone number
+4. Friend request flow: sender taps "Add" → request sent (`pending`), recipient can Accept or Decline
+5. Build Friends screen (sub-screen under Profile tab) — pending requests section at top + unified list of accepted friends (matches + manual)
+6. Notification badge on Profile tab when pending friend requests exist
+7. Friends show: photo, name, current availability status (from `work_intents`)
+8. Tap a friend → navigate to their chat (open existing match chat, or create a new conversation if manual-only friend)
+9. Polish: loading states, error handling, animations across the app
+
+**Not included:** Contact import (expo-contacts), invite non-users via share link, friend suggestions, re-request after decline
 
 **Result:** Full MVP complete
 

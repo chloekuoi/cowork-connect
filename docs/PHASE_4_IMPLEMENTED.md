@@ -211,10 +211,11 @@
 - `src/screens/matches/ChatScreen.tsx`
 - `src/services/sessionService.ts`
 
-### Verification Performed
 - `npx tsc --noEmit` — PASS
 - RUNBOOK Flow 14 — PASS (manual)
-- RUNBOOK Flows 15–17 — PENDING (manual)
+- RUNBOOK Flow 15 — PASS (manual)
+- RUNBOOK Flow 16 — PASS (manual)
+- RUNBOOK Flow 17 — PASS (manual)
 
 ---
 
@@ -356,7 +357,11 @@
 ### Verification Performed
 - `npx tsc --noEmit` — PASS
 - RUNBOOK Flow 14 — PASS (manual)
-- RUNBOOK Flows 15–19 — PENDING (manual)
+- RUNBOOK Flow 15 — PASS (manual)
+- RUNBOOK Flow 16 — PASS (manual)
+- RUNBOOK Flow 17 — PASS (manual)
+- RUNBOOK Flow 19 — PASS (manual)
+- RUNBOOK Flow 18 — PENDING (manual)
 
 ---
 

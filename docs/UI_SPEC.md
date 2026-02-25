@@ -62,12 +62,12 @@ Renders one of 5 states based on conditions:
 │ └─────────────────────┘ │
 │                         │
 │ Work style              │
-│ [Deep focus] [Happy...] │
-│ [Pomodoro fan][Flexible]│
+│ [Deep focus] [Chat mode]│
+│ [Flexible]              │
 │                         │
 │ Location preference     │
 │ [Cafe] [Library]        │
-│ [Video Call] [Anywhere] │
+│ [Anywhere]              │
 │                         │
 │ Spot name (conditional) │
 │ ┌─────────────────────┐ │
@@ -1182,3 +1182,966 @@ Renders one of 5 states based on conditions:
 | Match modal while card stack empty | Modal shows, "Keep Swiping" transitions to empty state |
 | Navigate to chat from modal | Switches to Matches tab, pushes Chat screen onto stack |
 | Back from chat | Returns to MatchesList, unread count refreshes |
+
+---
+---
+
+# Phase 5: Friends & Polish
+
+**Added:** 2026-02-15
+
+---
+
+## Navigation
+
+### Tab Bar (4 Tabs)
+
+| Tab | Label | Stack | Icon |
+|-----|-------|-------|------|
+| Discover | "Discover" | DiscoverScreen (direct) | 🔍 |
+| Friends | "Friends" | FriendsStack | 👥 |
+| Chat | "Chat" | ChatStack (renamed MatchesStack) | 💬 |
+| Profile | "Profile" | ProfileStack | 👤 |
+
+### FriendsStack
+
+**File:** `src/navigation/FriendsStack.tsx`
+
+**Purpose:** Stack navigator for the Friends tab
+
+**Screens:**
+
+| Screen | Route Name | Params |
+|--------|-----------|--------|
+| FriendsScreen | `Friends` | None |
+| AddFriendScreen | `AddFriend` | None |
+
+### ProfileStack
+
+**File:** `src/navigation/ProfileStack.tsx`
+
+**Purpose:** Stack navigator for the Profile tab
+
+**Screens:**
+
+| Screen | Route Name | Params |
+|--------|-----------|--------|
+| ProfileScreen | `Profile` | None |
+| EditProfileScreen | `EditProfile` | None |
+
+### ChatStack (renamed from MatchesStack)
+
+Existing MatchesStack behavior, just tab label renamed from "Matches" to "Chat".
+
+---
+
+## Screens
+
+### 7. FriendsScreen
+
+**File:** `src/screens/friends/FriendsScreen.tsx`
+
+**Purpose:** Display pending friend requests and friends split into two collapsible categories — "Available Today" (with intent) and "Not Available" (without intent)
+
+**Layout:**
+```
+┌─────────────────────────┐
+│ SafeAreaView             │
+│ ┌─────────────────────┐  │
+│ │    "Friends"     [+] │  │  Header: title + add button
+│ └─────────────────────┘  │
+│                          │
+│ ▶ Pending Requests   🔴  │  Collapsed by default, red dot when count > 0
+│                          │
+│ ▼ Available Today (3)    │  Expanded by default
+│ ┌──────────────────────┐ │
+│ │ FriendCard (avail)   │ │  Photo + name + time · location
+│ │ ──────────────────── │ │
+│ │ FriendCard (avail)   │ │
+│ │ ──────────────────── │ │
+│ │ FriendCard (avail)   │ │
+│ └──────────────────────┘ │
+│                          │
+│ ▶ Not Available (2)      │  Collapsed by default
+│                          │
+└─────────────────────────┘
+```
+
+**Expanded Pending Requests:**
+```
+│ ▼ Pending Requests (2)   │  Tap header to expand
+│ ┌──────────────────────┐ │
+│ │ FriendRequestCard    │ │
+│ │ ──────────────────── │ │
+│ │ FriendRequestCard    │ │
+│ └──────────────────────┘ │
+```
+
+**Expanded Not Available:**
+```
+│ ▼ Not Available (2)      │  Tap header to expand
+│ ┌──────────────────────┐ │
+│ │ FriendCard (simple)  │ │  Photo + name only
+│ │ ──────────────────── │ │
+│ │ FriendCard (simple)  │ │
+│ └──────────────────────┘ │
+```
+
+**Section Header Styling:**
+- Tappable row with chevron indicator (▼ expanded, ▶ collapsed)
+- Chevron: 14px, `#9B9B9B`
+- Title: 14px, weight 600, `#968D82`, uppercase, letterSpacing 0.5
+- Count in parentheses
+- Red dot on "Pending Requests" header: 8px diameter, `#B85C4D`, only visible when count > 0
+- Padding: 12px vertical, 16px horizontal
+- Background: transparent
+
+**Default Collapse State:**
+- Pending Requests: **collapsed** (red dot visible if pending > 0)
+- Available Today: **expanded**
+- Not Available: **collapsed**
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `loading` | Initial fetch in progress | Centered spinner + "Loading friends..." |
+| `empty` | No friends and no pending requests | Centered illustration + "No friends yet" + "Match with people on Discover or add them here!" + "Add Friend" button |
+| `list` | Has friends or pending requests | ScrollView with collapsible sections |
+
+**Interactions:**
+- "+" button in header → navigate to AddFriendScreen
+- Tap section header → toggle expand/collapse for that section
+- Accept on FriendRequestCard → calls `respondToFriendRequest('accept')` → card moves from pending to available/not-available
+- Decline on FriendRequestCard → calls `respondToFriendRequest('decline')` → card removed from pending
+- Tap a FriendCard → navigate to ChatScreen with `matchId` and `otherUser` params
+- Pull-to-refresh → refetch pending requests and both friend categories
+- Screen focus → refetch data (useFocusEffect)
+
+**Edge Cases:**
+
+| Scenario | Behavior |
+|----------|----------|
+| 0 friends, 0 pending | Empty state with encouragement text and add button |
+| 0 friends, has pending | Only pending section header shows (collapsed, red dot) |
+| Has friends, 0 pending | Pending section header hidden entirely |
+| All friends available | "Not Available" section header shows with count (0), collapsed |
+| No friends available | "Available Today" section shows with count (0), expanded but empty |
+| Accept fails (network) | Alert with error, card stays in pending state |
+| Decline fails (network) | Alert with error, card stays in pending state |
+| New request arrives while viewing | Visible on next pull-to-refresh or screen refocus; red dot appears |
+| Friend's availability changes | Updates on next pull-to-refresh or screen refocus |
+
+---
+
+### 8. AddFriendScreen
+
+**File:** `src/screens/friends/AddFriendScreen.tsx`
+
+**Purpose:** Search for existing users and send friend requests
+
+**Layout:**
+```
+┌─────────────────────────┐
+│ SafeAreaView             │
+│ ┌─────────────────────┐  │
+│ │ ← Back "Add Friend" │  │  Header with back button
+│ └─────────────────────┘  │
+│                          │
+│ ┌─────────────────────┐  │
+│ │ 🔍 Search by username│  │  Search input (pill shape)
+│ │   email, or phone   │  │
+│ └─────────────────────┘  │
+│                          │
+│ ┌──────────────────────┐ │
+│ │ UserSearchResultCard │ │  FlatList of results
+│ │ ──────────────────── │ │
+│ │ UserSearchResultCard │ │
+│ │ ──────────────────── │ │
+│ │ UserSearchResultCard │ │
+│ └──────────────────────┘ │
+└─────────────────────────┘
+```
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `initial` | Input is empty | Centered text: "Search by username, email, or phone number" + magnifying glass icon |
+| `searching` | Query in progress (3+ chars typed) | ActivityIndicator below search input |
+| `results` | Query returned results | FlatList of UserSearchResultCard |
+| `no_results` | Query returned 0 results | Centered text: "No users found" + "Try a different search term" |
+
+**Search Behavior:**
+- Debounced: 300ms after typing stops
+- Minimum 3 characters before search triggers
+- Fewer than 3 characters: stays on `initial` state (no error)
+- Max 20 results returned
+- Searches across `username`, `email`, and `phone_number` fields using ILIKE
+- Current user excluded from results
+
+**Interactions:**
+- Type in search → debounced query fires
+- Tap "Add" button on result → calls `sendFriendRequest` → button changes to "Requested" (optimistic)
+- Tap "Accept" button on result (pending_received) → calls `respondToFriendRequest('accept')` → button changes to "Friends"
+- Clear search input → returns to `initial` state
+- Back button → returns to FriendsScreen
+
+**Edge Cases:**
+
+| Scenario | Behavior |
+|----------|----------|
+| Query < 3 characters | Stays on initial state, no search triggered |
+| Query returns 0 results | Shows "No users found" empty state |
+| Send request fails | Alert with error, button reverts from "Requested" to "Add" |
+| User already requested | Button shows "Requested" (disabled), no action |
+| User is already a friend | Button shows "Friends" with checkmark, no action |
+| User previously declined | Button shows "Declined" (disabled), no action |
+| Very fast typing | Only the final debounced query fires |
+| Network error during search | Alert with error, stays on previous state |
+
+---
+
+## Components
+
+### FriendRequestCard
+
+**File:** `src/components/friends/FriendRequestCard.tsx`
+
+**Purpose:** Single row in the pending requests section with accept/decline actions
+
+**Props:**
+- `friendship`: Friendship (with requester profile joined)
+- `onAccept`: (friendshipId: string) => void
+- `onDecline`: (friendshipId: string) => void
+
+**Layout:**
+```
+┌─────────────────────────────────────┐
+│ ┌────┐  Alex Chen                   │  Row height: 72px
+│ │photo│  @alexchen                   │  Padding: 16px horizontal
+│ └────┘         [Accept]  [Decline]  │  Buttons right-aligned
+└─────────────────────────────────────┘
+```
+
+**Photo:**
+- Size: 48 x 48px
+- Border radius: 24px (circular)
+- If no photo_url: initials on `#D4DCD1` background
+- Initials: 18px, weight 600, color `#6F8268`
+
+**Text:**
+- Name: 16px, weight 600, color `#2D3A2D`
+- Username: 14px, weight 400, color `#756C62`
+
+**Buttons:**
+- "Accept": primary variant (sage bg `#A8B5A2`, white text), min height 36px, padding 12px horizontal, font 14px weight 600, border radius 10px
+- "Decline": ghost variant (`#B57070` text, no background), min height 36px, padding 12px horizontal, font 14px weight 500
+- 8px gap between buttons
+- Both disabled during loading (opacity 0.5)
+
+**Separator:**
+- 1px line, color `#E2DDD6`
+- Full width (no inset)
+
+**Touch:**
+- Minimum height: 72px (exceeds 44pt touch target)
+- Buttons are tappable with 44pt touch targets (achieved via padding)
+
+---
+
+### FriendCard
+
+**File:** `src/components/friends/FriendCard.tsx`
+
+**Purpose:** Single row in the friends list showing a friend. Two variants: "available" (with intent summary) and "simple" (name + photo only).
+
+**Props:**
+- `friend`: FriendListItem
+- `onPress`: () => void
+- `variant`: 'available' | 'simple' (default: 'simple')
+
+**Layout — Available (in "Available Today" section):**
+```
+┌─────────────────────────────────────┐
+│ ┌────┐  Jordan Kim                  │  Row height: 64px
+│ │photo│  14:00–18:00 · Blue Bottle  │  Time window + location
+│ └────┘                              │
+└─────────────────────────────────────┘
+```
+
+**Layout — Simple (in "Not Available" section):**
+```
+┌─────────────────────────────────────┐
+│ ┌────┐  Taylor Swift                │  Row height: 56px
+│ │photo│                             │  Name only, no subtitle
+│ └────┘                              │
+└─────────────────────────────────────┘
+```
+
+**Photo:**
+- Size: 48 x 48px
+- Border radius: 24px (circular)
+- If no photo_url: initials on `#D4DCD1` background
+- Initials: 18px, weight 600, color `#6F8268`
+
+**Text — Available variant:**
+- Name: 16px, weight 600, color `#2D3A2D`
+- Intent summary: 14px, weight 400, color `#756C62`, numberOfLines={1}
+- Format: `"{available_from}–{available_until} · {location_name || location_type}"`
+- Example: "14:00–18:00 · Blue Bottle Coffee" or "09:00–13:00 · Library"
+- If no location_name, falls back to location_type (e.g. "Cafe", "Library", "Anywhere")
+
+**Text — Simple variant:**
+- Name: 16px, weight 600, color `#2D3A2D`
+- No subtitle
+
+**Separator:**
+- 1px line, color `#E2DDD6`
+- Left inset: 80px (aligned past the photo)
+
+**Touch:**
+- Minimum height: 64px (available) / 56px (simple)
+- Touchable feedback: opacity reduction on press
+
+---
+
+### UserSearchResultCard
+
+**File:** `src/components/friends/UserSearchResultCard.tsx`
+
+**Purpose:** Single row in search results showing a user with relationship-aware action button
+
+**Props:**
+- `user`: UserSearchResult
+- `onAdd`: (userId: string) => void
+- `onAccept`: (friendshipId: string) => void
+
+**Layout:**
+```
+┌─────────────────────────────────────┐
+│ ┌────┐  Alex Chen         [Action] │  Row height: 64px
+│ │photo│  @alexchen                  │  Padding: 16px horizontal
+│ └────┘                              │
+└─────────────────────────────────────┘
+```
+
+**Photo:**
+- Size: 40 x 40px
+- Border radius: 20px (circular)
+- If no photo_url: initials on `#D4DCD1` background
+- Initials: 16px, weight 600, color `#6F8268`
+
+**Text:**
+- Name: 16px, weight 600, color `#2D3A2D`
+- Username: 13px, weight 400, color `#968D82`
+
+**Action Button — varies by relationship status:**
+
+| Status | Label | Style | Tappable |
+|--------|-------|-------|----------|
+| `none` | "Add" | Primary (sage bg, white text) | Yes |
+| `pending_sent` | "Requested" | Disabled (gray bg `#E2DDD6`, muted text `#968D82`) | No |
+| `pending_received` | "Accept" | Primary (sage bg, white text) | Yes |
+| `friends` | "Friends ✓" | Disabled (sage text `#A8B5A2`, no background) | No |
+| `declined` | "Declined" | Disabled (gray bg `#E2DDD6`, muted text `#968D82`) | No |
+
+**Button Sizing:**
+- Min width: 80px
+- Height: 32px
+- Padding: 10px horizontal
+- Font: 13px, weight 600
+- Border radius: 8px
+
+**Separator:**
+- 1px line, color `#E2DDD6`
+- Left inset: 72px (aligned past the photo)
+
+---
+
+## Profile Screen (Redesigned — Hinge-Style)
+
+**File:** `src/screens/profile/ProfileScreen.tsx` (rewritten)
+
+**Purpose:** Show user's profile with Hinge-style interleaved photos and info cards
+
+**Layout:**
+```
+┌──────────────────────────────┐
+│ ← My Profile            ✏️  │  Header
+├──────────────────────────────┤
+│ ScrollView                   │
+│                              │
+│ ┌──────────────────────────┐ │
+│ │                          │ │  Lead photo (~400px)
+│ │      📷 Photo 1          │ │  borderRadius: 16
+│ │                          │ │
+│ │  Alex Chen               │ │  Name overlaid bottom-left
+│ └──────────────────────────┘ │  White text, text shadow
+│                              │
+│  27 · East Village · NYC    │  Age · Neighborhood · City
+│                              │
+│ ┌──────────────────────────┐ │  Info card
+│ │ 💼 Freelancer            │ │  Work type
+│ │ "Building cool things"   │ │  Tagline (italic)
+│ │                          │ │
+│ │ CURRENTLY WORKING ON     │ │
+│ │ "A productivity app..."  │ │
+│ │ 🏢 Acme Corp             │ │  Work
+│ │ 🎓 Stanford              │ │  School
+│ └──────────────────────────┘ │
+│                              │
+│ ┌──────────────────────────┐ │  Photo 2 (if exists)
+│ │      📷 Photo 2          │ │
+│ └──────────────────────────┘ │
+│                              │
+│ ┌──────────────────────────┐ │  Photo 3 (if exists)
+│ │      📷 Photo 3          │ │
+│ └──────────────────────────┘ │
+│                              │
+│ [Edit Profile]  [Sign Out]  │
+└──────────────────────────────┘
+```
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `loading` | Profile data fetching | Centered spinner |
+| `no_photos` | User has no photos | Initials fallback + migration banner |
+| `complete` | Profile loaded with photos | Full Hinge-style layout |
+
+**Info Card Styling:**
+- Background: white (`#FFFFFF`)
+- Border radius: 16px
+- Padding: 16px
+- Subtle shadow (same as card shadow)
+- Section labels: 12px, weight 500, uppercase, color `#968D82`
+
+**Name Overlay:**
+- Position: absolute, bottom-left of lead photo
+- Font: 28px, weight 700, color white
+- Text shadow for readability
+
+**Age · Location Line:**
+- Format: `{age} · {neighborhood} · {city}`
+- Only parts that exist are shown (e.g. just "27 · New York" if no neighborhood)
+- Font: 16px, weight 400, color `#756C62`
+
+**Migration Banner (no photos):**
+- Shown when user has 0 photos
+- Card with camera emoji + "Add a photo so people know who they're meeting!"
+- Tapping navigates to EditProfile
+- Card styling: `#FFFFFF` bg, 1.5px `#E8DCD0` border, 16px padding, 16px border radius
+
+**Removed from Profile screen:**
+- Phone Number row (deferred to Settings)
+- My Friends row (moved to Friends tab)
+
+---
+
+## Friends Tab Badge
+
+**File:** `src/navigation/MainTabs.tsx` (modified)
+
+**Behavior:**
+- Friends tab icon shows numeric badge when pending friend request count > 0
+- Badge color: `#B57070` (same pattern as chat unread badge)
+- Badge fetched via `getPendingRequestsCount(userId)` on Friends tab focus
+- Badge disappears when count is 0
+
+---
+
+## Phase 5 Interactions
+
+### Search and Send Friend Request Flow
+
+1. User navigates to Friends tab → "+" (Add Friend)
+2. Types query in search input (minimum 3 characters)
+3. After 300ms debounce, search fires
+4. Results appear with relationship-aware action buttons
+5. User taps "Add" on a result
+6. `sendFriendRequest` called
+7. Button changes to "Requested" immediately (optimistic)
+8. If error: Alert shown, button reverts to "Add"
+9. Recipient sees pending request next time they open Friends screen
+
+### Accept Friend Request Flow
+
+1. User B opens Friends screen (or Friends tab badge prompts them)
+2. Pending requests section shows at top
+3. User B taps "Accept" on User A's request
+4. `respondToFriendRequest(friendshipId, userId, 'accept')` called
+5. RPC sets status='accepted' and creates match row via `create_match`
+6. FriendRequestCard moves from pending section to friends list
+7. Both users can now chat (match row exists)
+
+### Decline Friend Request Flow
+
+1. User B taps "Decline" on User A's request
+2. `respondToFriendRequest(friendshipId, userId, 'decline')` called
+3. RPC sets status='declined'
+4. FriendRequestCard removed from pending section
+5. User A's search results show "Declined" for User B (no re-request)
+
+### Mutual Request Auto-Accept Flow
+
+1. User A sends friend request to User B → pending (A→B)
+2. User B searches for User A and taps "Add"
+3. `send_friend_request` RPC detects existing pending (A→B)
+4. Auto-accepts: sets A→B friendship to 'accepted', creates match
+5. User B sees "Friends ✓" immediately
+6. User A sees User B in friends list on next refresh
+
+### Navigate to Friend's Chat Flow
+
+1. User taps a FriendCard on Friends screen
+2. FriendCard has `match_id` and `otherUser` data
+3. Navigate to `Matches` tab → `Chat` screen with `{ matchId, otherUser }` params
+4. Chat opens with existing conversation (or empty state for new friendship)
+
+### Add Phone Number Flow
+
+1. User taps "Phone Number" row on Profile screen
+2. Alert.prompt (iOS) or modal appears with TextInput
+3. User enters phone number and confirms
+4. `updatePhoneNumber(userId, phoneNumber)` called
+5. Row updates to show the new phone number
+6. User is now searchable by this phone number
+
+---
+
+## Phase 5 Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| Search with < 3 characters | No search triggered, stays on initial state |
+| Search returns self | Self excluded from results (filtered server-side) |
+| Send request to already-matched user | Search results show "Friends ✓", no "Add" button |
+| Request already sent to this user | Search results show "Requested" (disabled) |
+| Request from this user pending | Search results show "Accept" button |
+| User previously declined | Search results show "Declined" (disabled, no re-request) |
+| Accept request while offline | Alert with error, card stays in pending |
+| Tap friend with no match row | Should not happen (accept always creates match). Fallback: show error toast |
+| Phone number empty string | Treated as null (cleared) |
+| Very long phone number | TextInput max length 20 characters |
+| Friends screen with 100+ friends | FlatList handles scrolling, no pagination for MVP |
+| Profile tab badge while on Profile tab | Badge still visible; clears on next focus cycle |
+| Navigate to chat from Friends screen | Cross-tab navigation: `navigation.navigate('Matches', { screen: 'Chat', params })` |
+
+---
+
+## Phase 5 Typography Additions
+
+| Element | Size | Weight | Color |
+|---------|------|--------|-------|
+| Friends screen title | 28px | 700 | `#2D3A2D` |
+| Friends section header | 14px | 600 | `#968D82` (uppercase) |
+| Add Friend screen title | 28px | 700 | `#2D3A2D` |
+| Search input text | 16px | 400 | `#2D3A2D` |
+| Search input placeholder | 16px | 400 | `#968D82` |
+| Friend request name | 16px | 600 | `#2D3A2D` |
+| Friend request username | 14px | 400 | `#756C62` |
+| Friend card name | 16px | 600 | `#2D3A2D` |
+| Friend card subtitle (available) | 14px | 400 | `#756C62` |
+| Friend card subtitle (not available) | 14px | 400 italic | `#968D82` |
+| Search result name | 16px | 600 | `#2D3A2D` |
+| Search result username | 13px | 400 | `#968D82` |
+| Search result action button | 13px | 600 | varies |
+| Profile phone label | 14px | 500 | `#968D82` |
+| Profile phone value | 16px | 400 | `#2D3A2D` |
+| Profile phone placeholder | 16px | 400 italic | `#B5ADA3` |
+| Profile friends label | 16px | 600 | `#2D3A2D` |
+| Profile friends count | 16px | 400 | `#756C62` |
+| Empty state title | 24px | 600 | `#2D3A2D` |
+| Empty state text | 16px | 400 | `#756C62` |
+
+---
+---
+
+# Phase 5: Profile Redesign
+
+**Added:** 2026-02-16
+
+---
+
+## Navigation Update
+
+Navigation restructured as described in Phase 5: Friends & Polish Navigation section above. ProfileStack now contains only ProfileScreen and EditProfileScreen. FriendsScreen and AddFriendScreen moved to FriendsStack (new dedicated tab).
+
+---
+
+## Screens
+
+### 9. ProfileScreen (Redesigned — Hinge-Style)
+
+**File:** `src/screens/profile/ProfileScreen.tsx` (rewritten)
+
+**Purpose:** Show user's profile with Hinge-style interleaved photos and info cards
+
+**Layout:**
+```
+┌──────────────────────────────┐
+│ ← My Profile            ✏️  │  Header
+├──────────────────────────────┤
+│ ScrollView                   │
+│                              │
+│ ┌──────────────────────────┐ │
+│ │                          │ │  Lead photo (~400px)
+│ │      📷 Photo 1          │ │  borderRadius: 16
+│ │                          │ │
+│ │  Alex Chen               │ │  Name overlaid bottom-left
+│ └──────────────────────────┘ │  White text, text shadow
+│                              │
+│  27 · East Village · NYC    │  Age · Neighborhood · City
+│                              │
+│ ┌──────────────────────────┐ │  Info card
+│ │ 💼 Freelancer            │ │  Work type
+│ │ "Building cool things"   │ │  Tagline (italic)
+│ │                          │ │
+│ │ CURRENTLY WORKING ON     │ │
+│ │ "A productivity app..."  │ │
+│ │ 🏢 Acme Corp             │ │  Work
+│ │ 🎓 Stanford              │ │  School
+│ └──────────────────────────┘ │
+│                              │
+│ ┌──────────────────────────┐ │  Photo 2 (if exists)
+│ │      📷 Photo 2          │ │
+│ └──────────────────────────┘ │
+│                              │
+│ ┌──────────────────────────┐ │  Photo 3 (if exists)
+│ │      📷 Photo 3          │ │
+│ └──────────────────────────┘ │
+│                              │
+│ [Edit Profile]  [Sign Out]  │
+└──────────────────────────────┘
+```
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `loading` | Profile data fetching | Centered spinner |
+| `no_photos` | User has no photos | Initials fallback + migration banner |
+| `complete` | Profile loaded with photos | Full Hinge-style layout |
+
+**Info Card Styling:**
+- Background: white (`#FFFFFF`)
+- Border radius: 16px
+- Padding: 16px
+- Subtle shadow (same as card shadow)
+- Section labels: 12px, weight 500, uppercase, color `#968D82`
+
+**Name Overlay:**
+- Position: absolute, bottom-left of lead photo
+- Font: 28px, weight 700, color white
+- Text shadow for readability
+
+**Lead Photo:**
+- Height: ~400px, full width (minus 32px horizontal margin)
+- Border radius: 16px
+- If photo exists: `expo-image` with `contentFit="cover"`
+- If no photo: `#E8E7E4` background with initials (64px, weight 700, `#6F8268`)
+
+**Age · Location Line:**
+- Format: `{age} · {neighborhood} · {city}`
+- Only parts that exist are shown (e.g. just "27 · New York" if no neighborhood)
+- Font: 16px, weight 400, color `#756C62`
+
+**Additional Photos:**
+- Photos 2+ rendered as full-width images interspersed after the info card
+- Each photo: full width (minus 32px horizontal margin), border radius 16px
+- Photos displayed sequentially, not as thumbnails
+
+**Migration Banner (no photos):**
+- Shown when user has 0 photos
+- Card with camera emoji + "Add a photo so people know who they're meeting!"
+- Tapping navigates to EditProfile
+- Card styling: `#FFFFFF` bg, 1.5px `#E8DCD0` border, 16px padding, 16px border radius
+
+**Data Refresh:**
+- `useFocusEffect` calls `getFullProfile()` to refresh data after navigating back from EditProfile
+
+**Removed from Profile screen:**
+- Phone Number row (deferred to Settings)
+- My Friends row (moved to Friends tab)
+- Thumbnail row (photos are full-width interspersed instead)
+
+**Interactions:**
+- "Edit Profile" → navigate to EditProfile screen
+- Sign Out → existing sign out behavior
+
+---
+
+### 10. EditProfileScreen
+
+**File:** `src/screens/profile/EditProfileScreen.tsx`
+
+**Purpose:** Edit profile photos and text fields
+
+**Layout:**
+```
+┌─────────────────────────┐
+│ ┌─────────────────────┐ │
+│ │Cancel          Save │ │  Header buttons
+│ └─────────────────────┘ │
+│                          │
+│ ┌──────────────────────┐ │
+│ │ ┌────────────────┐   │ │  PhotoSlots grid
+│ │ │                │   │ │  Large primary slot
+│ │ │  Primary (0)   │   │ │
+│ │ │                │   │ │
+│ │ └────────────────┘   │ │
+│ │ ┌──┐ ┌──┐ ┌──┐ ┌──┐ │ │  4 smaller slots (2x2)
+│ │ │1 │ │2 │ │3 │ │4 │ │ │
+│ │ └──┘ └──┘ └──┘ └──┘ │ │
+│ └──────────────────────┘ │
+│                          │
+│ Name                     │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ Alex Chen            │ │
+│ └──────────────────────┘ │
+│                          │
+│ Birthday                 │  Label + date picker
+│ ┌──────────────────────┐ │
+│ │ Jan 15, 1999         │ │
+│ └──────────────────────┘ │
+│                          │
+│ Tagline                  │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ Building cool things │ │
+│ └──────────────────────┘ │
+│                          │
+│ Currently Working On     │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ A productivity app   │ │
+│ └──────────────────────┘ │
+│                          │
+│ Work                     │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ Acme Corp            │ │
+│ └──────────────────────┘ │
+│                          │
+│ School                   │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ Stanford             │ │
+│ └──────────────────────┘ │
+│                          │
+│ Neighborhood             │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ East Village         │ │
+│ └──────────────────────┘ │
+│                          │
+│ City                     │  Label + TextInput
+│ ┌──────────────────────┐ │
+│ │ New York             │ │
+│ └──────────────────────┘ │
+│                          │
+│ Work Type                │  Label + pill selection
+│ [Freelancer] [Remote]    │
+│ [Founder] [Student]      │
+│ [Hybrid] [Other]         │
+│                          │
+└─────────────────────────┘
+```
+
+**Header:**
+- Cancel (left): 16px, weight 500, `#756C62`. Navigates back without saving text changes.
+- Save (right): 16px, weight 600, `#A8B5A2`. Saves text fields, refreshes profile, navigates back.
+- Save disabled while saving (opacity 0.5, shows spinner)
+
+**TextInput Styling:**
+- Background: `#EEEDEA` (input bg)
+- Border radius: 12px
+- Padding: 12px horizontal, 10px vertical
+- Font: 16px, weight 400, color `#2D3A2D`
+- Placeholder color: `#968D82`
+- Label: 14px, weight 600, color `#2D3A2D`, 8px margin-bottom
+
+**Photo Behavior:**
+- Tapping an empty slot → `pickImage()` → `uploadPhoto()` (immediate upload)
+- Tapping a filled slot → Action Sheet: "Change Photo" / "Remove Photo" / "Set as Primary" (if not position 0) / "Cancel"
+- Photos upload/delete immediately, not batched with Save
+- If Cancel is tapped after uploading photos, the photos persist (they were already uploaded)
+
+**Work Type Pills:**
+- Single selection (same options as onboarding: Freelancer, Remote Employee, Founder, Student, Hybrid, Other)
+- Selected state: sage bg `#A8B5A2`, white text
+- Unselected state: white bg, `#E8DCD0` border
+
+**Interactions:**
+- Cancel → `goBack()` (text changes discarded, photo changes persist)
+- Save → `updateProfile(userId, fields)` → `refreshProfile()` → `goBack()`
+- Photo add/remove → immediate (not part of Save flow)
+
+**Edge Cases:**
+
+| Scenario | Behavior |
+|----------|----------|
+| Save with no changes | Still calls updateProfile (no-op), navigates back |
+| Upload fails | Alert with error, slot stays empty |
+| Delete last photo | Allowed (photos are soft requirement after onboarding) |
+| Cancel after photo upload | Photos persist (already saved) |
+| Network error on save | Alert with error, stays on screen |
+
+---
+
+## Components
+
+### PhotoSlots
+
+**File:** `src/components/profile/PhotoSlots.tsx`
+
+**Purpose:** Reusable photo grid shared between EditProfileScreen and Onboarding Step 4
+
+**Props:**
+- `photos`: ProfilePhoto[] (current photos)
+- `totalSlots`: number (default 5)
+- `onAddPhoto`: (position: number) => void
+- `onRemovePhoto?`: (position: number) => void
+- `onSetPrimary?`: (position: number) => void
+- `prompts?`: string[] (placeholder text for empty slots)
+- `editable?`: boolean (default true)
+
+**Layout:**
+```
+┌────────────────────────────┐
+│ ┌──────────────────────┐   │
+│ │                      │   │  Primary slot (position 0)
+│ │   "A clear photo     │   │  ~160px height
+│ │    of your face"     │   │  or filled photo
+│ │                      │   │
+│ └──────────────────────┘   │
+│ ┌─────┐ ┌─────┐           │
+│ │  1  │ │  2  │           │  4 smaller slots in 2x2 grid
+│ │     │ │     │           │  ~80px each
+│ └─────┘ └─────┘           │
+│ ┌─────┐ ┌─────┐           │
+│ │  3  │ │  4  │           │
+│ │     │ │     │           │
+│ └─────┘ └─────┘           │
+└────────────────────────────┘
+```
+
+**Empty Slot Styling:**
+- Dashed border: 2px dashed `#E4E3E0`
+- Background: `#F5F4F1`
+- Border radius: 12px (primary), 8px (small)
+- "+" icon: 24px, `#9B9B9B`
+- Prompt text: 12px, `#9B9B9B`, centered below icon
+
+**Filled Slot Styling:**
+- Photo via `expo-image`, `contentFit="cover"`
+- Border radius matches empty slots
+- If editable: small "×" remove button (20px circle, `#B85C4D` bg, white ×, top-right corner)
+
+**Default Prompts:**
+- Position 0: "A clear photo of your face"
+- Position 1: "A photo of you working"
+- Position 2: "A photo that shows your vibe"
+- Position 3: "" (no prompt)
+- Position 4: "" (no prompt)
+
+---
+
+## SwipeCard Update
+
+**File:** `src/components/discover/SwipeCard.tsx` (modified)
+
+**Change:** Add tagline display below work_type in the photo overlay section.
+
+**Updated Overlay Layout:**
+```
+┌─────────────────────────┐
+│ ┌─────────────────────┐ │
+│ │ Name          1.2km │ │
+│ │ Work type           │ │  Existing
+│ │ "Building cool..."  │ │  NEW: tagline (13px, white, italic)
+│ └─────────────────────┘ │
+```
+
+**Tagline Styling:**
+- Size: 13px
+- Weight: 400
+- Color: `rgba(255,255,255,0.7)` (slightly dimmer than work_type)
+- Style: italic
+- numberOfLines: 1 (truncated)
+- Only renders if tagline is non-null and non-empty
+
+---
+
+## Onboarding Update
+
+**File:** `src/screens/auth/OnboardingScreen.tsx` (modified)
+
+**Change:** Add Step 4 for photo upload. `totalSteps` changes from 3 to 4.
+
+**Step 4 Layout:**
+```
+┌─────────────────────────┐
+│ SafeAreaView             │
+│                          │
+│   ● ● ● ●              │  Progress dots (4 total)
+│                          │
+│   "Add a photo"          │  Title: 28px, weight 700
+│   "So people know who    │  Subtitle: 16px, weight 400, #756C62
+│   they're meeting"       │
+│                          │
+│ ┌──────────────────────┐ │
+│ │     PhotoSlots       │ │  PhotoSlots component
+│ │   (1 required)       │ │  Only shows primary slot prominently
+│ └──────────────────────┘ │
+│                          │
+│ [   Get Started   ]      │  Primary button
+│                          │  Disabled until 1 photo uploaded
+│                          │
+│   ← Back                 │  Back button to Step 3
+└─────────────────────────┘
+```
+
+**Behavior:**
+- "Get Started" button disabled until at least 1 photo is uploaded to position 0
+- Photo uploads immediately via `uploadPhoto()` when selected
+- After tapping "Get Started": sets `onboarding_complete = true`, navigates to main app
+- Existing Steps 1-3 unchanged
+
+---
+
+## Profile Redesign Typography Additions
+
+| Element | Size | Weight | Color |
+|---------|------|--------|-------|
+| Profile lead photo initials | 64px | 700 | `#6F8268` |
+| Profile name | 24px | 700 | `#2D3A2D` |
+| Profile tagline | 16px | 400 italic | `#756C62` |
+| Profile section label | 12px | 500 | `#968D82` (uppercase) |
+| Profile currently working on | 16px | 400 | `#2D3A2D` |
+| Profile work/school | 14px | 400 | `#756C62` |
+| Migration banner text | 14px | 500 | `#2D3A2D` |
+| Edit Profile header Cancel | 16px | 500 | `#756C62` |
+| Edit Profile header Save | 16px | 600 | `#A8B5A2` |
+| Edit Profile input label | 14px | 600 | `#2D3A2D` |
+| Edit Profile input text | 16px | 400 | `#2D3A2D` |
+| Edit Profile input placeholder | 16px | 400 | `#968D82` |
+| PhotoSlot prompt text | 12px | 400 | `#9B9B9B` |
+| PhotoSlot "+" icon | 24px | 400 | `#9B9B9B` |
+| SwipeCard tagline | 13px | 400 italic | `rgba(255,255,255,0.7)` |
+| Onboarding Step 4 title | 28px | 700 | `#2D3A2D` |
+| Onboarding Step 4 subtitle | 16px | 400 | `#756C62` |
+
+---
+
+## Profile Redesign Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| User has no photos | Profile shows initials fallback, migration banner appears |
+| User has 1 photo | Lead photo shown, no thumbnail row |
+| User has 5 photos | All slots filled, no empty slots in EditProfile |
+| Delete primary photo with others remaining | Next photo promoted to position 0, profiles.photo_url updated |
+| Delete last photo | Allowed — initials shown everywhere, migration banner reappears |
+| Very long tagline | Truncated with numberOfLines={1} on SwipeCard |
+| All text fields empty | Profile shows only name and work type (graceful null handling) |
+| Upload fails mid-onboarding | Alert with error, user can retry. Cannot proceed without 1 photo. |
+| Existing user logs in (no photos) | Migration banner on Profile screen, onboarding NOT re-triggered |
+| Photo URL becomes stale (deleted from storage) | expo-image shows fallback/empty. User can re-upload via EditProfile. |
