@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { colors, theme, spacing, borderRadius, touchTarget, shadows } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
@@ -19,6 +20,7 @@ import { ProfileStackParamList } from '../../navigation/ProfileStack';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
+  const insets = useSafeAreaInsets();
   const { user, profile, signOut } = useAuth();
   const [profileData, setProfileData] = useState<Profile | null>(profile);
   const [photos, setPhotos] = useState<ProfilePhoto[]>([]);
@@ -106,7 +108,21 @@ export default function ProfileScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+    <View style={styles.container}>
+      {/* ── Header ── */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity
+          style={styles.headerAction}
+          onPress={() => navigation.navigate('EditProfile')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Text style={styles.pencilIcon}>✏</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.leadPhotoContainer}>
         {leadPhoto ? (
           <Image source={{ uri: leadPhoto.photo_url }} style={styles.leadPhoto} contentFit="cover" />
@@ -187,12 +203,45 @@ export default function ProfileScreen() {
         <Text style={styles.signOutText}>Sign Out</Text>
       </TouchableOpacity>
     </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
     backgroundColor: theme.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing[4],
+    minHeight: 56,
+    backgroundColor: theme.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderDefault,
+  },
+  headerSpacer: {
+    minWidth: 44,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  headerAction: {
+    minWidth: 44,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  pencilIcon: {
+    fontSize: 18,
+    color: theme.textSecondary,
+  },
+  scroll: {
+    flex: 1,
   },
   content: {
     paddingBottom: spacing[12],
