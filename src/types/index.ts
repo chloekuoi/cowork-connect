@@ -4,10 +4,19 @@ export type Profile = {
   id: string;
   name: string | null;
   email: string | null;
+  username: string;
   photo_url: string | null;
   work_type: string | null;
   interests: string[] | null;
   bio: string | null;
+  phone_number: string | null;
+  tagline: string | null;
+  currently_working_on: string | null;
+  work: string | null;
+  school: string | null;
+  birthday: string | null;
+  neighborhood: string | null;
+  city: string | null;
   onboarding_complete: boolean;
   created_at: string;
   updated_at: string;
@@ -134,3 +143,52 @@ export type ChatTimelineItem =
   | { type: 'message'; message: Message }
   | { type: 'session'; session: SessionRecord }
   | { type: 'event'; event: SessionEvent };
+
+export type ProfilePhoto = {
+  id: string;
+  user_id: string;
+  photo_url: string;
+  position: number;
+  created_at: string;
+};
+
+// Phase 5 friends types
+export type FriendshipStatus = 'pending' | 'accepted' | 'declined';
+
+export type Friendship = {
+  id: string;
+  requester_id: string;
+  recipient_id: string;
+  status: FriendshipStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type FriendListItem = {
+  user_id: string;
+  name: string | null;
+  photo_url: string | null;
+  match_id: string;
+  has_intent_today: boolean;
+  available_from: string | null;
+  available_until: string | null;
+  location_type: LocationType | null;
+  location_name: string | null;
+};
+
+export type RelationshipStatus =
+  | 'none'
+  | 'pending_sent'
+  | 'pending_received'
+  | 'friends';
+
+export type UserSearchResult = {
+  id: string;
+  username: string;
+  email: string | null;
+  phone_number: string | null;
+  name: string | null;
+  photo_url: string | null;
+  relationship_status: RelationshipStatus;
+  friendship_id: string | null;
+};

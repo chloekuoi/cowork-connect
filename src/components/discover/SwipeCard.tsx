@@ -42,6 +42,24 @@ export default function SwipeCard({ card, translateX, isTopCard = false }: Swipe
     return `${from} - ${until}`;
   };
 
+  const getAge = () => {
+    if (!profile.birthday) return null;
+    const birthDate = new Date(profile.birthday);
+    if (Number.isNaN(birthDate.getTime())) return null;
+
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age -= 1;
+    }
+
+    return age > 0 ? `${age}` : null;
+  };
+
+  const age = getAge();
+  const ageNeighborhoodLine = [age, profile.neighborhood].filter(Boolean).join(' · ');
+
   const likeOpacity = useAnimatedStyle(() => {
     if (!translateX || !isTopCard) {
       return { opacity: 0 };
@@ -106,6 +124,12 @@ export default function SwipeCard({ card, translateX, isTopCard = false }: Swipe
           {profile.work_type && (
             <Text style={styles.workType}>{profile.work_type}</Text>
           )}
+          {profile.tagline ? (
+            <Text style={styles.tagline} numberOfLines={1}>
+              {profile.tagline}
+            </Text>
+          ) : null}
+          {ageNeighborhoodLine ? <Text style={styles.ageNeighborhood}>{ageNeighborhoodLine}</Text> : null}
         </View>
       </View>
 
@@ -203,6 +227,17 @@ const styles = StyleSheet.create({
   workType: {
     fontSize: 14,
     color: 'rgba(255,255,255,0.8)',
+    marginTop: spacing[1],
+  },
+  tagline: {
+    fontSize: 13,
+    color: '#FFFFFF',
+    fontStyle: 'italic',
+    marginTop: spacing[1],
+  },
+  ageNeighborhood: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.9)',
     marginTop: spacing[1],
   },
   details: {

@@ -7,6 +7,28 @@
 
 ---
 
+## Baseline Findings (Step 1)
+
+### Branch
+- Current branch: `feat/phase5-baseline` (already existed and was checked out)
+
+### Commands Run
+- `npm install`
+- `npx expo start --clear`
+- Attempted iOS launch via Expo CLI (`i`)
+
+### Results
+- `npm install`: PASS (`up to date`, no install errors)
+- Expo dev server boot: PASS (Metro started successfully on port 8082 after 8081 conflict prompt)
+- iOS simulator openurl: FAIL due to simulator timeout (`simctl openurl ... exited with code 60`)
+
+### Notes
+- No code-level build/runtime errors were observed in Metro startup logs.
+- iOS openurl timeout appears to be an environment/simulator issue, not an app boot failure.
+- No baseline code fixes were required.
+
+---
+
 ## P5-01: Database — friendships Table, phone_number Column, RPCs
 
 ### Intended Behavior
@@ -30,6 +52,23 @@
 - The mutual pending auto-accept path in `send_friend_request` must be tested carefully (race condition edge case)
 - No phone number format validation at database level
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `supabase/006_friendships_table.sql`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - RUNBOOK Flow 20 (Phase 5 Database)
+  - Local verification PASS: migration contains required table/column/RPC/RLS/realtime definitions
+  - Manual Supabase SQL Editor/Dashboard verification PASS:
+    - friendships table exists
+    - profiles.phone_number column exists (text)
+    - RPCs exist: send_friend_request, respond_to_friend_request, get_pending_requests_count
+    - RLS policies present on friendships
+    - send_friend_request + respond_to_friend_request(accept) executed successfully
+    - match row created on accept
+    - get_pending_requests_count returned expected value (0)
+
 ---
 
 ## P5-02: Phase 5 TypeScript Types
@@ -49,6 +88,15 @@
 
 ### Known Risks / TODOs
 - `FriendListItem` needs `match_id` for chat navigation — ensure it's populated for both swipe-matches and manual friends
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/types/index.ts`
+  - `src/screens/discover/IntentScreen.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
 
 ---
 
@@ -75,6 +123,15 @@
 - `getRelationshipStatuses` queries both matches and friendships for a list of user IDs — potential N+1 issue, consider batch query
 - Error messages from RPC exceptions need to be parsed into user-friendly strings
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/services/friendsService.ts`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flows 21-25: BLOCKED in this environment (requires in-app multi-user flow; to be completed manually during UI ticket verification)
+
 ---
 
 ## P5-04: Navigation — 4 Tabs + Stack Navigators
@@ -99,6 +156,17 @@
 - Tab bar should remain visible when on Friends or AddFriend screens (default behavior for nested stack in tab)
 - Cross-tab navigation from Friends → Chat (Matches tab) needs to work
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/navigation/MainTabs.tsx`
+  - `src/navigation/FriendsStack.tsx`
+  - `src/navigation/ProfileStack.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK navigation verification: BLOCKED in this environment (requires in-app manual navigation test)
+
 ---
 
 ## P5-05: Build Add Friend Screen
@@ -122,6 +190,17 @@
 - Debounce implementation: use `setTimeout` with cleanup, or a hook like `useDebouncedValue`
 - Relationship status determination requires fetching matches + friendships after each search — may feel slow
 - Optimistic "Requested" update must revert on error
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/screens/friends/AddFriendScreen.tsx`
+  - `src/components/friends/UserSearchResultCard.tsx`
+  - `src/navigation/FriendsStack.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 21 (Search Users and Send Friend Request): BLOCKED in this environment (requires in-app multi-user manual test)
 
 ---
 
@@ -154,6 +233,19 @@
 - Accept action must move card from pending section to the appropriate friends category (available or not available)
 - Red dot on pending header: should use the same `getPendingRequestsCount` as the tab badge
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/screens/friends/FriendsScreen.tsx`
+  - `src/components/friends/CollapsibleSection.tsx`
+  - `src/components/friends/FriendRequestCard.tsx`
+  - `src/components/friends/FriendCard.tsx`
+  - `src/navigation/FriendsStack.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flows 22-25: BLOCKED in this environment (requires in-app multi-user manual test)
+
 ---
 
 ## P5-07: Pending Requests Badge on Friends Tab
@@ -170,6 +262,15 @@
 
 ### Known Risks / TODOs
 - Badge fetch pattern: reuse the `useFocusEffect` approach from Matches tab
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/navigation/MainTabs.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 23 (Decline Friend Request, includes badge expectation): BLOCKED in this environment (requires in-app multi-user manual test)
 
 ---
 
@@ -196,6 +297,18 @@
 - Empty state illustrations: use emoji + text (consistent with existing patterns), no custom assets needed
 - Error messages from RPCs need parsing — Supabase wraps RPC errors in a generic format
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/screens/friends/AddFriendScreen.tsx`
+  - `src/screens/friends/FriendsScreen.tsx`
+  - `package.json`
+  - `package-lock.json`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 26 (Polish verification): BLOCKED in this environment (requires in-app manual UI flow validation)
+
 ---
 
 ---
@@ -221,6 +334,16 @@
 - Storage policies may need to be applied via Dashboard if SQL doesn't work for storage.objects
 - Photo file naming uses position-based convention — overwriting on re-upload is intentional
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `supabase/007_profile_photos.sql`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - RUNBOOK Flow 27 (Verify Profile Redesign Database)
+  - Local verification PASS: migration includes required profiles columns, profile_photos schema/constraints/indexes, RLS policies, avatars bucket config, and storage policies
+  - Live Supabase SQL Editor/Dashboard execution: BLOCKED in this environment (manual execution required to fully complete Flow 27)
+
 ---
 
 ## P5-10: Profile Redesign TypeScript Types
@@ -238,6 +361,14 @@
 ### Known Risks / TODOs
 - Must not break existing type imports that depend on the current Profile shape
 - New fields are all nullable to maintain backward compatibility with existing profiles
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/types/index.ts`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
 
 ---
 
@@ -264,6 +395,17 @@
 - Photo promotion on primary delete: must update `profiles.photo_url` to the new position 0 photo
 - Race condition: user uploads multiple photos quickly — upsert handles gracefully via UNIQUE constraint
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/services/photoService.ts`
+  - `package.json`
+  - `package-lock.json`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 30 (photo management subflow) and Flow 32 dependency behavior: BLOCKED in this environment (requires in-app + Supabase storage manual validation)
+
 ---
 
 ## P5-12: Profile Service
@@ -282,6 +424,15 @@
 ### Known Risks / TODOs
 - Must not conflict with existing `AuthContext.refreshProfile()` which selects `*` from profiles
 - `getFullProfile` should handle the case where a user has 0 photos gracefully (return empty array)
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/services/profileService.ts`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK profile service verification (data persistence + combined fetch): BLOCKED in this environment (requires in-app + Supabase manual checks)
 
 ---
 
@@ -307,6 +458,18 @@
 - Onboarding step count change affects progress dots rendering
 - Photo upload during onboarding: user_id must be available (user is authenticated but profile may not have all fields yet)
 - If upload fails during onboarding, user should be able to retry without losing previous steps' data
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/components/profile/PhotoSlots.tsx`
+  - `src/screens/auth/OnboardingScreen.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 28 (New User Onboarding with Photo Upload):
+    - Local code verification PASS: 4-step onboarding, Step 4 PhotoSlots rendered, "Get Started" requires >=1 selected photo, completion uploads via `uploadPhoto()`
+    - Full in-app + Supabase verification BLOCKED in this environment (requires simulator/device account creation + Supabase dashboard checks)
 
 ---
 
@@ -336,6 +499,17 @@
 - Lead photo fallback must match existing initials pattern (consistent with SwipeCard, MatchCard)
 - `getFullProfile` call on every focus could feel slow — consider caching or conditional refresh
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/screens/profile/ProfileScreen.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 29 (Profile Screen Visual Verification):
+    - Local code verification PASS: lead photo + name overlay, age/neighborhood/city line, info card fields, additional photos rendering, Edit Profile navigation button, Sign Out, no Phone Number/My Friends rows, migration banner when no photos, focus refresh via `getFullProfile()`
+    - Full in-app visual flow BLOCKED in this environment (requires simulator/device interaction)
+
 ---
 
 ## P5-15: EditProfileScreen
@@ -362,6 +536,20 @@
 - Photos uploaded during edit persist even if Cancel is tapped — this is intentional behavior
 - Work type pills must match onboarding options exactly
 
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/screens/profile/EditProfileScreen.tsx`
+  - `src/navigation/ProfileStack.tsx`
+  - `package.json`
+  - `package-lock.json`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 30 (Edit Profile Flow):
+    - Local code verification PASS: Cancel/Save header, PhotoSlots with action sheet options (Change Photo / Remove Photo / Set as Primary / Cancel), text fields, birthday date picker, work type pills, immediate photo upload/delete/set-primary behavior, Save updates text fields via `updateProfile()` then `refreshProfile()` + `goBack()`, Cancel goes back without saving text changes
+    - Full in-app + Supabase validation BLOCKED in this environment (requires simulator/device + Supabase dashboard checks)
+
 ---
 
 ## P5-16: SwipeCard Tagline Update
@@ -382,6 +570,17 @@
 ### Known Risks / TODOs
 - Must not change existing overlay layout significantly
 - Long taglines truncated with numberOfLines={1}
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/components/discover/SwipeCard.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 31 (Discover Card with Photo and Tagline):
+    - Local code verification PASS: tagline rendered below work type with 13px white italic + `numberOfLines={1}`; age + neighborhood line rendered in overlay; null/empty values render nothing
+    - Full in-app visual verification BLOCKED in this environment (requires simulator/device interaction)
 
 ---
 
@@ -404,6 +603,67 @@
 ### Known Risks / TODOs
 - These components already handle photo_url — should work automatically once photo_url is populated
 - If components reference an old photo URL after deletion, expo-image will show empty/broken state
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 32 (Avatar Verification - MatchCard + MatchModal):
+    - Local code verification PASS:
+      - `src/components/matches/MatchCard.tsx` renders `other_user.photo_url` with fallback initials
+      - `src/components/matches/MatchModal.tsx` renders `profile.photo_url` for both users with fallback initials
+      - `supabase/003_matching_tables.sql` `fetch_match_previews` returns `other_user_photo_url` from `profiles.photo_url`
+      - `src/services/messagingService.ts` maps `other_user_photo_url` → `MatchPreview.other_user.photo_url`
+    - Full in-app + database verification BLOCKED in this environment (requires matched users and simulator/device interaction)
+
+---
+
+## P5-18: Editable Username (Unique Handle)
+
+### Intended Behavior
+- Edit Profile includes a username field users can customize
+- Username validation enforces allowed format and minimum length
+- Save persists `profiles.username` when valid and available
+- Duplicate usernames return a clear user-facing error
+- Friend search and user cards reflect the updated username
+
+### Expected File Paths
+- `src/screens/profile/EditProfileScreen.tsx` (modified)
+- `src/services/profileService.ts` (modified if needed for username update handling)
+- `src/types/index.ts` (verify existing username coverage for affected UI/service types)
+
+### Verification
+- RUNBOOK: Flow 33 — Editable Username (P5-18 Add-On)
+- Update username to an available value, save, verify persistence in Supabase
+- Attempt duplicate username, verify conflict error is shown
+- Verify updated username appears in Add Friend search/results
+
+### Known Risks / TODOs
+- DB uniqueness must be enforced server-side (not client-only)
+- Existing users with fallback usernames need smooth migration path
+- Keep current profile and friend features unchanged outside username editing scope
+
+### Implementation Status
+- Ticket status: DONE
+- Files changed:
+  - `src/screens/profile/EditProfileScreen.tsx`
+  - `src/services/profileService.ts`
+  - `src/types/index.ts`
+  - `src/services/friendsService.ts`
+  - `src/screens/friends/AddFriendScreen.tsx`
+  - `src/components/friends/UserSearchResultCard.tsx`
+  - `docs/PHASE_5_IMPLEMENTED.md`
+- Verification performed:
+  - `npx tsc --noEmit`: PASS
+  - RUNBOOK Flow 33 (Editable Username):
+    - Local code verification PASS:
+      - Edit Profile shows editable username field pre-populated from profile
+      - Username validation enforces length/format before save
+      - Duplicate username DB conflicts map to user-friendly "Username is already taken."
+      - Add Friend search/query + UI are username-first (search by username, `@username` displayed prominently)
+    - Full in-app + Supabase verification BLOCKED in this environment (requires multi-user app interaction + SQL checks)
 
 ---
 
@@ -447,3 +707,34 @@ npm start
 8. Navigate to Discover → verify SwipeCard shows photo, tagline, age + neighborhood
 9. Navigate to Matches → verify MatchCard shows photo
 10. Login as existing user without photos → verify migration banner on Profile screen
+
+---
+
+## Source of Truth Clarification (2026-02-25)
+
+Per user confirmation during execution, conflicts between RUNBOOK profile-redesign wording and plan/spec are resolved in favor of:
+- `docs/PHASE_5_PLAN.md`
+- `docs/UI_SPEC.md`
+
+Applied conflict resolutions:
+- Lead photo target height uses `~400px` (not `~200px`)
+- Profile layout uses interleaved additional photos (not thumbnail row)
+- Profile screen excludes Phone Number and My Friends rows
+
+---
+
+## Phase 5 Exit Gate Results (2026-02-25)
+
+### Local Verification Executed
+- `npx tsc --noEmit`: PASS
+- `npx expo start --clear` boot smoke: PASS (Metro started, no fatal startup error in logs)
+
+### Flow Status (PASS / FAIL)
+- Flow 1-19 (Phase 1-4 regression suite): FAIL (not executed in this environment; manual run required)
+- Flow 20 (Phase 5 DB: friendships): PASS (previous manual Supabase verification recorded)
+- Flows 21-26 (Phase 5 friends UI/e2e): FAIL (blocked in this environment; requires multi-user simulator/device + Supabase checks)
+- Flow 27 (Phase 5 DB: profile redesign): FAIL (blocked in this environment; requires manual Supabase SQL/Storage checks)
+- Flows 28-33 (Phase 5 profile redesign UI/e2e): FAIL (blocked in this environment; requires simulator/device + multi-user checks)
+
+### Exit Gate Decision
+- Phase 5 exit gate is NOT complete in this environment because required RUNBOOK flows remain manual.

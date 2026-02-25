@@ -492,6 +492,32 @@ The profile redesign adds a photo system, richer profile fields, and profile edi
 
 ---
 
+### P5-18: Editable Username (Unique Handle)
+
+**Goal:** Allow users to customize their username while preserving uniqueness and existing search behavior.
+
+**Scope:**
+- Included: Add username input to Edit Profile screen
+- Included: Client-side username validation (format + length)
+- Included: Save username via profile update flow in Edit Profile
+- Included: Show clear error if username is already taken
+- Included: Ensure friend search continues to work with updated usernames
+- Excluded: Username change history
+- Excluded: Reserved-word blacklist beyond basic validation
+- Excluded: @mention system
+
+**Dependencies:** P5-15
+
+**Definition of Done:**
+- [ ] Username field appears in Edit Profile
+- [ ] Username field is pre-populated from current profile
+- [ ] Validation blocks invalid usernames (empty/too short/invalid characters)
+- [ ] Duplicate username returns user-friendly error ("Username is already taken")
+- [ ] Successful save updates `profiles.username`
+- [ ] Updated username is visible in Add Friend search and user cards
+
+---
+
 ## Exit Criteria
 
 Phase 5 is complete when all tickets are done and:
@@ -518,6 +544,7 @@ Phase 5 is complete when all tickets are done and:
 17. Existing avatar components (MatchCard, MatchModal) show photos automatically
 18. Existing users without photos see a migration banner on Profile screen
 19. App runs without crashes on iOS simulator
+20. Users can customize username with uniqueness enforced
 
 ---
 

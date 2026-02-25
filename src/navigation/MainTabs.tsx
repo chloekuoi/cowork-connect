@@ -1,26 +1,31 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, StyleSheet } from 'react-native';
-import { NavigatorScreenParams } from '@react-navigation/native';
+import { NavigatorScreenParams, useFocusEffect } from '@react-navigation/native';
 import DiscoverScreen from '../screens/discover/DiscoverScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
 import { theme, spacing } from '../constants';
 import MatchesStack, { MatchesStackParamList } from './MatchesStack';
+import FriendsStack, { FriendsStackParamList } from './FriendsStack';
+import ProfileStack, { ProfileStackParamList } from './ProfileStack';
+import { getPendingRequestsCount } from '../services/friendsService';
+import { useAuth } from '../context/AuthContext';
 
 export type MainTabsParamList = {
   Discover: undefined;
+  Friends: NavigatorScreenParams<FriendsStackParamList> | undefined;
   Matches: NavigatorScreenParams<MatchesStackParamList> | undefined;
-  Profile: undefined;
+  Profile: NavigatorScreenParams<ProfileStackParamList> | undefined;
 };
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
-// Simple icon components (circles with different fills for now)
-function TabIcon({ focused, type }: { focused: boolean; type: 'discover' | 'matches' | 'profile' }) {
+function TabIcon({ focused, type }: { focused: boolean; type: 'discover' | 'friends' | 'matches' | 'profile' }) {
   const getIconStyle = () => {
     switch (type) {
       case 'discover':
         return styles.discoverIcon;
+      case 'friends':
+        return styles.friendsIcon;
       case 'matches':
         return styles.matchesIcon;
       case 'profile':
@@ -28,19 +33,38 @@ function TabIcon({ focused, type }: { focused: boolean; type: 'discover' | 'matc
     }
   };
 
-  return (
-    <View
-      style={[
-        styles.iconBase,
-        getIconStyle(),
-        focused && styles.iconFocused,
-      ]}
-    />
+  return <View style={[styles.iconBase, getIconStyle(), focused && styles.iconFocused]} />;
+}
+
+type FriendsTabRootProps = {
+  onPendingCountChange: (count: number) => void;
+};
+
+function FriendsTabRoot({ onPendingCountChange }: FriendsTabRootProps) {
+  const { user } = useAuth();
+
+  const refreshPendingCount = useCallback(async () => {
+    if (!user) {
+      onPendingCountChange(0);
+      return;
+    }
+
+    const { count } = await getPendingRequestsCount(user.id);
+    onPendingCountChange(count);
+  }, [onPendingCountChange, user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void refreshPendingCount();
+    }, [refreshPendingCount])
   );
+
+  return <FriendsStack />;
 }
 
 export default function MainTabs() {
   const [unreadCount, setUnreadCount] = useState(0);
+  const [friendsPendingCount, setFriendsPendingCount] = useState(0);
 
   return (
     <Tab.Navigator
@@ -61,9 +85,20 @@ export default function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="Friends"
+        options={{
+          tabBarIcon: ({ focused }) => <TabIcon focused={focused} type="friends" />,
+          tabBarLabel: 'Friends',
+          tabBarBadge: friendsPendingCount > 0 ? friendsPendingCount : undefined,
+        }}
+      >
+        {() => <FriendsTabRoot onPendingCountChange={setFriendsPendingCount} />}
+      </Tab.Screen>
+      <Tab.Screen
         name="Matches"
         options={{
           tabBarIcon: ({ focused }) => <TabIcon focused={focused} type="matches" />,
+          tabBarLabel: 'Chat',
           tabBarBadge: unreadCount > 0 ? unreadCount : undefined,
         }}
       >
@@ -71,7 +106,7 @@ export default function MainTabs() {
       </Tab.Screen>
       <Tab.Screen
         name="Profile"
-        component={ProfileScreen}
+        component={ProfileStack}
         options={{
           tabBarIcon: ({ focused }) => <TabIcon focused={focused} type="profile" />,
         }}
@@ -107,6 +142,10 @@ const styles = StyleSheet.create({
   discoverIcon: {
     borderColor: theme.textMuted,
     borderRadius: 6,
+  },
+  friendsIcon: {
+    borderColor: theme.textMuted,
+    borderRadius: 8,
   },
   matchesIcon: {
     borderColor: theme.textMuted,

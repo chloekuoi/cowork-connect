@@ -1066,7 +1066,7 @@ After running, verify:
 
 **Steps:**
 1. Login as User A
-2. Navigate to Profile tab → "My Friends" → tap "+" (Add Friend)
+2. Navigate to Friends tab → tap "+" (Add Friend)
 3. **Expected:** Add Friend screen with search input and initial prompt
 4. Type 2 characters in search input
 5. **Expected:** No search triggered (minimum 3 characters)
@@ -1107,9 +1107,9 @@ After running, verify:
 
 **Steps:**
 1. Login as User B
-2. Check Profile tab
-3. **Expected:** Badge with "1" on Profile tab icon
-4. Navigate to Profile → "My Friends"
+2. Check Friends tab
+3. **Expected:** Badge with "1" on Friends tab icon
+4. Navigate to Friends tab
 5. **Expected:** Friends screen with "Pending Requests (1)" section at top
 6. Verify request card shows:
    - User A's photo/initials
@@ -1124,16 +1124,15 @@ After running, verify:
 10. **Expected:** status='accepted', updated_at is recent
 11. Check Supabase `matches` table
 12. **Expected:** Match row exists for User A + User B (user1_id=LEAST, user2_id=GREATEST)
-13. Navigate back to Profile tab
-14. **Expected:** Badge gone (0 pending requests)
-15. Login as User A, navigate to My Friends
+13. **Expected:** Badge gone on Friends tab (0 pending requests)
+14. Login as User A, navigate to Friends tab
 16. **Expected:** User B appears in friends list
 
 **Common Failures:**
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| No badge on Profile tab | getPendingRequestsCount not called on focus | Check MainTabs useFocusEffect |
+| No badge on Friends tab | getPendingRequestsCount not called on focus | Check MainTabs useFocusEffect |
 | Badge shows wrong number | Count query incorrect | Check get_pending_requests_count RPC |
 | Accept does nothing | respondToFriendRequest not called | Check onAccept handler |
 | Match not created | create_match not called in RPC | Check respond_to_friend_request function body |
@@ -1147,7 +1146,7 @@ After running, verify:
 
 **Steps:**
 1. Login as User C
-2. Navigate to Profile → My Friends
+2. Navigate to Friends tab
 3. **Expected:** Pending request from User A visible
 4. Tap "Decline"
 5. **Expected:** Request card removed from pending section
@@ -1188,7 +1187,7 @@ After running, verify:
 11. **Expected:** D→E row status='accepted' (no E→D row created)
 12. Check Supabase `matches` table
 13. **Expected:** Match row exists for D + E
-14. Login as User D, navigate to My Friends
+14. Login as User D, navigate to Friends tab
 15. **Expected:** User E appears in friends list
 
 **Common Failures:**
@@ -1211,7 +1210,7 @@ After running, verify:
 
 **Steps:**
 1. Login as User A
-2. Navigate to Profile → My Friends
+2. Navigate to Friends tab
 3. **Expected:** Both User B and User C appear in the friends list
 4. Verify User B shows:
    - Profile photo/initials
@@ -1242,34 +1241,33 @@ After running, verify:
 
 ---
 
-### 26. Phone Number and Profile Updates
+### 26. Profile Screen Verification
 
-**Preconditions:** Logged in, on Profile screen
+**Preconditions:** Logged in, has at least 1 photo uploaded
 
 **Steps:**
 1. Navigate to Profile tab
-2. Verify "Phone Number" row shows "Add phone number" placeholder
-3. Tap the Phone Number row
-4. **Expected:** Input prompt appears (Alert.prompt on iOS, or modal)
-5. Enter "555-987-6543"
-6. Confirm
-7. **Expected:** Row updates to show "555-987-6543"
-8. Check Supabase `profiles` table
-9. **Expected:** `phone_number = '555-987-6543'` for this user
-10. Navigate away and come back to Profile
-11. **Expected:** Phone number still shows (persisted)
-12. Verify "My Friends" row shows correct friend count
-13. Tap "My Friends"
-14. **Expected:** Navigates to Friends screen
+2. Verify Hinge-style layout:
+   - Lead photo (~400px) with name overlaid at bottom-left
+   - Age · Neighborhood · City line below photo (if set)
+   - Info card with work type, tagline, currently working on
+   - Work and school (if set)
+   - Additional photos interspersed
+3. Tap "Edit Profile"
+4. **Expected:** EditProfileScreen opens
+5. Navigate back
+6. Verify "Sign Out" button at bottom
+
+**No Phone / No Friends rows on this screen.**
 
 **Common Failures:**
 
 | Symptom | Cause | Fix |
 |---------|-------|-----|
-| No phone number row | Not added to Profile screen | Check ProfileScreen layout |
-| Save fails silently | Update query error | Check profiles UPDATE query and RLS |
-| Phone number disappears on refresh | Not refetching profile | Check refreshProfile in AuthContext |
-| Friend count wrong | Count query incorrect | Check fetchFriends return length |
+| Lead photo not rendering at 400px | Style not applied | Check ProfileScreen lead photo height |
+| Name not overlaid on photo | Absolute positioning missing | Check name overlay styles |
+| Age not showing | Birthday not set or not calculated | Check birthday-to-age logic |
+| Info cards not displaying | Profile data not loaded | Check getFullProfile on focus |
 
 ---
 
@@ -1313,14 +1311,13 @@ Phase 4 (existing):
 [ ] Stale sessions auto-cancel after 24h
 
 Phase 5 (new):
-[ ] Profile screen shows "Phone Number" and "My Friends" rows
-[ ] Can add/edit phone number
+[ ] Profile screen shows Hinge-style layout with name on photo, info cards
 [ ] Friends screen shows empty state when no friends
 [ ] Can navigate to Add Friend screen via "+"
 [ ] Search works by username, email, and phone number
 [ ] Search results show correct relationship-aware buttons
 [ ] Can send friend request ("Add" → "Requested")
-[ ] Recipient sees badge on Profile tab
+[ ] Recipient sees badge on Friends tab
 [ ] Pending requests section shows on Friends screen
 [ ] Can accept friend request → moves to friends list
 [ ] Can decline friend request → removed from pending
@@ -1329,6 +1326,11 @@ Phase 5 (new):
 [ ] Tapping friend navigates to chat
 [ ] Pull-to-refresh works on Friends screen
 [ ] No crashes or unhandled errors in all flows
+[ ] 4-tab bar: Discover, Friends, Chat, Profile
+[ ] Friends tab shows friends list and pending requests
+[ ] Profile screen shows Hinge-style interleaved photos and info cards
+[ ] Edit profile works (all text fields + photos)
+[ ] Birthday, neighborhood, city fields in Edit Profile
 ```
 
 ---
@@ -1379,7 +1381,7 @@ SELECT phone_number FROM profiles LIMIT 5;
 | "function send_friend_request does not exist" | Run `supabase/006_friendships_table.sql` |
 | "Cannot send request to this user" | Check friendships table for existing declined row |
 | Match not created on accept | Verify `create_match` is called inside `respond_to_friend_request` |
-| Badge not showing on Profile tab | Check `getPendingRequestsCount` call in MainTabs on focus |
+| Badge not showing on Friends tab | Check `getPendingRequestsCount` call in MainTabs on Friends focus |
 | Search returns no results | Check ILIKE wildcards and that profile fields are populated |
 | Friends list empty despite matches existing | Check `fetchFriends` query filters (should return ALL matches) |
 | Cross-tab navigation crash | Verify Chat screen params match `MatchesStackParamList` |
@@ -1399,11 +1401,11 @@ SELECT phone_number FROM profiles LIMIT 5;
 
 Before testing profile redesign features, run the SQL migration in Supabase SQL Editor:
 
-7. `supabase/007_profile_photos.sql` — profile_photos table, profile columns (tagline, currently_working_on, work, school), avatars bucket, storage policies
+7. `supabase/007_profile_photos.sql` — profile_photos table, profile columns (tagline, currently_working_on, work, school, birthday, neighborhood, city), avatars bucket, storage policies
 
 After running, verify:
 1. Go to Table Editor → verify `profile_photos` table exists
-2. Go to Table Editor → verify `profiles` table has `tagline`, `currently_working_on`, `work`, `school` columns
+2. Go to Table Editor → verify `profiles` table has `tagline`, `currently_working_on`, `work`, `school`, `birthday`, `neighborhood`, `city` columns
 3. Go to Authentication → Policies → verify RLS policies on `profile_photos` table
 4. Go to Storage → verify `avatars` bucket exists (public)
 5. Go to Storage → Policies → verify read/write policies on `avatars` bucket
@@ -1418,8 +1420,8 @@ After running, verify:
 1. Open Supabase SQL Editor
 2. Run: `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';`
 3. **Expected:** `profile_photos` listed alongside existing tables
-4. Run: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profiles' AND column_name IN ('tagline', 'currently_working_on', 'work', 'school');`
-5. **Expected:** Four rows, all type `text`
+4. Run: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profiles' AND column_name IN ('tagline', 'currently_working_on', 'work', 'school', 'birthday', 'neighborhood', 'city');`
+5. **Expected:** Seven rows: `tagline` (text), `currently_working_on` (text), `work` (text), `school` (text), `birthday` (date), `neighborhood` (text), `city` (text)
 6. Run: `SELECT column_name, data_type FROM information_schema.columns WHERE table_name = 'profile_photos';`
 7. **Expected:** Columns: `id` (uuid), `user_id` (uuid), `photo_url` (text), `position` (integer), `created_at` (timestamp with time zone)
 8. Run: `SELECT tablename, policyname FROM pg_policies WHERE schemaname = 'public' AND tablename = 'profile_photos';`
@@ -1621,6 +1623,50 @@ After running, verify:
 
 ---
 
+### 33. Editable Username (P5-18 Add-On)
+
+**Preconditions:** User is logged in and on Profile screen
+
+**Steps:**
+1. Tap "Edit Profile"
+2. **Expected:** Username field is visible and pre-populated with current username
+3. Change username to a new valid value (example: `chloeguokuoi`)
+4. Tap "Save"
+5. **Expected:** Navigates back to Profile screen with no error
+6. Check Supabase:
+   ```sql
+   SELECT username
+   FROM profiles
+   WHERE id = 'USER_UUID';
+   ```
+7. **Expected:** `username` is updated to the new value
+8. Return to Add Friend screen from another user account
+9. Search for the updated username
+10. **Expected:** User appears in results with updated handle
+
+**Duplicate Username Test:**
+1. Open Edit Profile as User B
+2. Enter a username already used by User A
+3. Tap "Save"
+4. **Expected:** Clear user-facing error (e.g., "Username is already taken")
+5. **Expected:** Existing username remains unchanged in `profiles`
+
+**Invalid Username Test:**
+1. Enter invalid values (too short, spaces, unsupported symbols)
+2. Tap "Save"
+3. **Expected:** Validation error shown; no update sent/applied
+
+**Common Failures:**
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| Username not saved | Field not included in update payload | Include `username` in update service payload |
+| Duplicate username allowed | DB uniqueness missing | Add/verify unique constraint on `profiles.username` |
+| Duplicate error shown as generic failure | Conflict not parsed | Map DB conflict to user-friendly "Username is already taken" |
+| Search doesn't find updated username | Search query/filter mismatch | Verify user search includes `username` ILIKE filter |
+
+---
+
 ## Updated Quick Verification Checklist
 
 Run through this after profile redesign implementation:
@@ -1648,6 +1694,7 @@ Phase 5 Profile Redesign (new):
 [ ] SwipeCard shows photo and tagline
 [ ] MatchCard shows photo
 [ ] MatchModal shows photos
+[ ] Users can update username (valid + unique)
 [ ] No crashes or unhandled errors
 ```
 
@@ -1680,6 +1727,7 @@ ORDER BY created_at DESC;
 | Upload fails with 403 | Check storage bucket policies, verify user is authenticated |
 | Photo URL returns 404 | Check file was actually uploaded, verify bucket is public |
 | Profile changes don't persist | Check updateProfile query, verify RLS allows UPDATE |
+| Username update fails | Check unique constraint + username validation + update payload |
 | Onboarding stuck on Step 3 | Check totalSteps changed from 3 to 4 |
 | EditProfile save doesn't navigate back | Check goBack() called after updateProfile resolves |
 | Tagline not on SwipeCard | Check SwipeCard.tsx was modified to include tagline |

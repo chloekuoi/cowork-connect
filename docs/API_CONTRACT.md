@@ -1309,7 +1309,7 @@ Execute in Supabase SQL Editor in this order:
 
 | Table | RLS | Purpose | Phase |
 |-------|-----|---------|-------|
-| `profiles` | Enabled | User profile data | 1 (**modified Phase 5: phone_number, tagline, currently_working_on, work, school**) |
+| `profiles` | Enabled | User profile data | 1 (**modified Phase 5: phone_number, tagline, currently_working_on, work, school, birthday, neighborhood, city**) |
 | `work_intents` | Enabled | Daily work intentions for discovery | 2 |
 | `swipes` | Enabled | Swipe history (right/left) | 2 |
 | `matches` | Enabled | Persistent mutual matches | 3 |
@@ -1324,7 +1324,7 @@ Execute in Supabase SQL Editor in this order:
 
 ## Modification to Existing Table: `profiles`
 
-**Phase 5 adds five columns. All existing columns, constraints, indexes, and policies remain unchanged.**
+**Phase 5 adds eight columns. All existing columns, constraints, indexes, and policies remain unchanged.**
 
 ### New Columns
 
@@ -1335,6 +1335,9 @@ Execute in Supabase SQL Editor in this order:
 | `currently_working_on` | `TEXT` | Yes | `NULL` | Single-line casual description of current project |
 | `work` | `TEXT` | Yes | `NULL` | Work context (company, role — low-pressure, not credentials) |
 | `school` | `TEXT` | Yes | `NULL` | School context (optional, low-pressure) |
+| `birthday` | `DATE` | Yes | `NULL` | User's date of birth (used to calculate age) |
+| `neighborhood` | `TEXT` | Yes | `NULL` | Neighborhood or area (e.g. "East Village") |
+| `city` | `TEXT` | Yes | `NULL` | City (e.g. "New York") |
 
 ### Business Rules (phone_number)
 
@@ -1351,6 +1354,13 @@ Execute in Supabase SQL Editor in this order:
 - **Publicly readable:** Existing `SELECT` policy (`true`) means all authenticated users can see these fields.
 - **Owner-editable:** Existing `UPDATE` policy (`auth.uid() = id`) restricts editing to the profile owner.
 
+### Business Rules (location & birthday)
+
+- **All optional:** Users are not required to fill in birthday, neighborhood, or city.
+- **Birthday stored as DATE:** Client calculates age from birthday. Not displayed directly.
+- **No geocoding:** Neighborhood and city are free-text. No location validation or autocomplete at database level.
+- **Publicly readable:** Same as other profile fields (public SELECT policy).
+
 ### Updated RLS Notes
 
 - The existing `SELECT` policy on profiles (`true` — public read) means all new columns are readable by all authenticated users. This is acceptable for MVP.
@@ -1364,6 +1374,9 @@ ALTER TABLE profiles ADD COLUMN tagline TEXT DEFAULT NULL;
 ALTER TABLE profiles ADD COLUMN currently_working_on TEXT DEFAULT NULL;
 ALTER TABLE profiles ADD COLUMN work TEXT DEFAULT NULL;
 ALTER TABLE profiles ADD COLUMN school TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN birthday DATE DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN neighborhood TEXT DEFAULT NULL;
+ALTER TABLE profiles ADD COLUMN city TEXT DEFAULT NULL;
 ```
 
 ---
@@ -1665,7 +1678,7 @@ const { data: count } = await supabase
 | `supabase.from('profile_photos').select()` | profile_photos | Fetch user's photos |
 | `supabase.from('profile_photos').upsert()` | profile_photos | Insert/update photo record |
 | `supabase.from('profile_photos').delete()` | profile_photos | Remove photo record |
-| `supabase.from('profiles').update()` | profiles | Update profile text fields (tagline, etc.) |
+| `supabase.from('profiles').update()` | profiles | Update profile text fields (tagline, birthday, neighborhood, city, etc.) |
 | `supabase.storage.from('avatars').upload()` | avatars bucket | Upload photo file |
 | `supabase.storage.from('avatars').remove()` | avatars bucket | Delete photo file |
 | `supabase.storage.from('avatars').getPublicUrl()` | avatars bucket | Get public URL for uploaded photo |
@@ -1777,7 +1790,7 @@ const { data: count } = await supabase
    ↓
 4. User taps Save
    ↓
-5. UPDATE profiles SET tagline=?, currently_working_on=?, work=?, school=?, name=?, work_type=? WHERE id = userId
+5. UPDATE profiles SET tagline=?, currently_working_on=?, work=?, school=?, name=?, work_type=?, birthday=?, neighborhood=?, city=? WHERE id = userId
    ↓
 6. refreshProfile() → AuthContext updates
    ↓
