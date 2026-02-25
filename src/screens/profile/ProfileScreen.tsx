@@ -123,86 +123,86 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-      <View style={styles.leadPhotoContainer}>
-        {leadPhoto ? (
-          <Image source={{ uri: leadPhoto.photo_url }} style={styles.leadPhoto} contentFit="cover" />
-        ) : (
-          <View style={styles.initialsContainer}>
-            <Text style={styles.initialsText}>{initials}</Text>
+        <View style={styles.leadPhotoContainer}>
+          {leadPhoto ? (
+            <Image source={{ uri: leadPhoto.photo_url }} style={styles.leadPhoto} contentFit="cover" />
+          ) : (
+            <View style={styles.initialsContainer}>
+              <Text style={styles.initialsText}>{initials}</Text>
+            </View>
+          )}
+          <View style={styles.nameOverlay}>
+            <Text style={styles.nameOverlayText}>{profileData?.name || 'Anonymous'}</Text>
           </View>
-        )}
-        <View style={styles.nameOverlay}>
-          <Text style={styles.nameOverlayText}>{profileData?.name || 'Anonymous'}</Text>
         </View>
-      </View>
 
-      {locationLine ? <Text style={styles.metaLine}>{locationLine}</Text> : null}
+        {locationLine ? <Text style={styles.metaLine}>{locationLine}</Text> : null}
 
-      {photos.length === 0 ? (
-        <TouchableOpacity style={styles.migrationBanner} onPress={() => navigation.navigate('EditProfile')}>
-          <Text style={styles.migrationTitle}>Add a photo so people know who they&apos;re meeting!</Text>
-          <Text style={styles.migrationCta}>Tap to edit profile</Text>
+        {photos.length === 0 ? (
+          <TouchableOpacity style={styles.migrationBanner} onPress={() => navigation.navigate('EditProfile')}>
+            <Text style={styles.migrationTitle}>Add a photo so people know who they&apos;re meeting!</Text>
+            <Text style={styles.migrationCta}>Tap to edit profile</Text>
+          </TouchableOpacity>
+        ) : null}
+
+        <View style={styles.infoCard}>
+          {profileData?.work_type ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{profileData.work_type}</Text>
+            </View>
+          ) : null}
+
+          {profileData?.tagline ? <Text style={styles.tagline}>{profileData.tagline}</Text> : null}
+
+          {profileData?.currently_working_on ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Currently Working On</Text>
+              <Text style={styles.infoValue}>{profileData.currently_working_on}</Text>
+            </View>
+          ) : null}
+
+          {profileData?.work ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Work</Text>
+              <Text style={styles.infoValue}>{profileData.work}</Text>
+            </View>
+          ) : null}
+
+          {profileData?.school ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>School</Text>
+              <Text style={styles.infoValue}>{profileData.school}</Text>
+            </View>
+          ) : null}
+
+          {!profileData?.work_type &&
+          !profileData?.tagline &&
+          !profileData?.currently_working_on &&
+          !profileData?.work &&
+          !profileData?.school ? (
+            <Text style={styles.emptyInfoText}>Add profile details to help people get to know you.</Text>
+          ) : null}
+        </View>
+
+        {additionalPhotos.map((photo) => (
+          <Image
+            key={photo.id}
+            source={{ uri: photo.photo_url }}
+            style={styles.additionalPhoto}
+            contentFit="cover"
+          />
+        ))}
+
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+        <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
+          <Text style={styles.editButtonText}>Edit Profile</Text>
         </TouchableOpacity>
-      ) : null}
 
-      <View style={styles.infoCard}>
-        {profileData?.work_type ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{profileData.work_type}</Text>
-          </View>
-        ) : null}
-
-        {profileData?.tagline ? <Text style={styles.tagline}>{profileData.tagline}</Text> : null}
-
-        {profileData?.currently_working_on ? (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Currently Working On</Text>
-            <Text style={styles.infoValue}>{profileData.currently_working_on}</Text>
-          </View>
-        ) : null}
-
-        {profileData?.work ? (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Work</Text>
-            <Text style={styles.infoValue}>{profileData.work}</Text>
-          </View>
-        ) : null}
-
-        {profileData?.school ? (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>School</Text>
-            <Text style={styles.infoValue}>{profileData.school}</Text>
-          </View>
-        ) : null}
-
-        {!profileData?.work_type &&
-        !profileData?.tagline &&
-        !profileData?.currently_working_on &&
-        !profileData?.work &&
-        !profileData?.school ? (
-          <Text style={styles.emptyInfoText}>Add profile details to help people get to know you.</Text>
-        ) : null}
-      </View>
-
-      {additionalPhotos.map((photo) => (
-        <Image
-          key={photo.id}
-          source={{ uri: photo.photo_url }}
-          style={styles.additionalPhoto}
-          contentFit="cover"
-        />
-      ))}
-
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
-
-      <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
-        <Text style={styles.editButtonText}>Edit Profile</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutText}>Sign Out</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
+          <Text style={styles.signOutText}>Sign Out</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
