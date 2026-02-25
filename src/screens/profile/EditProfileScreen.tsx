@@ -295,6 +295,17 @@ export default function EditProfileScreen({ navigation }: Props) {
     [openPhotoActionSheet]
   );
 
+  const handleWorkTypePress = useCallback(() => {
+    if (saving || photoBusy) return;
+    Alert.alert('Work type', 'Select your work type', [
+      ...WORK_TYPES.map((type) => ({
+        text: type,
+        onPress: () => setForm((prev) => ({ ...prev, work_type: type })),
+      })),
+      { text: 'Cancel', style: 'cancel' as const },
+    ]);
+  }, [saving, photoBusy]);
+
   const birthdayDate = useMemo(() => {
     if (!form.birthday) return new Date();
     const parsed = new Date(form.birthday);
@@ -382,92 +393,130 @@ export default function EditProfileScreen({ navigation }: Props) {
           editable={!saving && !photoBusy}
         />
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Username</Text>
-          <TextInput
-            style={styles.input}
-            value={form.username}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, username: normalizeUsername(text) }))}
-            placeholder="username"
-            placeholderTextColor={theme.textMuted}
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <Text style={styles.helperText}>Use lowercase letters, numbers, and underscores.</Text>
+        {/* ── Fields: white area with flat rows ── */}
+        <View style={styles.fieldsArea}>
 
-          <Text style={styles.label}>Name</Text>
-          <TextInput
-            style={styles.input}
-            value={form.name}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, name: text }))}
-            placeholder="Your name"
-            placeholderTextColor={theme.textMuted}
-          />
+          {/* Group 1: About you */}
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Name</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.name}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, name: text }))}
+              placeholder="Your name"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </View>
+          <View style={styles.rowSep} />
 
-          <Text style={styles.label}>Tagline</Text>
-          <TextInput
-            style={styles.input}
-            value={form.tagline}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, tagline: text }))}
-            placeholder="One-line intro"
-            placeholderTextColor={theme.textMuted}
-          />
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Username</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.username}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, username: normalizeUsername(text) }))}
+              placeholder="@handle"
+              placeholderTextColor={colors.textTertiary}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          </View>
+          <View style={styles.rowSep} />
 
-          <Text style={styles.label}>Currently Working On</Text>
-          <TextInput
-            style={styles.input}
-            value={form.currently_working_on}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, currently_working_on: text }))}
-            placeholder="What are you building?"
-            placeholderTextColor={theme.textMuted}
-          />
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Tagline</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.tagline}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, tagline: text }))}
+              placeholder="One-line intro"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </View>
+          <View style={styles.rowSep} />
 
-          <Text style={styles.label}>Work</Text>
-          <TextInput
-            style={styles.input}
-            value={form.work}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, work: text }))}
-            placeholder="Company"
-            placeholderTextColor={theme.textMuted}
-          />
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Currently working on</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.currently_working_on}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, currently_working_on: text }))}
+              placeholder="What are you building?"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </View>
 
-          <Text style={styles.label}>School</Text>
-          <TextInput
-            style={styles.input}
-            value={form.school}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, school: text }))}
-            placeholder="School"
-            placeholderTextColor={theme.textMuted}
-          />
+          {/* Group break */}
+          <View style={styles.groupSep} />
 
-          <Text style={styles.label}>Neighborhood</Text>
-          <TextInput
-            style={styles.input}
-            value={form.neighborhood}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, neighborhood: text }))}
-            placeholder="Neighborhood"
-            placeholderTextColor={theme.textMuted}
-          />
+          {/* Group 2: Work & School */}
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Work</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.work}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, work: text }))}
+              placeholder="Company"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </View>
+          <View style={styles.rowSep} />
 
-          <Text style={styles.label}>City</Text>
-          <TextInput
-            style={styles.input}
-            value={form.city}
-            onChangeText={(text) => setForm((prev) => ({ ...prev, city: text }))}
-            placeholder="City"
-            placeholderTextColor={theme.textMuted}
-          />
-        </View>
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>School</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.school}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, school: text }))}
+              placeholder="School"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Birthday</Text>
+          {/* Group break */}
+          <View style={styles.groupSep} />
+
+          {/* Group 3: Location */}
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Neighbourhood</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.neighborhood}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, neighborhood: text }))}
+              placeholder="Your area"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </View>
+          <View style={styles.rowSep} />
+
+          <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>City</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.city}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, city: text }))}
+              placeholder="Your city"
+              placeholderTextColor={colors.textTertiary}
+            />
+          </View>
+          <View style={styles.rowSep} />
+
+          {/* Birthday — tappable row */}
           <TouchableOpacity
-            style={styles.dateButton}
+            style={styles.fieldRow}
             onPress={() => setShowBirthdayPicker(true)}
             disabled={saving || photoBusy}
+            activeOpacity={0.7}
           >
-            <Text style={styles.dateButtonText}>{formatDateLabel(form.birthday)}</Text>
+            <Text style={styles.fieldLabel}>Birthday</Text>
+            <View style={styles.fieldRowRight}>
+              <Text style={[styles.fieldValue, form.birthday ? styles.fieldValueFilled : null]}>
+                {formatDateLabel(form.birthday)}
+              </Text>
+              <Text style={styles.rowChevron}>›</Text>
+            </View>
           </TouchableOpacity>
+
           {showBirthdayPicker && (
             <DateTimePicker
               value={birthdayDate}
@@ -477,25 +526,26 @@ export default function EditProfileScreen({ navigation }: Props) {
               onChange={handleBirthdayChange}
             />
           )}
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.label}>Work Type</Text>
-          <View style={styles.pillsRow}>
-            {WORK_TYPES.map((workType) => {
-              const selected = form.work_type === workType;
-              return (
-                <TouchableOpacity
-                  key={workType}
-                  style={[styles.pill, selected && styles.pillSelected]}
-                  onPress={() => setForm((prev) => ({ ...prev, work_type: workType }))}
-                  disabled={saving || photoBusy}
-                >
-                  <Text style={[styles.pillText, selected && styles.pillTextSelected]}>{workType}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          {/* Group break */}
+          <View style={styles.groupSep} />
+
+          {/* Group 4: Work type — ActionSheet row */}
+          <TouchableOpacity
+            style={styles.fieldRow}
+            onPress={handleWorkTypePress}
+            disabled={saving || photoBusy}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.fieldLabel}>Work type</Text>
+            <View style={styles.fieldRowRight}>
+              <Text style={[styles.fieldValue, form.work_type ? styles.fieldValueFilled : null]}>
+                {form.work_type || 'Select type'}
+              </Text>
+              <Text style={styles.rowChevronDown}>▾</Text>
+            </View>
+          </TouchableOpacity>
+
         </View>
       </ScrollView>
     </View>
@@ -542,72 +592,62 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing[4],
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[3],
     paddingBottom: spacing[12],
-    gap: spacing[5],
+    gap: spacing[3],
   },
-  section: {
-    gap: spacing[2],
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: theme.textSecondary,
-    marginTop: spacing[2],
-  },
-  input: {
-    minHeight: touchTarget.min,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
+  fieldsArea: {
     backgroundColor: theme.surface,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-    fontSize: 16,
-    color: theme.text,
+    marginHorizontal: -spacing[4],
+    paddingBottom: spacing[4],
   },
-  helperText: {
-    fontSize: 12,
-    color: theme.textMuted,
-    marginTop: -4,
-  },
-  dateButton: {
-    minHeight: touchTarget.min,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    backgroundColor: theme.surface,
-    paddingHorizontal: spacing[3],
+  fieldRow: {
+    paddingHorizontal: spacing[4],
+    paddingVertical: spacing[3],
+    minHeight: 56,
     justifyContent: 'center',
   },
-  dateButtonText: {
-    fontSize: 16,
+  fieldLabel: {
+    fontSize: 15,
+    fontWeight: '600',
     color: theme.text,
+    marginBottom: 2,
   },
-  pillsRow: {
+  fieldInput: {
+    fontSize: 14,
+    color: theme.textSecondary,
+    padding: 0,
+    margin: 0,
+  },
+  fieldRowRight: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: spacing[2],
   },
-  pill: {
-    borderRadius: borderRadius.full,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    backgroundColor: theme.surface,
-    paddingVertical: spacing[2],
-    paddingHorizontal: spacing[3],
-  },
-  pillSelected: {
-    borderColor: theme.primary,
-    backgroundColor: colors.accentPrimaryLight,
-  },
-  pillText: {
+  fieldValue: {
     fontSize: 14,
-    color: theme.text,
-    fontWeight: '500',
+    color: colors.textTertiary,
+    flex: 1,
   },
-  pillTextSelected: {
-    color: theme.primary,
-    fontWeight: '600',
+  fieldValueFilled: {
+    color: theme.textSecondary,
+  },
+  rowChevron: {
+    fontSize: 16,
+    color: colors.borderDefault,
+  },
+  rowChevronDown: {
+    fontSize: 14,
+    color: colors.borderDefault,
+  },
+  rowSep: {
+    height: 1,
+    backgroundColor: colors.borderDefault,
+    marginHorizontal: spacing[4],
+  },
+  groupSep: {
+    height: 8,
+    backgroundColor: colors.bgSecondary,
   },
 });
