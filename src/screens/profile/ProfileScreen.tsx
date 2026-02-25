@@ -12,7 +12,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
-import { colors, theme, spacing, borderRadius, touchTarget } from '../../constants';
+import { colors, theme, spacing, borderRadius } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
 import { getFullProfile } from '../../services/profileService';
 import { getTodayIntent } from '../../services/discoveryService';
@@ -163,6 +163,17 @@ export default function ProfileScreen() {
     { label: 'Work type', value: profileData?.work_type },
   ].filter((r): r is { label: string; value: string } => Boolean(r.value));
 
+  const isProfileEmpty =
+    filledPhotos.length === 0 &&
+    !profileData?.name &&
+    !profileData?.tagline &&
+    !profileData?.currently_working_on &&
+    !profileData?.work &&
+    !profileData?.school &&
+    !profileData?.neighborhood &&
+    !profileData?.city &&
+    !profileData?.work_type;
+
   const renderGroup = (rows: { label: string; value: string }[]) => {
     if (rows.length === 0) return null;
     return rows.map((row, index) => (
@@ -219,6 +230,22 @@ export default function ProfileScreen() {
             ))
           )}
         </View>
+
+        {isProfileEmpty ? (
+          <View style={styles.nudgeCard}>
+            <Text style={styles.nudgeTitle}>Your profile is blank</Text>
+            <Text style={styles.nudgeBody}>
+              Add a photo and a few details so co-workers know who they'll be meeting.
+            </Text>
+            <TouchableOpacity
+              style={styles.nudgeCta}
+              onPress={() => navigation.navigate('EditProfile')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.nudgeCtaText}>Complete your profile</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
         {/* ── Name + meta ── */}
         <View style={styles.nameBlock}>
@@ -286,12 +313,12 @@ export default function ProfileScreen() {
           </View>
         ) : null}
 
-        <TouchableOpacity style={styles.editButton} onPress={() => navigation.navigate('EditProfile')}>
-          <Text style={styles.editButtonText}>Edit Profile</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Sign Out</Text>
+        <TouchableOpacity
+          style={styles.signOutLink}
+          onPress={handleSignOut}
+          hitSlop={{ top: 12, bottom: 12, left: 24, right: 24 }}
+        >
+          <Text style={styles.signOutLinkText}>Sign out</Text>
         </TouchableOpacity>
       </ScrollView>
     </View>
@@ -446,33 +473,50 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: colors.bgSecondary,
   },
-  editButton: {
-    marginTop: spacing[5],
+  signOutLink: {
+    alignSelf: 'center',
+    marginTop: spacing[8],
+    marginBottom: spacing[6],
+  },
+  signOutLinkText: {
+    fontSize: 14,
+    color: theme.textMuted,
+    fontWeight: '400',
+  },
+  nudgeCard: {
+    marginTop: spacing[4],
     marginHorizontal: spacing[4],
-    minHeight: touchTarget.min,
-    borderRadius: borderRadius.md,
+    backgroundColor: colors.accentSecondaryLight,
+    borderRadius: borderRadius.xl,
+    padding: spacing[5],
     borderWidth: 1,
-    borderColor: colors.borderDefault,
-    backgroundColor: theme.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderColor: colors.accentSecondary,
   },
-  editButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  nudgeTitle: {
+    fontSize: 17,
+    fontWeight: '700',
     color: theme.text,
+    marginBottom: spacing[2],
   },
-  signOutButton: {
-    marginTop: spacing[6],
+  nudgeBody: {
+    fontSize: 14,
+    color: theme.textSecondary,
+    lineHeight: 21,
     marginBottom: spacing[4],
-    minHeight: touchTarget.min,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  signOutText: {
-    fontSize: 16,
-    color: theme.error,
-    fontWeight: '500',
+  nudgeCta: {
+    backgroundColor: colors.accentPrimary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing[3],
+    paddingHorizontal: spacing[4],
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  nudgeCtaText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#FFFFFF',
   },
   intentCard: {
     marginTop: spacing[4],
