@@ -149,22 +149,20 @@ export default function ProfileScreen() {
           )}
         </View>
 
-        {locationLine ? <Text style={styles.metaLine}>{locationLine}</Text> : null}
-
-        {photos.length === 0 ? (
-          <TouchableOpacity style={styles.migrationBanner} onPress={() => navigation.navigate('EditProfile')}>
-            <Text style={styles.migrationTitle}>Add a photo so people know who they&apos;re meeting!</Text>
-            <Text style={styles.migrationCta}>Tap to edit profile</Text>
-          </TouchableOpacity>
-        ) : null}
+        {/* ── Name + meta ── */}
+        <View style={styles.nameBlock}>
+          <Text style={styles.nameText}>{profileData?.name || 'Your Name'}</Text>
+          <View style={styles.metaRow}>
+            {locationLine ? <Text style={styles.metaText}>{locationLine}</Text> : null}
+            {profileData?.work_type ? (
+              <View style={styles.workTypePill}>
+                <Text style={styles.workTypePillText}>{profileData.work_type}</Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
 
         <View style={styles.infoCard}>
-          {profileData?.work_type ? (
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>{profileData.work_type}</Text>
-            </View>
-          ) : null}
-
           {profileData?.tagline ? <Text style={styles.tagline}>{profileData.tagline}</Text> : null}
 
           {profileData?.currently_working_on ? (
@@ -294,31 +292,38 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: theme.textSecondary,
   },
-  metaLine: {
-    marginTop: spacing[3],
-    marginHorizontal: spacing[5],
-    fontSize: 16,
+  nameBlock: {
+    marginTop: spacing[4],
+    marginHorizontal: spacing[4],
+  },
+  nameText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: theme.text,
+    letterSpacing: -0.3,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing[2],
+    marginTop: spacing[1],
+  },
+  metaText: {
+    fontSize: 15,
     color: theme.textSecondary,
     fontWeight: '500',
   },
-  migrationBanner: {
-    marginTop: spacing[4],
-    marginHorizontal: spacing[4],
+  workTypePill: {
     backgroundColor: colors.accentPrimaryLight,
-    borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
-    padding: spacing[4],
+    paddingHorizontal: spacing[3],
+    paddingVertical: 3,
+    borderRadius: borderRadius.full,
   },
-  migrationTitle: {
-    fontSize: 15,
+  workTypePillText: {
+    fontSize: 12,
+    color: colors.accentPrimary,
     fontWeight: '600',
-    color: theme.text,
-  },
-  migrationCta: {
-    marginTop: spacing[1],
-    fontSize: 13,
-    color: theme.textSecondary,
   },
   infoCard: {
     marginTop: spacing[4],
@@ -329,19 +334,6 @@ const styles = StyleSheet.create({
     borderColor: colors.borderDefault,
     padding: spacing[4],
     ...shadows.card,
-  },
-  badge: {
-    backgroundColor: colors.accentPrimaryLight,
-    alignSelf: 'flex-start',
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[1],
-    borderRadius: borderRadius.full,
-    marginBottom: spacing[3],
-  },
-  badgeText: {
-    fontSize: 12,
-    color: colors.accentPrimary,
-    fontWeight: '600',
   },
   tagline: {
     fontSize: 18,
