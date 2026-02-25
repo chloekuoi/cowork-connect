@@ -278,10 +278,10 @@ export default function ProfileScreen() {
             {aboutYouRows.length > 0 && workSchoolRows.length > 0 ? <View style={styles.groupSep} /> : null}
             {renderGroup(workSchoolRows)}
 
-            {workSchoolRows.length > 0 && locationRows.length > 0 ? <View style={styles.groupSep} /> : null}
+            {(aboutYouRows.length > 0 || workSchoolRows.length > 0) && locationRows.length > 0 ? <View style={styles.groupSep} /> : null}
             {renderGroup(locationRows)}
 
-            {locationRows.length > 0 && workTypeRows.length > 0 ? <View style={styles.groupSep} /> : null}
+            {(aboutYouRows.length > 0 || workSchoolRows.length > 0 || locationRows.length > 0) && workTypeRows.length > 0 ? <View style={styles.groupSep} /> : null}
             {renderGroup(workTypeRows)}
           </View>
         ) : null}
