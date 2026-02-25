@@ -186,8 +186,7 @@ export default function ProfileScreen() {
             </View>
           ) : null}
 
-          {!profileData?.work_type &&
-          !profileData?.tagline &&
+          {!profileData?.tagline &&
           !profileData?.currently_working_on &&
           !profileData?.work &&
           !profileData?.school ? (
@@ -246,6 +245,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
+    paddingHorizontal: spacing[4],
     paddingBottom: spacing[12],
   },
   loadingContainer: {
