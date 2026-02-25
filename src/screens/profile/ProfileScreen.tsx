@@ -18,6 +18,13 @@ import { getFullProfile } from '../../services/profileService';
 import { Profile, ProfilePhoto } from '../../types';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
 
+const PHOTO_PROMPTS = [
+  "Hi, I'm a real person 👋",
+  'Proof I touch grass sometimes',
+  'What my camera roll actually looks like',
+  'Currently building something...',
+];
+
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
   const insets = useSafeAreaInsets();
@@ -64,10 +71,9 @@ export default function ProfileScreen() {
     );
   };
 
-  const leadPhoto = photos.find((photo) => photo.position === 0) || photos[0] || null;
-  const additionalPhotos = useMemo(
-    () => photos.filter((photo) => !leadPhoto || photo.id !== leadPhoto.id),
-    [leadPhoto, photos]
+  const filledPhotos = useMemo(
+    () => [...photos].sort((a, b) => a.position - b.position),
+    [photos]
   );
 
   const initials = profileData?.name
@@ -123,17 +129,24 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <View style={styles.leadPhotoContainer}>
-          {leadPhoto ? (
-            <Image source={{ uri: leadPhoto.photo_url }} style={styles.leadPhoto} contentFit="cover" />
-          ) : (
-            <View style={styles.initialsContainer}>
+        {/* ── Photo stack ── */}
+        <View style={styles.photoStack}>
+          {filledPhotos.length === 0 ? (
+            <View style={[styles.photoFrame, styles.primaryFrame, styles.initialsFrame]}>
               <Text style={styles.initialsText}>{initials}</Text>
             </View>
+          ) : (
+            filledPhotos.map((photo) => (
+              <View key={photo.id} style={styles.photoBlock}>
+                <View style={[styles.photoFrame, photo.position === 0 ? styles.primaryFrame : styles.secondaryFrame]}>
+                  <Image source={{ uri: photo.photo_url }} style={styles.photoImage} contentFit="cover" />
+                </View>
+                {PHOTO_PROMPTS[photo.position] ? (
+                  <Text style={styles.promptLabel}>{PHOTO_PROMPTS[photo.position]}</Text>
+                ) : null}
+              </View>
+            ))
           )}
-          <View style={styles.nameOverlay}>
-            <Text style={styles.nameOverlayText}>{profileData?.name || 'Anonymous'}</Text>
-          </View>
         </View>
 
         {locationLine ? <Text style={styles.metaLine}>{locationLine}</Text> : null}
@@ -183,15 +196,6 @@ export default function ProfileScreen() {
             <Text style={styles.emptyInfoText}>Add profile details to help people get to know you.</Text>
           ) : null}
         </View>
-
-        {additionalPhotos.map((photo) => (
-          <Image
-            key={photo.id}
-            source={{ uri: photo.photo_url }}
-            style={styles.additionalPhoto}
-            contentFit="cover"
-          />
-        ))}
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -252,42 +256,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.background,
   },
-  leadPhotoContainer: {
-    height: 400,
-    marginHorizontal: spacing[4],
-    marginTop: spacing[4],
-    borderRadius: borderRadius.xl,
-    overflow: 'hidden',
-  },
-  leadPhoto: {
-    width: '100%',
-    height: '100%',
-  },
-  initialsContainer: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.accentSubtle,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   initialsText: {
     fontSize: 72,
     fontWeight: '700',
     color: colors.textSecondary,
   },
-  nameOverlay: {
-    position: 'absolute',
-    left: spacing[4],
-    right: spacing[4],
-    bottom: spacing[4],
+  photoStack: {
+    gap: spacing[3],
+    paddingHorizontal: spacing[4],
+    paddingTop: spacing[4],
   },
-  nameOverlayText: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0, 0, 0, 0.6)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
+  photoBlock: {
+    gap: spacing[2],
+  },
+  photoFrame: {
+    width: '100%',
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+  },
+  primaryFrame: {
+    aspectRatio: 1.1,
+  },
+  secondaryFrame: {
+    aspectRatio: 1.72,
+  },
+  photoImage: {
+    width: '100%',
+    height: '100%',
+  },
+  initialsFrame: {
+    backgroundColor: colors.accentSubtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  promptLabel: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: theme.textSecondary,
   },
   metaLine: {
     marginTop: spacing[3],
@@ -364,12 +369,6 @@ const styles = StyleSheet.create({
   emptyInfoText: {
     fontSize: 14,
     color: theme.textMuted,
-  },
-  additionalPhoto: {
-    height: 360,
-    marginTop: spacing[4],
-    marginHorizontal: spacing[4],
-    borderRadius: borderRadius.xl,
   },
   errorText: {
     marginTop: spacing[4],
