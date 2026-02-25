@@ -13,6 +13,7 @@ import {
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, theme, spacing, borderRadius, touchTarget } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
@@ -34,7 +35,6 @@ const PHOTO_PROMPTS = [
   'Proof I touch grass sometimes',
   'What my camera roll actually looks like',
   'Currently building something...',
-  "A photo that shows your vibe",
 ];
 
 const PHOTO_SUBTITLES = [
@@ -42,7 +42,6 @@ const PHOTO_SUBTITLES = [
   'Hobbies, activities, general humanness',
   'Candid is an understatement',
   'Still figuring it out, send help',
-  '',
 ];
 
 type Props = NativeStackScreenProps<ProfileStackParamList, 'EditProfile'>;
@@ -117,6 +116,7 @@ function toIsoDate(date: Date): string {
 }
 
 export default function EditProfileScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { user, refreshProfile } = useAuth();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -370,7 +370,7 @@ export default function EditProfileScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} disabled={saving || photoBusy}>
           <Text style={styles.headerButton}>Cancel</Text>
         </TouchableOpacity>
@@ -383,7 +383,7 @@ export default function EditProfileScreen({ navigation }: Props) {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
         <PhotoSlots
           photos={photos}
-          totalSlots={5}
+          totalSlots={4}
           onAddPhoto={onPhotoSlotAdd}
           onRemovePhoto={onPhotoSlotRemove}
           onSetPrimary={onPhotoSlotSetPrimary}
