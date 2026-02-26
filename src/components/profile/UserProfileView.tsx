@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,7 +8,11 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { colors, theme, spacing, borderRadius } from '../../constants';
-import { Profile, ProfilePhoto, WorkIntent } from '../../types';
+import { Profile, ProfilePhoto, WorkIntent, WorkStyle, LocationType } from '../../types';
+
+// ── Constants ────────────────────────────────────────────────────────────────
+
+const INTENT_CARD_BORDER = '#D4E4D8';
 
 // ── Helpers (moved here from ProfileScreen) ─────────────────────────────────
 
@@ -19,13 +23,13 @@ const PHOTO_PROMPTS = [
   'Currently building something...',
 ];
 
-const WORK_STYLE_EMOJI: Record<string, string> = {
+const WORK_STYLE_EMOJI: Record<WorkStyle, string> = {
   'Deep focus': '🎧',
   'Chat mode': '💬',
   Flexible: '✌️',
 };
 
-const LOCATION_EMOJI: Record<string, string> = {
+const LOCATION_EMOJI: Record<LocationType, string> = {
   Cafe: '☕️',
   Library: '📚',
   Anywhere: '📍',
@@ -42,9 +46,11 @@ function formatBirthdayDisplay(iso: string): string {
 }
 
 function formatDisplayTime(value: string): string {
-  const [hourStr, minuteStr] = value.split(':');
-  const hour = Number(hourStr);
-  const minute = Number(minuteStr);
+  const parts = value.split(':');
+  if (parts.length < 2) return value;
+  const hour = Number(parts[0]);
+  const minute = Number(parts[1]);
+  if (Number.isNaN(hour) || Number.isNaN(minute)) return value;
   const period = hour >= 12 ? 'PM' : 'AM';
   const displayHour = hour % 12 === 0 ? 12 : hour % 12;
   return `${displayHour}:${minute.toString().padStart(2, '0')} ${period}`;
@@ -118,10 +124,10 @@ export default function UserProfileView({
   }, [profile.birthday]);
 
   // Only show pills that have values
-  const pills: { icon: string; label: string }[] = [
-    ...(profile.work_type ? [{ icon: '💼', label: profile.work_type }] : []),
-    ...(profile.neighborhood ? [{ icon: '📍', label: profile.neighborhood }] : []),
-    ...(profile.city ? [{ icon: '🏙️', label: profile.city }] : []),
+  const pills: { key: string; icon: string; label: string }[] = [
+    ...(profile.work_type ? [{ key: 'work_type', icon: '💼', label: profile.work_type }] : []),
+    ...(profile.neighborhood ? [{ key: 'neighborhood', icon: '📍', label: profile.neighborhood }] : []),
+    ...(profile.city ? [{ key: 'city', icon: '🏙️', label: profile.city }] : []),
   ];
 
   // Field groups — empty values are hidden
@@ -147,7 +153,7 @@ export default function UserProfileView({
   const hasAnyFields =
     aboutYouRows.length > 0 || workSchoolRows.length > 0 || locationRows.length > 0;
 
-  const renderGroup = (rows: { label: string; value: string }[]) => {
+  const renderGroup = useCallback((rows: { label: string; value: string }[]) => {
     if (rows.length === 0) return null;
     return rows.map((row, idx) => (
       <React.Fragment key={row.label}>
@@ -158,7 +164,7 @@ export default function UserProfileView({
         {idx < rows.length - 1 ? <View style={styles.rowSep} /> : null}
       </React.Fragment>
     ));
-  };
+  }, []);
 
   // Show intent card: always if active; only for own profile if empty
   const showIntentCard = todayIntent !== null || isOwnProfile;
@@ -210,7 +216,7 @@ export default function UserProfileView({
             contentContainerStyle={styles.pillsContent}
           >
             {pills.map((pill) => (
-              <View key={pill.label} style={styles.pill}>
+              <View key={pill.key} style={styles.pill}>
                 <Text style={styles.pillIcon}>{pill.icon}</Text>
                 <Text style={styles.pillText}>{pill.label}</Text>
               </View>
@@ -407,7 +413,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.xl,
     padding: spacing[4],
     borderWidth: 1,
-    borderColor: '#D4E4D8',
+    borderColor: INTENT_CARD_BORDER,
   },
   intentCardEmpty: {
     backgroundColor: theme.surface,
