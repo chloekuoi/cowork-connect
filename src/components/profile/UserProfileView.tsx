@@ -477,6 +477,6 @@ const styles = StyleSheet.create({
   intentCtaText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: colors.textInverse,
   },
 });
