@@ -27,7 +27,7 @@ type CardStackProps = {
 };
 
 export default function CardStack({ cards, onSwipe, onEmpty }: CardStackProps) {
-  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedCard, setSelectedCard] = useState<DiscoveryCard | null>(null);
 
   const translateX = useSharedValue(0);
