@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -62,13 +62,8 @@ export default function ProfileScreen() {
     ]);
   };
 
-  const filledPhotos = useMemo(
-    () => [...photos].sort((a, b) => a.position - b.position),
-    [photos]
-  );
-
   const isProfileEmpty =
-    filledPhotos.length === 0 &&
+    photos.length === 0 &&
     !profileData?.name &&
     !profileData?.tagline &&
     !profileData?.currently_working_on &&
@@ -102,13 +97,15 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
-        <UserProfileView
-          profile={profileData ?? ({} as Profile)}
-          photos={filledPhotos}
-          todayIntent={todayIntent}
-          isOwnProfile
-          onSetFocusPress={() => navigation.getParent()?.navigate('Discover' as never)}
-        />
+        {profileData !== null ? (
+          <UserProfileView
+            profile={profileData}
+            photos={photos}
+            todayIntent={todayIntent}
+            isOwnProfile
+            onSetFocusPress={() => navigation.getParent()?.navigate('Discover' as never)}
+          />
+        ) : null}
 
         {/* Nudge card — shown when profile is completely blank */}
         {isProfileEmpty ? (
