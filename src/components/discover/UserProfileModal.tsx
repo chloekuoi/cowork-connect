@@ -6,11 +6,17 @@ import {
   Modal,
   ScrollView,
   TouchableOpacity,
-  SafeAreaView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, theme, spacing, borderRadius } from '../../constants';
 import { DiscoveryCard } from '../../types';
 import UserProfileView from '../profile/UserProfileView';
+
+// Skip/Connect palette — approved from design mockup
+const SKIP_BG = '#FFF0F0';
+const SKIP_BORDER = '#F5C2C2';
+const SKIP_TEXT = '#C0392B';
+const CONNECT_BORDER = '#C4DDD0';
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -53,7 +59,6 @@ export default function UserProfileModal({
             todayIntent={card.intent}
             isOwnProfile={false}
           />
-          <View style={styles.bottomSpacer} />
         </ScrollView>
 
         {/* Sticky Skip / Connect bar */}
@@ -100,9 +105,6 @@ const styles = StyleSheet.create({
   content: {
     paddingBottom: spacing[4],
   },
-  bottomSpacer: {
-    height: spacing[4],
-  },
   // Action bar
   actionBar: {
     flexDirection: 'row',
@@ -120,15 +122,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: spacing[4],
     borderRadius: borderRadius.lg,
-    backgroundColor: '#FFF0F0',
+    backgroundColor: SKIP_BG,
     borderWidth: 1.5,
-    borderColor: '#F5C2C2',
+    borderColor: SKIP_BORDER,
     minHeight: 54,
   },
   btnSkipText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#C0392B',
+    color: SKIP_TEXT,
   },
   btnConnect: {
     flex: 1,
@@ -138,7 +140,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.lg,
     backgroundColor: colors.accentPrimaryLight,
     borderWidth: 1.5,
-    borderColor: '#C4DDD0',
+    borderColor: CONNECT_BORDER,
     minHeight: 54,
   },
   btnConnectText: {
