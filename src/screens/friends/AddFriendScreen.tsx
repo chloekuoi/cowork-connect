@@ -156,11 +156,11 @@ export default function AddFriendScreen({ navigation }: Props) {
     () => (
       <View style={styles.headerArea}>
         <Text style={styles.title}>Add Friend</Text>
-        <Text style={styles.subtitle}>Search by username</Text>
+        <Text style={styles.subtitle}>Search by username, email, or phone</Text>
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search by username"
+          placeholder="Search by username, email, or phone"
           placeholderTextColor={theme.textMuted}
           style={styles.searchInput}
           autoCapitalize="none"
@@ -204,7 +204,7 @@ export default function AddFriendScreen({ navigation }: Props) {
                 <Text style={styles.stateText}>Searching...</Text>
               </>
             ) : showInitialState ? (
-              <Text style={styles.stateText}>Search by username</Text>
+              <Text style={styles.stateText}>Search by username, email, or phone</Text>
             ) : showNoResults ? (
               <Text style={styles.stateText}>No users found</Text>
             ) : (

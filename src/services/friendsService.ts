@@ -159,7 +159,7 @@ export async function searchUsers(
     .from('profiles')
     .select('id,username,email,phone_number,name,photo_url')
     .neq('id', currentUserId)
-    .ilike('username', ilike)
+    .or(`username.ilike.${ilike},email.ilike.${ilike},phone_number.ilike.${ilike}`)
     .limit(20);
 
   if (error) {
