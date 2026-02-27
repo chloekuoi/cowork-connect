@@ -2145,3 +2145,153 @@ Navigation restructured as described in Phase 5: Friends & Polish Navigation sec
 | Upload fails mid-onboarding | Alert with error, user can retry. Cannot proceed without 1 photo. |
 | Existing user logs in (no photos) | Migration banner on Profile screen, onboarding NOT re-triggered |
 | Photo URL becomes stale (deleted from storage) | expo-image shows fallback/empty. User can re-upload via EditProfile. |
+
+---
+
+# Phase 6: Friend Profile View
+
+**Added:** 2026-02-27
+
+---
+
+## Updated Component: FriendCard
+
+**File:** `src/components/friends/FriendCard.tsx`
+
+**Change:** Avatar becomes an independently tappable zone for opening the profile. The outer card tap (chat) is preserved.
+
+**Updated Props:**
+- `friend: FriendListItem` — unchanged
+- `variant: 'available' | 'simple'` — unchanged
+- `onPress: () => void` — unchanged (opens chat)
+- `onProfilePress?: () => void` — NEW, optional; fires when avatar is tapped
+
+**Updated Interaction Zones:**
+
+| Tap Target | Area | Action |
+|------------|------|--------|
+| Avatar (40×40pt circle) | Left side | Calls `onProfilePress` |
+| Name, meta text, availability dot, card body | Rest of card | Calls `onPress` (chat) |
+
+**States:**
+- `onProfilePress` not provided → avatar tap falls through to `onPress` (disabled inner touchable)
+- `onProfilePress` provided → avatar tap fires `onProfilePress` only; does not bubble to outer press
+
+**No visual changes** — card layout, spacing, colors unchanged.
+
+---
+
+## New Component: FriendProfileModal
+
+**File:** `src/components/friends/FriendProfileModal.tsx`
+
+**Purpose:** Bottom sheet modal for viewing a friend's full read-only profile from the Friends tab. Mirrors the `UserProfileModal` pattern from the Discover tab.
+
+**Props:**
+- `visible: boolean` — controls modal visibility
+- `profile: Profile | null` — the friend's full profile
+- `photos: ProfilePhoto[]` — the friend's photos (passed to `UserProfileView`)
+- `intent: WorkIntent | null` — the friend's today's intent (may be null)
+- `loading: boolean` — true while Supabase fetch is in progress
+- `onDismiss: () => void` — called when modal is dismissed
+- `onMessage: () => void` — called when `💬` icon is tapped
+
+**Layout (top → bottom):**
+```
+┌─────────────────────────┐
+│ ──── (drag handle)  💬  │  ← header: drag handle centered, 💬 icon top-right
+├─────────────────────────┤
+│                         │
+│   [ActivityIndicator]   │  ← loading state (centered in scroll area)
+│                         │
+│     OR                  │
+│                         │
+│   [UserProfileView]     │  ← loaded state (scrollable)
+│   photos                │
+│   name · age · pills    │
+│   today's focus         │
+│   field rows            │
+│                         │
+└─────────────────────────┘
+```
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `loading` | `loading === true` | Centered `ActivityIndicator` in scroll body; `💬` icon visible |
+| `loaded` | `loading === false` and `profile` is non-null | Full `UserProfileView` in scroll body |
+
+**Interactions:**
+- Tap `💬` icon → calls `onMessage` (modal does not auto-dismiss; caller handles dismiss + navigate)
+- Swipe sheet down → iOS calls `onDismiss` via `onRequestClose` (native `pageSheet` behavior)
+- Tap outside sheet (iOS) → calls `onDismiss`
+
+**Modal config:**
+- `animationType="slide"`
+- `presentationStyle="pageSheet"`
+- `onRequestClose={onDismiss}`
+
+**UserProfileView config inside modal:**
+- `isOwnProfile={false}` — hides "Set Today's Focus" CTA
+- `photos` passed when available — shows full photo stack
+- `todayIntent` passed directly — shows Today's Focus card if non-null, hides if null
+
+---
+
+## Updated Screen: FriendsScreen
+
+**File:** `src/screens/friends/FriendsScreen.tsx`
+
+**Change:** Three new state fields + `handleOpenProfile` handler + `FriendProfileModal` rendered at bottom of JSX.
+
+**New state:**
+- `profileModalFriend: FriendListItem | null` — which friend's modal is open (null = closed)
+- `profileLoading: boolean` — true while profile fetch is in progress
+- `profileData: { profile: Profile | null; photos: ProfilePhoto[]; intent: WorkIntent | null } | null`
+
+**New interaction flow:**
+
+```
+User taps avatar on FriendCard
+  → handleOpenProfile(friend) called
+  → Modal opens immediately (loading spinner)
+  → getFullProfile + getTodayIntent fired in parallel
+  → On resolve: profileData set, loading cleared
+  → Modal shows full profile
+
+User taps 💬 in modal
+  → Modal closes
+  → openChat(profileModalFriend) called → navigates to Matches tab / Chat
+
+User swipes modal down
+  → onDismiss called
+  → profileModalFriend set to null
+  → Returns to Friends list
+```
+
+**FriendCard usage (updated):**
+```tsx
+<FriendCard
+  key={friend.user_id}
+  friend={friend}
+  variant="available"          // or "simple"
+  onPress={() => openChat(friend)}
+  onProfilePress={() => void handleOpenProfile(friend)}   // NEW
+/>
+```
+
+**FriendProfileModal placement:** Rendered as a sibling to `<SafeAreaView>`, outside the scroll tree, at the bottom of the return statement.
+
+---
+
+## Phase 6 Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| Friend has no photos | `UserProfileView` falls back to `profile.photo_url` (single photo fallback) |
+| Friend has no today's intent | `UserProfileView` hides Today's Focus card (`isOwnProfile=false`) |
+| Profile fetch returns null profile | Modal stays in loading state; no crash (null guard in modal) |
+| User taps two avatars quickly | Second fetch overwrites first; modal shows latest data (acceptable for MVP) |
+| Friend has no `match_id` | `onMessage` falls through to `openChat` which shows an alert ("Chat unavailable") |
+| Android platform | `presentationStyle="pageSheet"` is ignored; modal renders full-screen — acceptable for MVP |

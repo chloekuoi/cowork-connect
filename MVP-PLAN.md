@@ -90,7 +90,21 @@ Build a React Native/Expo app for finding co-working partners. Swipe-based disco
 
 **Not included:** Contact import (expo-contacts), invite non-users via share link, friend suggestions, re-request after decline
 
-**Result:** Full MVP complete
+**Result:** Friend system complete — add, manage, and message friends
+
+---
+
+### Phase 6: Friend Profile View
+**Goal:** Users can view a friend's full profile from the Friends tab
+
+1. Add tappable avatar zone to `FriendCard` — tap avatar → opens profile modal; tap rest of card → opens chat (unchanged)
+2. Build `FriendProfileModal` — bottom sheet showing full `UserProfileView` with a `💬` chat icon in the top-right header corner
+3. Fetch full profile (`profiles` + `profile_photos`) and today's intent (`work_intents`) in parallel when avatar is tapped
+4. `💬` icon in modal → dismisses modal and navigates to chat
+
+**Not included:** No new tables or RPCs; no profile editing from modal; no new navigator routes
+
+**Result:** Full MVP complete — friends' profiles are accessible from the Friends tab
 
 ---
 

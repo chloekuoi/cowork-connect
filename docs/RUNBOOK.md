@@ -1731,3 +1731,110 @@ ORDER BY created_at DESC;
 | Onboarding stuck on Step 3 | Check totalSteps changed from 3 to 4 |
 | EditProfile save doesn't navigate back | Check goBack() called after updateProfile resolves |
 | Tagline not on SwipeCard | Check SwipeCard.tsx was modified to include tagline |
+
+---
+
+# Phase 6: Friend Profile View — Verification Flows
+
+**Added:** 2026-02-27
+
+---
+
+## No New Database Setup
+
+Phase 6 requires no new SQL migrations. All data is read from tables introduced in Phases 1, 2, and 5. Ensure all prior phase SQL files have been applied before testing.
+
+---
+
+### 34. Open a Friend's Profile from the Friends Tab
+
+**Preconditions:**
+- Logged in as User A
+- User A has at least one accepted friend visible in the Friends screen
+- The friend has a complete profile (name, photo, at least some fields set)
+
+**Steps:**
+1. Open app → navigate to Friends tab
+2. Locate a friend card in "Available Today" or "Not Available" section
+3. Tap the **avatar** (circular photo or initials) on the left side of the card
+
+**Expected:**
+- Bottom sheet modal slides up
+- While loading: modal body shows centered `ActivityIndicator`
+- After load: full profile visible (photos, name, age, pills, Today's Focus if set, field rows)
+- `💬` icon visible in top-right corner of modal header throughout
+
+---
+
+### 35. Verify Card Tap Zones Are Distinct
+
+**Preconditions:**
+- Same as Test 34
+
+**Steps:**
+1. Tap the **avatar** on a friend card → profile modal opens
+2. Dismiss modal (swipe down)
+3. Tap the **friend's name** or any area of the card body outside the avatar
+
+**Expected:**
+- Avatar tap → profile modal opens (does NOT open chat)
+- Name / card body tap → chat screen opens (does NOT open profile modal)
+
+---
+
+### 36. Message a Friend from Their Profile Modal
+
+**Preconditions:**
+- Same as Test 34
+- The friend has an existing chat (`match_id` is set)
+
+**Steps:**
+1. Tap a friend's avatar → profile modal opens and loads
+2. Tap the `💬` icon in the top-right corner of the modal
+
+**Expected:**
+- Modal dismisses
+- App navigates to Matches tab → Chat screen for that friend
+- Existing conversation is shown
+
+---
+
+### 37. Friend with No Today's Intent
+
+**Preconditions:**
+- User A has a friend who has NOT set a Today's Focus for today
+
+**Steps:**
+1. Tap the avatar of a friend without today's intent
+
+**Expected:**
+- Profile modal loads successfully
+- Today's Focus card is NOT shown (no empty CTA, no placeholder card)
+- Other profile sections (photos, name, field rows) appear normally
+
+---
+
+### 38. Friend in "Not Available" Section
+
+**Preconditions:**
+- User A has a friend in the "Not Available" section
+
+**Steps:**
+1. Tap the avatar of a friend in the "Not Available" section
+
+**Expected:**
+- Profile modal opens and behaves identically to Test 34
+- Section membership (Available / Not Available) does not affect modal behavior
+
+---
+
+## Phase 6 Common Failures
+
+| Issue | Solution |
+|-------|----------|
+| Avatar tap opens chat instead of profile modal | Check inner `TouchableOpacity` wraps avatar in `FriendCard.tsx`; verify `onProfilePress` prop is passed from `FriendsScreen` |
+| Modal stays on spinner indefinitely | Check `handleOpenProfile` sets `profileLoading` to `false` after `Promise.all` resolves; check Supabase RLS allows SELECT on `profiles`, `profile_photos`, `work_intents` |
+| `💬` icon not visible | Check modal header layout; verify icon is not hidden behind safe area inset or padding |
+| Tapping `💬` doesn't navigate to chat | Check `onMessage` handler closes modal before calling `openChat`; verify `profileModalFriend` is not null at call time |
+| TypeScript errors | Ensure `Profile`, `ProfilePhoto`, `WorkIntent` imported from `../../types` in `FriendProfileModal` and `FriendsScreen` |
+| Modal won't swipe-to-dismiss | Verify `onRequestClose={onDismiss}` is set on `<Modal>` and `presentationStyle="pageSheet"` is present |

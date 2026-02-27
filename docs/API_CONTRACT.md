@@ -1848,3 +1848,75 @@ Execute in Supabase SQL Editor in this order:
 8. **Profile photos publicly readable** — `profile_photos` table has public SELECT policy (same as `profiles`). Photos stored in public storage bucket.
 9. **Storage folder ownership** — Storage RLS restricts writes to `avatars/{userId}/` folder. Users cannot modify other users' photos.
 10. **Photo URLs are permanent** — Public storage URLs do not expire. Deleted photos should have their files removed from storage to prevent stale URLs.
+
+---
+
+# Phase 6 Additions
+
+**Added:** 2026-02-27
+
+---
+
+## No New Tables or RPCs
+
+Phase 6 introduces no schema changes. It reads exclusively from existing tables established in earlier phases.
+
+---
+
+## Tables Read by Phase 6
+
+| Table | Phase Introduced | Phase 6 Usage |
+|-------|-----------------|---------------|
+| `profiles` | Phase 1 | Full profile fetch via `getFullProfile(userId)` |
+| `profile_photos` | Phase 5 | Photo array fetch via `getFullProfile(userId)` |
+| `work_intents` | Phase 2 | Today's intent fetch via `getTodayIntent(userId)` |
+
+---
+
+## Service Functions Used (No Changes)
+
+### `getFullProfile(userId: string)` — `src/services/profileService.ts`
+
+**Used by:** `FriendsScreen.handleOpenProfile`
+
+Queries:
+1. `profiles` — `SELECT * WHERE id = userId`
+2. `profile_photos` — `SELECT * WHERE user_id = userId ORDER BY position ASC`
+
+Returns: `ServiceResult<{ profile: Profile | null; photos: ProfilePhoto[] }>`
+
+No changes to this function. Phase 6 calls it from a new location (`FriendsScreen`).
+
+---
+
+### `getTodayIntent(userId: string)` — `src/services/discoveryService.ts`
+
+**Used by:** `FriendsScreen.handleOpenProfile`
+
+Queries:
+1. `work_intents` — `SELECT * WHERE user_id = userId AND intent_date = today`
+
+Returns: `WorkIntent | null`
+
+No changes to this function. Phase 6 calls it from a new location (`FriendsScreen`).
+
+---
+
+## UI Assumptions for Phase 6
+
+The frontend is allowed to rely on the following guarantees from the data layer:
+
+- `getFullProfile` always returns an object (never throws); `data.profile` may be null if the user has been deleted
+- `getTodayIntent` always returns either a `WorkIntent` or `null`; never throws on a missing intent (`PGRST116` error is swallowed)
+- `profile_photos` rows are ordered by `position ASC` — position 0 is always the primary photo
+- `profiles.photo_url` reflects the primary photo URL and serves as fallback when `profile_photos` is empty
+
+---
+
+## To Be Confirmed
+
+| Item | Status |
+|------|--------|
+| `profiles` RLS for public SELECT | Confirmed public READ in Phase 1 — no change needed |
+| `profile_photos` RLS for public SELECT | Confirmed public READ in Phase 5 — no change needed |
+| `work_intents` RLS for public SELECT | Confirmed public READ in Phase 2 — no change needed |
