@@ -48,6 +48,7 @@ type Props = NativeStackScreenProps<ProfileStackParamList, 'EditProfile'>;
 
 type FormState = {
   username: string;
+  phone_number: string;
   name: string;
   tagline: string;
   currently_working_on: string;
@@ -61,6 +62,7 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   username: '',
+  phone_number: '',
   name: '',
   tagline: '',
   currently_working_on: '',
@@ -138,6 +140,7 @@ export default function EditProfileScreen({ navigation }: Props) {
       const profile = profileResult.data.profile;
       setForm({
         username: toInputValue(profile.username),
+        phone_number: toInputValue(profile.phone_number),
         name: toInputValue(profile.name),
         tagline: toInputValue(profile.tagline),
         currently_working_on: toInputValue(profile.currently_working_on),
@@ -338,6 +341,7 @@ export default function EditProfileScreen({ navigation }: Props) {
     setSaving(true);
     const { error } = await updateProfile(user.id, {
       username: normalizedUsername,
+      phone_number: toNullable(form.phone_number),
       name: toNullable(form.name),
       tagline: toNullable(form.tagline),
       currently_working_on: toNullable(form.currently_working_on),
@@ -424,6 +428,19 @@ export default function EditProfileScreen({ navigation }: Props) {
           <View style={styles.rowSep} />
 
           <View style={styles.fieldRow}>
+            <Text style={styles.fieldLabel}>Phone Number</Text>
+            <TextInput
+              style={styles.fieldInput}
+              value={form.phone_number}
+              onChangeText={(text) => setForm((prev) => ({ ...prev, phone_number: text }))}
+              placeholder="Phone number"
+              placeholderTextColor={colors.textTertiary}
+              keyboardType="phone-pad"
+            />
+          </View>
+          <View style={styles.rowSep} />
+
+          <View style={styles.fieldRow}>
             <Text style={styles.fieldLabel}>Tagline</Text>
             <TextInput
               style={styles.fieldInput}
@@ -504,7 +521,7 @@ export default function EditProfileScreen({ navigation }: Props) {
           {/* Birthday — tappable row */}
           <TouchableOpacity
             style={styles.fieldRow}
-            onPress={() => setShowBirthdayPicker(true)}
+            onPress={() => setShowBirthdayPicker((prev) => !prev)}
             disabled={saving || photoBusy}
             activeOpacity={0.7}
           >

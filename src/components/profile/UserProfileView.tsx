@@ -14,15 +14,6 @@ import { Profile, ProfilePhoto, WorkIntent, WorkStyle, LocationType } from '../.
 
 const INTENT_CARD_BORDER = '#D4E4D8';
 
-// ── Helpers (moved here from ProfileScreen) ─────────────────────────────────
-
-const PHOTO_PROMPTS = [
-  "Hi, I'm a real person 👋",
-  'Proof I touch grass sometimes',
-  'What my camera roll actually looks like',
-  'Currently building something...',
-];
-
 const WORK_STYLE_EMOJI: Record<WorkStyle, string> = {
   'Deep focus': '🎧',
   'Chat mode': '💬',
@@ -179,22 +170,18 @@ export default function UserProfileView({
           </View>
         ) : (
           photoList.map((photo) => (
-            <View key={photo.id} style={styles.photoBlock}>
-              <View
-                style={[
-                  styles.photoFrame,
-                  photo.position === 0 ? styles.primaryFrame : styles.secondaryFrame,
-                ]}
-              >
-                <Image
-                  source={{ uri: photo.photo_url }}
-                  style={styles.photoImage}
-                  contentFit="cover"
-                />
-              </View>
-              {PHOTO_PROMPTS[photo.position] ? (
-                <Text style={styles.promptLabel}>{PHOTO_PROMPTS[photo.position]}</Text>
-              ) : null}
+            <View
+              key={photo.id}
+              style={[
+                styles.photoFrame,
+                photo.position === 0 ? styles.primaryFrame : styles.secondaryFrame,
+              ]}
+            >
+              <Image
+                source={{ uri: photo.photo_url }}
+                style={styles.photoImage}
+                contentFit="cover"
+              />
             </View>
           ))
         )}
@@ -225,60 +212,66 @@ export default function UserProfileView({
         ) : null}
       </View>
 
-      {/* ── Field rows (edge-to-edge white block) ───────────────────── */}
-      {hasAnyFields ? (
-        <View style={styles.fieldsArea}>
-          {renderGroup(aboutYouRows)}
-          {aboutYouRows.length > 0 && workSchoolRows.length > 0 ? (
-            <View style={styles.groupSep} />
-          ) : null}
-          {renderGroup(workSchoolRows)}
-          {(aboutYouRows.length > 0 || workSchoolRows.length > 0) &&
-          locationRows.length > 0 ? (
-            <View style={styles.groupSep} />
-          ) : null}
-          {renderGroup(locationRows)}
-        </View>
-      ) : null}
-
       {/* ── Today's Focus ────────────────────────────────────────────── */}
       {showIntentCard ? (
-        todayIntent ? (
-          <View style={styles.intentCard}>
-            <View style={styles.intentHeader}>
+        <>
+          <View style={styles.sectionGap} />
+          {todayIntent ? (
+            <View style={styles.intentCard}>
+              <View style={styles.intentHeader}>
+                <Text style={styles.intentLabel}>TODAY'S FOCUS</Text>
+                <View style={styles.intentDot} />
+              </View>
+              <Text style={styles.intentTask}>{todayIntent.task_description}</Text>
+              <View style={styles.intentMeta}>
+                <Text style={styles.intentMetaText}>
+                  {WORK_STYLE_EMOJI[todayIntent.work_style] ?? ''} {todayIntent.work_style}
+                </Text>
+                <Text style={styles.intentMetaDivider}>·</Text>
+                <Text style={styles.intentMetaText}>
+                  {LOCATION_EMOJI[todayIntent.location_type] ?? ''} {todayIntent.location_type}
+                  {todayIntent.location_name ? ` · ${todayIntent.location_name}` : ''}
+                </Text>
+                <Text style={styles.intentMetaDivider}>·</Text>
+                <Text style={styles.intentMetaText}>
+                  {formatDisplayTime(todayIntent.available_from)} –{' '}
+                  {formatDisplayTime(todayIntent.available_until)}
+                </Text>
+              </View>
+            </View>
+          ) : isOwnProfile ? (
+            <View style={[styles.intentCard, styles.intentCardEmpty]}>
               <Text style={styles.intentLabel}>TODAY'S FOCUS</Text>
-              <View style={styles.intentDot} />
+              <Text style={styles.intentEmptyText}>Share what you're working on today</Text>
+              <TouchableOpacity
+                style={styles.intentCta}
+                onPress={onSetFocusPress}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.intentCtaText}>Set Today's Focus</Text>
+              </TouchableOpacity>
             </View>
-            <Text style={styles.intentTask}>{todayIntent.task_description}</Text>
-            <View style={styles.intentMeta}>
-              <Text style={styles.intentMetaText}>
-                {WORK_STYLE_EMOJI[todayIntent.work_style] ?? ''} {todayIntent.work_style}
-              </Text>
-              <Text style={styles.intentMetaDivider}>·</Text>
-              <Text style={styles.intentMetaText}>
-                {LOCATION_EMOJI[todayIntent.location_type] ?? ''} {todayIntent.location_type}
-                {todayIntent.location_name ? ` · ${todayIntent.location_name}` : ''}
-              </Text>
-              <Text style={styles.intentMetaDivider}>·</Text>
-              <Text style={styles.intentMetaText}>
-                {formatDisplayTime(todayIntent.available_from)} –{' '}
-                {formatDisplayTime(todayIntent.available_until)}
-              </Text>
-            </View>
+          ) : null}
+        </>
+      ) : null}
+
+      {/* ── Field rows (edge-to-edge white block) ───────────────────── */}
+      {hasAnyFields ? (
+        <>
+          <View style={styles.sectionGap} />
+          <View style={styles.fieldsArea}>
+            {renderGroup(aboutYouRows)}
+            {aboutYouRows.length > 0 && workSchoolRows.length > 0 ? (
+              <View style={styles.groupSep} />
+            ) : null}
+            {renderGroup(workSchoolRows)}
+            {(aboutYouRows.length > 0 || workSchoolRows.length > 0) &&
+            locationRows.length > 0 ? (
+              <View style={styles.groupSep} />
+            ) : null}
+            {renderGroup(locationRows)}
           </View>
-        ) : isOwnProfile ? (
-          <View style={[styles.intentCard, styles.intentCardEmpty]}>
-            <Text style={styles.intentLabel}>TODAY'S FOCUS</Text>
-            <Text style={styles.intentEmptyText}>Share what you're working on today</Text>
-            <TouchableOpacity
-              style={styles.intentCta}
-              onPress={onSetFocusPress}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.intentCtaText}>Set Today's Focus</Text>
-            </TouchableOpacity>
-          </View>
-        ) : null
+        </>
       ) : null}
     </>
   );
@@ -291,9 +284,6 @@ const styles = StyleSheet.create({
   photoStack: {
     gap: spacing[3],
     paddingTop: spacing[4],
-  },
-  photoBlock: {
-    gap: spacing[2],
   },
   photoFrame: {
     width: '100%',
@@ -319,12 +309,6 @@ const styles = StyleSheet.create({
     fontSize: 72,
     fontWeight: '700',
     color: colors.textSecondary,
-  },
-  promptLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: theme.textSecondary,
-    paddingHorizontal: spacing[1],
   },
   // Name block
   nameBlock: {
@@ -362,7 +346,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: colors.accentPrimaryLight,
+    backgroundColor: colors.accentSecondaryLight,
     paddingHorizontal: spacing[3],
     paddingVertical: 5,
     borderRadius: borderRadius.full,
@@ -373,12 +357,11 @@ const styles = StyleSheet.create({
   pillText: {
     fontSize: 13,
     fontWeight: '600',
-    color: colors.accentPrimary,
+    color: theme.textSecondary,
   },
   // Fields
   fieldsArea: {
     backgroundColor: theme.surface,
-    marginTop: spacing[3],
   },
   fieldRow: {
     paddingHorizontal: spacing[4],
@@ -405,10 +388,16 @@ const styles = StyleSheet.create({
     height: 8,
     backgroundColor: colors.bgSecondary,
   },
+  // Section gap — full-width grey block between major profile sections
+  sectionGap: {
+    height: 8,
+    backgroundColor: colors.bgSecondary,
+  },
   // Intent card
   intentCard: {
-    marginTop: spacing[3],
     marginHorizontal: spacing[4],
+    marginTop: spacing[3],
+    marginBottom: spacing[3],
     backgroundColor: colors.accentPrimaryLight,
     borderRadius: borderRadius.xl,
     padding: spacing[4],

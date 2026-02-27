@@ -3,6 +3,7 @@ import { Profile, ProfilePhoto } from '../types';
 
 type UpdateProfileFields = Partial<{
   username: string;
+  phone_number: string | null;
   name: string | null;
   tagline: string | null;
   currently_working_on: string | null;
