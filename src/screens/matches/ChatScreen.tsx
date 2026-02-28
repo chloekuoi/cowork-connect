@@ -70,6 +70,11 @@ export default function ChatScreen({ navigation, route }: Props) {
   const listRef = useRef<FlatList<ChatTimelineItem>>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const totalSessions = useMemo(
+    () => sessions.filter((s) => s.status === 'completed').length,
+    [sessions]
+  );
+
   const loadMessages = useCallback(async () => {
     const data = await fetchMessages(matchId);
     setMessages(data);
@@ -495,7 +500,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                   session={item.session}
                   currentUserId={user?.id ?? ''}
                   otherUserName={otherUser.name}
-                  totalSessions={sessions.length}
+                  totalSessions={totalSessions}
                   onAccept={() => handleAcceptSession(item.session.id)}
                   onDecline={() => handleDeclineSession(item.session.id)}
                   onCancel={() => handleCancelSession(item.session.id)}
