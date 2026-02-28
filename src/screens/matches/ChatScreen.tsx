@@ -25,13 +25,16 @@ import {
   subscribeToSession,
   subscribeToSessionEvents,
 } from '../../services/sessionService';
-import { ChatTimelineItem, Message, SessionEvent, SessionRecord } from '../../types';
+import { getTodayIntent } from '../../services/discoveryService';
+import { getFullProfile } from '../../services/profileService';
+import { ChatTimelineItem, Message, Profile, ProfilePhoto, SessionEvent, SessionRecord, WorkIntent } from '../../types';
 import MessageBubble from '../../components/matches/MessageBubble';
 import ChatInputBar from '../../components/matches/ChatInputBar';
 import StartSessionButton from '../../components/session/StartSessionButton';
 import InviteComposerCard from '../../components/session/InviteComposerCard';
 import SessionEventBubble from '../../components/session/SessionEventBubble';
 import SessionRequestCard from '../../components/session/SessionRequestCard';
+import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'Chat'>;
@@ -57,6 +60,13 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [shownDeclinedSessions, setShownDeclinedSessions] = useState<Record<string, boolean>>({});
   const [shownCancelledSessions, setShownCancelledSessions] = useState<Record<string, boolean>>({});
   const [shownMissedSessions, setShownMissedSessions] = useState<Record<string, boolean>>({});
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileData, setProfileData] = useState<{
+    profile: Profile | null;
+    photos: ProfilePhoto[];
+    intent: WorkIntent | null;
+  } | null>(null);
   const listRef = useRef<FlatList<ChatTimelineItem>>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -390,13 +400,45 @@ export default function ChatScreen({ navigation, route }: Props) {
     await loadSessions();
   };
 
+  const openOtherUserProfile = useCallback(async () => {
+    setProfileModalVisible(true);
+    setProfileLoading(true);
+    setProfileData(null);
+
+    const [{ data: fullProfile }, intent] = await Promise.all([
+      getFullProfile(otherUser.id),
+      getTodayIntent(otherUser.id),
+    ]);
+
+    setProfileData({
+      profile: fullProfile.profile,
+      photos: fullProfile.photos,
+      intent,
+    });
+    setProfileLoading(false);
+  }, [otherUser.id]);
+
+  const closeOtherUserProfile = useCallback(() => {
+    setProfileModalVisible(false);
+    setProfileLoading(false);
+    setProfileData(null);
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{otherUser.name || 'Chat'}</Text>
+        <TouchableOpacity
+          style={styles.headerTitleButton}
+          onPress={() => void openOtherUserProfile()}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {otherUser.name || 'Chat'}
+          </Text>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           {!hasMatchSession && (
             <StartSessionButton
@@ -453,6 +495,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                   session={item.session}
                   currentUserId={user?.id ?? ''}
                   otherUserName={otherUser.name}
+                  totalSessions={sessions.length}
                   onAccept={() => handleAcceptSession(item.session.id)}
                   onDecline={() => handleDeclineSession(item.session.id)}
                   onCancel={() => handleCancelSession(item.session.id)}
@@ -467,6 +510,16 @@ export default function ChatScreen({ navigation, route }: Props) {
 
         <ChatInputBar onSend={handleSend} disabled={!user} />
       </KeyboardAvoidingView>
+
+      <FriendProfileModal
+        visible={profileModalVisible}
+        profile={profileData?.profile ?? null}
+        photos={profileData?.photos ?? []}
+        intent={profileData?.intent ?? null}
+        loading={profileLoading}
+        onDismiss={closeOtherUserProfile}
+        onMessage={closeOtherUserProfile}
+      />
 
       {toastMessage && (
         <View style={styles.toastContainer}>
@@ -500,12 +553,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.accent,
   },
-  headerTitle: {
+  headerTitleButton: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: theme.text,
     textAlign: 'center',
+    maxWidth: '85%',
   },
   headerRight: {
     minWidth: 60,
@@ -524,9 +582,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 14,
     color: theme.textSecondary,
-    marginTop: spacing[3],
+    marginTop: spacing[2],
   },
   emptyTitle: {
     fontSize: 18,
