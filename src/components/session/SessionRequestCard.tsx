@@ -58,25 +58,8 @@ export default function SessionRequestCard({
     : !!session.locked_by_initiator_at;
   const scheduledLabel = formatDateLabel(session.scheduled_date || session.session_date);
   const bothLocked = currentUserLocked && otherUserLocked;
-  const isActive = session.status === 'active';
 
   const statusDotPulse = useRef(new Animated.Value(0)).current;
-  const currentPillScale = useRef(new Animated.Value(1)).current;
-  const currentLockScale = useRef(new Animated.Value(1)).current;
-  const currentPillTint = useRef(new Animated.Value(currentUserLocked ? 1 : 0)).current;
-  const lineFill = useRef(
-    new Animated.Value(
-      bothLocked ? 1 : otherUserLocked || currentUserLocked ? 0.5 : 0
-    )
-  ).current;
-  const shimmerX = useRef(new Animated.Value(0)).current;
-  const shimmerOpacity = useRef(new Animated.Value(0)).current;
-  const lineWidth = useRef(0);
-  const cardBorderPulse = useRef(new Animated.Value(0)).current;
-  const successFade = useRef(new Animated.Value(bothLocked ? 1 : 0)).current;
-  const successTranslateY = useRef(new Animated.Value(bothLocked ? 0 : 6)).current;
-  const previousCurrentLocked = useRef(currentUserLocked);
-  const previousBothLocked = useRef(bothLocked);
 
   useEffect(() => {
     if (session.status !== 'pending' || bothLocked) {
@@ -105,107 +88,6 @@ export default function SessionRequestCard({
     return () => loop.stop();
   }, [bothLocked, session.status, statusDotPulse]);
 
-  useEffect(() => {
-    Animated.timing(currentPillTint, {
-      toValue: currentUserLocked ? 1 : 0,
-      duration: 300,
-      easing: Easing.inOut(Easing.ease),
-      useNativeDriver: false,
-    }).start();
-  }, [currentPillTint, currentUserLocked]);
-
-  useEffect(() => {
-    const shouldAnimateToFull =
-      isActive && otherUserLocked && currentUserLocked && !previousCurrentLocked.current;
-    const shouldSetBaseHalf = !bothLocked && (otherUserLocked || currentUserLocked);
-
-    if (shouldAnimateToFull) {
-      Animated.timing(lineFill, {
-        toValue: 1,
-        duration: 600,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: false,
-      }).start(() => {
-        shimmerOpacity.setValue(1);
-        shimmerX.setValue(-40);
-        Animated.parallel([
-          Animated.timing(shimmerX, {
-            toValue: lineWidth.current + 40,
-            duration: 500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-          Animated.timing(shimmerOpacity, {
-            toValue: 0,
-            duration: 500,
-            easing: Easing.inOut(Easing.ease),
-            useNativeDriver: true,
-          }),
-        ]).start();
-      });
-    } else if (bothLocked) {
-      lineFill.setValue(1);
-    } else if (shouldSetBaseHalf) {
-      lineFill.setValue(0.5);
-    } else {
-      lineFill.setValue(0);
-    }
-
-    previousCurrentLocked.current = currentUserLocked;
-  }, [
-    bothLocked,
-    currentUserLocked,
-    isActive,
-    lineFill,
-    otherUserLocked,
-    shimmerOpacity,
-    shimmerX,
-  ]);
-
-  useEffect(() => {
-    if (!isActive) return;
-
-    if (bothLocked && !previousBothLocked.current) {
-      Animated.sequence([
-        Animated.timing(cardBorderPulse, {
-          toValue: 1,
-          duration: 300,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-        Animated.timing(cardBorderPulse, {
-          toValue: 0,
-          duration: 300,
-          easing: Easing.inOut(Easing.ease),
-          useNativeDriver: false,
-        }),
-      ]).start();
-
-      Animated.parallel([
-        Animated.timing(successFade, {
-          toValue: 1,
-          duration: 400,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-        Animated.timing(successTranslateY, {
-          toValue: 0,
-          duration: 400,
-          easing: Easing.out(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-
-    if (!bothLocked && previousBothLocked.current) {
-      successFade.setValue(0);
-      successTranslateY.setValue(6);
-      cardBorderPulse.setValue(0);
-    }
-
-    previousBothLocked.current = bothLocked;
-  }, [bothLocked, cardBorderPulse, isActive, successFade, successTranslateY]);
-
   const dotAnimatedStyle = useMemo(
     () => ({
       transform: [
@@ -223,74 +105,6 @@ export default function SessionRequestCard({
     }),
     [statusDotPulse]
   );
-
-  const currentPillScaleStyle = useMemo(
-    () => ({
-      transform: [{ scale: currentPillScale }],
-    }),
-    [currentPillScale]
-  );
-
-  const currentPillTintStyle = useMemo(
-    () => ({
-      backgroundColor: currentPillTint.interpolate({
-        inputRange: [0, 1],
-        outputRange: [theme.surface, '#e8f0ea'],
-      }),
-    }),
-    [currentPillTint]
-  );
-
-  const borderColorAnimated = useMemo(
-    () =>
-      cardBorderPulse.interpolate({
-        inputRange: [0, 1],
-        outputRange: ['#3F5443', '#6a8f6e'],
-      }),
-    [cardBorderPulse]
-  );
-
-  const handleLockPress = () => {
-    if (currentUserLocked) return;
-
-    Animated.sequence([
-      Animated.timing(currentPillScale, {
-        toValue: 0.92,
-        duration: 90,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(currentPillScale, {
-        toValue: 1.06,
-        duration: 120,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.spring(currentPillScale, {
-        toValue: 1,
-        speed: 18,
-        bounciness: 8,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    Animated.sequence([
-      Animated.timing(currentLockScale, {
-        toValue: 1.3,
-        duration: 150,
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(currentLockScale, {
-        toValue: 1,
-        duration: 150,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    onLockIn();
-  };
 
   const renderActions = () => {
     if (session.status === 'pending') {
@@ -314,94 +128,6 @@ export default function SessionRequestCard({
             variant="secondary"
             style={StyleSheet.flatten([styles.button, styles.buttonSpacer])}
           />
-        </View>
-      );
-    }
-
-    if (session.status === 'active') {
-      return (
-        <View style={styles.activeContent}>
-          <View style={styles.lockLabelsRow}>
-            <View style={styles.lockLabelCell}>
-              <Text style={styles.lockLabel}>{otherUserName || 'Other'}</Text>
-            </View>
-            <View style={styles.connectorSpacer} />
-            <View style={styles.lockLabelCell}>
-              <Text style={styles.lockLabel}>You</Text>
-            </View>
-          </View>
-
-          <View style={styles.lockPillsRow}>
-            <View style={styles.lockPillCell}>
-              <View style={[styles.lockPill, otherUserLocked && styles.lockPillConfirmed]}>
-                <Text style={[styles.lockEmojiOnly, otherUserLocked && styles.lockTextConfirmed]}>🔒</Text>
-              </View>
-            </View>
-            <View
-              style={styles.connectingLineTrack}
-              onLayout={(event) => {
-                lineWidth.current = event.nativeEvent.layout.width;
-              }}
-            >
-              <Animated.View
-                style={[
-                  styles.connectingLineFill,
-                  {
-                    width: lineFill.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0%', '100%'],
-                    }),
-                  },
-                ]}
-              />
-              <Animated.View
-                pointerEvents="none"
-                style={[
-                  styles.connectingLineShimmer,
-                  {
-                    opacity: shimmerOpacity,
-                    transform: [{ translateX: shimmerX }],
-                  },
-                ]}
-              />
-            </View>
-            <View style={styles.lockPillCell}>
-              <Animated.View style={currentPillScaleStyle}>
-                <Animated.View style={[styles.lockPill, currentPillTintStyle]}>
-                  <TouchableOpacity
-                    onPress={handleLockPress}
-                    disabled={currentUserLocked}
-                    style={styles.lockPillTouch}
-                    activeOpacity={0.9}
-                  >
-                    <Animated.Text
-                      style={[
-                        styles.lockEmojiOnly,
-                        currentUserLocked && styles.lockTextConfirmed,
-                        { transform: [{ scale: currentLockScale }] },
-                      ]}
-                    >
-                      🔒
-                    </Animated.Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              </Animated.View>
-            </View>
-          </View>
-
-          <Text style={styles.descriptionCentered}>Tap your 🔒 to confirm you both lock in.</Text>
-
-          <Animated.View
-            style={[
-              styles.successMessageWrap,
-              {
-                opacity: successFade,
-                transform: [{ translateY: successTranslateY }],
-              },
-            ]}
-          >
-            <Text style={styles.successMessage}>Locked in together 🔒❤️</Text>
-          </Animated.View>
         </View>
       );
     }
@@ -486,9 +212,7 @@ export default function SessionRequestCard({
     <Animated.View
       style={[
         styles.card,
-        statusForDisplay === 'active' && styles.activeCard,
         statusForDisplay === 'declined' && styles.dimmedCard,
-        statusForDisplay === 'active' && { borderColor: borderColorAnimated },
       ]}
     >
       <View style={styles.headerRow}>
@@ -589,9 +313,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  activeCard: {
-    borderColor: '#3F5443',
-  },
   dimmedCard: {
     opacity: 0.75,
   },
@@ -645,10 +366,6 @@ const styles = StyleSheet.create({
   buttonSpacer: {
     marginLeft: spacing[2],
   },
-  lockRow: {
-    flexDirection: 'row',
-    marginTop: spacing[3],
-  },
   activeContent: {
     marginTop: spacing[2],
   },
@@ -695,11 +412,6 @@ const styles = StyleSheet.create({
   },
   lockPillConfirmed: {
     backgroundColor: '#e8f0ea',
-  },
-  lockText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#3F5443',
   },
   lockTextConfirmed: {
     color: '#3F5443',
