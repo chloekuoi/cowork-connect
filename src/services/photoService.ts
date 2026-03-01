@@ -1,9 +1,11 @@
 import * as ImagePicker from 'expo-image-picker';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 import { supabase } from '../../lib/supabase';
 import { ProfilePhoto } from '../types';
 
 const AVATAR_BUCKET = 'avatars';
 const MAX_PHOTO_POSITION = 4;
+const SIGNED_URL_TTL_SECONDS = 60 * 60 * 24 * 365 * 10;
 
 type ServiceResult<T> = {
   data: T;
@@ -19,6 +21,18 @@ function getPublicUrl(path: string): string {
   return `${data.publicUrl}?t=${Date.now()}`;
 }
 
+async function getAccessibleUrl(path: string): Promise<string> {
+  const { data, error } = await supabase.storage
+    .from(AVATAR_BUCKET)
+    .createSignedUrl(path, SIGNED_URL_TTL_SECONDS);
+
+  if (error || !data?.signedUrl) {
+    return getPublicUrl(path);
+  }
+
+  return data.signedUrl;
+}
+
 function toErrorMessage(error: unknown, fallback: string): string {
   if (!error || typeof error !== 'object') return fallback;
   const message = (error as { message?: string }).message;
@@ -29,12 +43,16 @@ function isValidPosition(position: number): boolean {
   return Number.isInteger(position) && position >= 0 && position <= MAX_PHOTO_POSITION;
 }
 
-async function uploadBlob(path: string, uri: string): Promise<{ error: string | null }> {
+async function uploadBytes(path: string, uri: string): Promise<{ error: string | null }> {
   try {
     const response = await fetch(uri);
-    const blob = await response.blob();
+    const bytes = await response.arrayBuffer();
 
-    const { error } = await supabase.storage.from(AVATAR_BUCKET).upload(path, blob, {
+    if (!bytes || bytes.byteLength === 0) {
+      return { error: 'Selected image is empty. Please choose a different photo.' };
+    }
+
+    const { error } = await supabase.storage.from(AVATAR_BUCKET).upload(path, bytes, {
       contentType: 'image/jpeg',
       upsert: true,
     });
@@ -46,6 +64,18 @@ async function uploadBlob(path: string, uri: string): Promise<{ error: string | 
     return { error: null };
   } catch (error) {
     return { error: toErrorMessage(error, 'Failed to upload image') };
+  }
+}
+
+async function normalizeToJpeg(uri: string): Promise<{ uri: string; error: string | null }> {
+  try {
+    const result = await manipulateAsync(uri, [], {
+      compress: 0.85,
+      format: SaveFormat.JPEG,
+    });
+    return { uri: result.uri, error: null };
+  } catch (error) {
+    return { uri, error: toErrorMessage(error, 'Failed to process image') };
   }
 }
 
@@ -84,7 +114,19 @@ export async function getPhotos(userId: string): Promise<ServiceResult<ProfilePh
     return { data: [], error: message };
   }
 
-  return { data: (data || []) as ProfilePhoto[], error: null };
+  const rows = (data || []) as ProfilePhoto[];
+  const withAccessibleUrls = await Promise.all(
+    rows.map(async (photo) => {
+      const path = getPath(userId, photo.position);
+      const resolvedUrl = await getAccessibleUrl(path);
+      return {
+        ...photo,
+        photo_url: resolvedUrl,
+      };
+    })
+  );
+
+  return { data: withAccessibleUrls, error: null };
 }
 
 export async function uploadPhoto(
@@ -96,22 +138,28 @@ export async function uploadPhoto(
     return { data: null, error: 'Invalid photo slot.' };
   }
 
+  const normalized = await normalizeToJpeg(imageUri);
+  if (normalized.error) {
+    console.error('Error normalizing photo:', normalized.error);
+    return { data: null, error: normalized.error };
+  }
+
   const path = getPath(userId, position);
-  const upload = await uploadBlob(path, imageUri);
+  const upload = await uploadBytes(path, normalized.uri);
 
   if (upload.error) {
     console.error('Error uploading photo:', upload.error);
     return { data: null, error: upload.error };
   }
 
-  const publicUrl = getPublicUrl(path);
+  const photoUrl = await getAccessibleUrl(path);
 
   const { data, error } = await supabase
     .from('profile_photos')
     .upsert(
       {
         user_id: userId,
-        photo_url: publicUrl,
+        photo_url: photoUrl,
         position,
       },
       { onConflict: 'user_id,position' }
@@ -128,7 +176,7 @@ export async function uploadPhoto(
   if (position === 0) {
     const { error: profileError } = await supabase
       .from('profiles')
-      .update({ photo_url: publicUrl, updated_at: new Date().toISOString() })
+      .update({ photo_url: photoUrl, updated_at: new Date().toISOString() })
       .eq('id', userId);
 
     if (profileError) {
@@ -220,7 +268,7 @@ export async function deletePhoto(
       return { data: { promoted: false }, error: message };
     }
 
-    const newPrimaryUrl = getPublicUrl(toPath);
+    const newPrimaryUrl = await getAccessibleUrl(toPath);
     const { error: updatePhotoError } = await supabase
       .from('profile_photos')
       .update({ position: 0, photo_url: newPrimaryUrl })
@@ -233,7 +281,7 @@ export async function deletePhoto(
     }
   }
 
-  const finalPrimaryUrl = getPublicUrl(getPath(userId, 0));
+  const finalPrimaryUrl = await getAccessibleUrl(getPath(userId, 0));
   const { error: profileError } = await supabase
     .from('profiles')
     .update({ photo_url: finalPrimaryUrl, updated_at: new Date().toISOString() })
@@ -283,7 +331,7 @@ export async function setPrimaryPhoto(
       return { data: photos, error: message };
     }
 
-    const newPrimaryUrl = getPublicUrl(toPath);
+    const newPrimaryUrl = await getAccessibleUrl(toPath);
     const { error: updatePhotoError } = await supabase
       .from('profile_photos')
       .update({ position: 0, photo_url: newPrimaryUrl })
@@ -334,8 +382,8 @@ export async function setPrimaryPhoto(
     return { data: photos, error: message };
   }
 
-  const primaryUrl = getPublicUrl(primaryPath);
-  const sourceUrl = getPublicUrl(fromPath);
+  const primaryUrl = await getAccessibleUrl(primaryPath);
+  const sourceUrl = await getAccessibleUrl(fromPath);
 
   const { error: updatePrimaryRowError } = await supabase
     .from('profile_photos')
