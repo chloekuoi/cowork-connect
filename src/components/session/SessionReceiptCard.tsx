@@ -73,7 +73,8 @@ export default function SessionReceiptCard({
   }, [currentUserLocked, signPulse]);
 
   return (
-    <View style={[styles.card, shadows.card]}>
+    <View style={[styles.cardShadow, shadows.card]}>
+    <View style={styles.card}>
 
       {/* ── GREEN BANNER ── */}
       <View style={styles.banner}>
@@ -143,7 +144,7 @@ export default function SessionReceiptCard({
 
       {/* ── TORN EDGE ── */}
       <View style={styles.tornEdge}>
-        {Array.from({ length: 16 }).map((_, i) => (
+        {Array.from({ length: 24 }).map((_, i) => (
           <View key={i} style={styles.notch} />
         ))}
       </View>
@@ -155,6 +156,7 @@ export default function SessionReceiptCard({
       </View>
 
     </View>
+    </View>
   );
 }
 
@@ -162,10 +164,16 @@ const BANNER_BG = '#3F5443';
 const CARD_BG = '#FFFFFF';
 
 const styles = StyleSheet.create({
+  // Outer view carries the shadow — must NOT have overflow:hidden (iOS clips shadow)
+  cardShadow: {
+    borderRadius: borderRadius.lg,
+    marginVertical: 8,
+    backgroundColor: CARD_BG,
+  },
+  // Inner view clips rounded corners — shadow lives on the parent
   card: {
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
-    marginVertical: 8,
     backgroundColor: CARD_BG,
   },
   banner: {
@@ -291,7 +299,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   tornEdge: {
-    height: 7,
+    height: 5,
     backgroundColor: BANNER_BG,
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -299,9 +307,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   notch: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: CARD_BG,
   },
   body: {
