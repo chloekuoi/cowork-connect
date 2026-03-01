@@ -320,8 +320,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 20,
     alignItems: 'center',
-    minHeight: touchTarget.min,
-    justifyContent: 'center',
   },
   acceptBtnText: {
     fontSize: 12,
@@ -334,8 +332,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: 20,
     alignItems: 'center',
-    minHeight: touchTarget.min,
-    justifyContent: 'center',
   },
   declineBtnText: {
     fontSize: 12,
