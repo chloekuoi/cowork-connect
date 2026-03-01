@@ -211,18 +211,16 @@ export default function SessionRequestCard({
             <TouchableOpacity onPress={onAccept} style={styles.acceptBtn} activeOpacity={0.8}>
               <Text style={styles.acceptBtnText}>Accept</Text>
             </TouchableOpacity>
-            <View style={styles.secondaryRow}>
-              <TouchableOpacity onPress={onDecline} style={styles.declineBtn} activeOpacity={0.8}>
-                <Text style={styles.declineBtnText} numberOfLines={1}>Decline</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowProposeInput((v) => !v)}
-                style={styles.proposeBtn}
-                activeOpacity={0.8}
-              >
-                <Text style={styles.proposeBtnText} numberOfLines={1}>Propose…</Text>
-              </TouchableOpacity>
-            </View>
+            <TouchableOpacity onPress={onDecline} style={styles.declineBtn} activeOpacity={0.8}>
+              <Text style={styles.declineBtnText}>Decline</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowProposeInput((v) => !v)}
+              style={styles.proposeBtn}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.proposeBtnText}>Propose…</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -380,11 +378,10 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 4,
     flexShrink: 0,
-    width: 128,
   },
   acceptBtn: {
     backgroundColor: colors.accentPrimary,
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: 20,
     alignItems: 'center',
@@ -394,15 +391,10 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFFFFF',
   },
-  secondaryRow: {
-    flexDirection: 'row',
-    gap: 4,
-  },
   declineBtn: {
     backgroundColor: colors.bgSecondary,
-    flex: 1,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
     borderRadius: 20,
     alignItems: 'center',
   },
@@ -414,9 +406,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: colors.textTertiary,
-    flex: 1,
-    paddingVertical: 4,
-    paddingHorizontal: 8,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
     borderRadius: 20,
     alignItems: 'center',
   },
