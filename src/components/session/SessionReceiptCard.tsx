@@ -144,7 +144,7 @@ export default function SessionReceiptCard({
 
       {/* ── TORN EDGE ── */}
       <View style={styles.tornEdge}>
-        {Array.from({ length: 34 }).map((_, i) => (
+        {Array.from({ length: 38 }).map((_, i) => (
           <View key={i} style={styles.notch} />
         ))}
       </View>
