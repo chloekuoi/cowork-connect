@@ -5,7 +5,19 @@
       "Bash(npx expo install:*)",
       "Bash(xcrun simctl:*)",
       "Bash(pkill:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(git checkout:*)",
+      "Bash(open:*)",
+      "Bash(python3:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git merge:*)",
+      "Bash(git -C /Users/chloe/Documents/Claude/cowork-connect log --oneline cc20cbe..HEAD)",
+      "Bash(git -C /Users/chloe/Documents/Claude/cowork-connect add src/components/session/SessionRequestCard.tsx src/screens/matches/ChatScreen.tsx)",
+      "Bash(git -C:*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(node -e \":*)"
     ]
   }
 }
