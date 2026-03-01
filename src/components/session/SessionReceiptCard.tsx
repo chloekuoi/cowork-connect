@@ -180,8 +180,8 @@ const styles = StyleSheet.create({
     backgroundColor: BANNER_BG,
     paddingHorizontal: 20,
     paddingTop: 18,
-    paddingBottom: 20,
-    gap: 12,
+    paddingBottom: 16,
+    gap: 8,
   },
   receiptLabel: {
     fontSize: 9,
@@ -191,8 +191,8 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   receiptTitle: {
-    fontSize: 18,
-    fontWeight: '300',
+    fontSize: 16,
+    fontWeight: '400',
     color: '#FFFFFF',
   },
   avatarRow: {
@@ -235,12 +235,12 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   avatarNamePrimary: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   avatarNameSub: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#FFFFFF',
     opacity: 0.65,
   },
@@ -250,12 +250,12 @@ const styles = StyleSheet.create({
   },
   signBtn: {
     flex: 1,
-    borderRadius: 12,
+    borderRadius: 10,
     paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 52,
+    minHeight: 44,
   },
   signBtnTouch: {
     alignItems: 'center',
@@ -272,28 +272,28 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0,0,0,0.08)',
   },
   signBtnPrimaryWhite: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: '#FFFFFF',
   },
   signBtnSubWhite: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#FFFFFF',
     opacity: 0.7,
     marginTop: 2,
   },
   signBtnWaiting: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#FFFFFF',
     opacity: 0.45,
   },
   signBtnPrimaryForest: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
     color: BANNER_BG,
   },
   signBtnSubForest: {
-    fontSize: 11,
+    fontSize: 10,
     color: BANNER_BG,
     opacity: 0.7,
     marginTop: 2,
