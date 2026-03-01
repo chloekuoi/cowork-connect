@@ -32,7 +32,6 @@ import MessageBubble from '../../components/matches/MessageBubble';
 import ChatInputBar from '../../components/matches/ChatInputBar';
 import StartSessionButton from '../../components/session/StartSessionButton';
 import InviteComposerCard from '../../components/session/InviteComposerCard';
-import SessionEventBubble from '../../components/session/SessionEventBubble';
 import SessionRequestCard from '../../components/session/SessionRequestCard';
 import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
@@ -69,6 +68,8 @@ export default function ChatScreen({ navigation, route }: Props) {
   } | null>(null);
   const listRef = useRef<FlatList<ChatTimelineItem>>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shownEventToastsRef = useRef<Set<string>>(new Set());
+  const initialEventsMarkedRef = useRef(false);
 
   const totalSessions = useMemo(
     () => sessions.filter((s) => s.status === 'completed').length,
@@ -295,6 +296,27 @@ export default function ChatScreen({ navigation, route }: Props) {
     }
   }, [timelineItems.length]);
 
+  // Show a dismissing toast (instead of a persistent bubble) for 'accepted' events
+  useEffect(() => {
+    const events = timelineItems.filter(
+      (item): item is Extract<ChatTimelineItem, { type: 'event' }> => item.type === 'event'
+    );
+    if (!initialEventsMarkedRef.current) {
+      // Mark all events present on initial load as already seen — no toast for history
+      events.forEach((item) => shownEventToastsRef.current.add(item.event.id));
+      initialEventsMarkedRef.current = true;
+      return;
+    }
+    events.forEach((item) => {
+      if (!shownEventToastsRef.current.has(item.event.id)) {
+        shownEventToastsRef.current.add(item.event.id);
+        showToast(
+          `You can now plan coworking details with ${otherUser?.name ?? 'your partner'} 😀`
+        );
+      }
+    });
+  }, [timelineItems, otherUser?.name, showToast]);
+
   useEffect(() => {
     const missedSession = sessions.find(
       (session) =>
@@ -491,11 +513,7 @@ export default function ChatScreen({ navigation, route }: Props) {
             renderItem={({ item }) =>
               item.type === 'message' ? (
                 <MessageBubble message={item.message} isMine={item.message.sender_id === user?.id} />
-              ) : item.type === 'event' ? (
-                <SessionEventBubble
-                  text={`You can now plan coworking details with ${otherUser.name || 'your partner'} 😀`}
-                />
-              ) : (
+              ) : item.type === 'event' ? null : (
                 <SessionRequestCard
                   session={item.session}
                   currentUserId={user?.id ?? ''}
