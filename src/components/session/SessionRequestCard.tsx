@@ -383,17 +383,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
-  row: {
-    flexDirection: 'row',
-    marginTop: spacing[3],
-  },
-  button: {
-    minHeight: touchTarget.min,
-    flex: 1,
-  },
-  buttonSpacer: {
-    marginLeft: spacing[2],
-  },
   activeContent: {
     marginTop: spacing[2],
   },
