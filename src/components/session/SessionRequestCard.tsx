@@ -208,6 +208,33 @@ export default function SessionRequestCard({
     );
   }
 
+  if (session.status === 'pending' && !isInitiator) {
+    return (
+      <View style={styles.pendingRowCard}>
+        <View style={styles.pendingIconBox}>
+          <Text style={styles.pendingIcon}>☕️</Text>
+        </View>
+        <View style={styles.pendingContent}>
+          <View style={styles.pendingTitleRow}>
+            <Text style={styles.pendingTitle}>Cowork Invite</Text>
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingBadgeText}>Pending</Text>
+            </View>
+          </View>
+          <Text style={styles.pendingDate}>{scheduledLabel}</Text>
+        </View>
+        <View style={styles.inviteeActions}>
+          <TouchableOpacity onPress={onAccept} style={styles.acceptBtn} activeOpacity={0.8}>
+            <Text style={styles.acceptBtnText}>Accept</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={onDecline} style={styles.declineBtn} activeOpacity={0.8}>
+            <Text style={styles.declineBtnText}>Decline</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  }
+
   return (
     <Animated.View
       style={[
@@ -312,6 +339,34 @@ const styles = StyleSheet.create({
     color: colors.textTertiary,
     fontSize: 16,
     fontWeight: '600',
+  },
+  inviteeActions: {
+    flexDirection: 'column',
+    gap: 4,
+    flexShrink: 0,
+  },
+  acceptBtn: {
+    backgroundColor: colors.accentPrimary,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  acceptBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  declineBtn: {
+    backgroundColor: colors.bgSecondary,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  declineBtnText: {
+    fontSize: 12,
+    color: colors.textTertiary,
   },
   dimmedCard: {
     opacity: 0.75,
