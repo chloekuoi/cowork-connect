@@ -79,8 +79,11 @@ export default function SessionReceiptCard({
       {/* ── GREEN BANNER ── */}
       <View style={styles.banner}>
 
-        <Text style={styles.receiptLabel}>COWORK RECEIPT</Text>
-        <Text style={styles.receiptTitle}>You locked in 🔒</Text>
+        {/* Title row: "You locked in" left, "COWORK RECEIPT" right */}
+        <View style={styles.titleRow}>
+          <Text style={styles.receiptTitle}>You locked in 🔒</Text>
+          <Text style={styles.receiptLabel}>COWORK RECEIPT</Text>
+        </View>
 
         {/* Avatar stack + names */}
         <View style={styles.avatarRow}>
@@ -179,9 +182,14 @@ const styles = StyleSheet.create({
   banner: {
     backgroundColor: BANNER_BG,
     paddingHorizontal: 20,
-    paddingTop: 18,
-    paddingBottom: 16,
-    gap: 8,
+    paddingTop: 14,
+    paddingBottom: 12,
+    gap: 6,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   receiptLabel: {
     fontSize: 9,
@@ -251,17 +259,17 @@ const styles = StyleSheet.create({
   signBtn: {
     flex: 1,
     borderRadius: 10,
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 40,
+    minHeight: 36,
   },
   signBtnTouch: {
     alignItems: 'center',
     justifyContent: 'center',
     width: '100%',
-    paddingVertical: 10,
+    paddingVertical: 8,
   },
   signBtnTranslucent: {
     backgroundColor: 'rgba(255,255,255,0.15)',
@@ -318,14 +326,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingVertical: 10,
   },
   bodyLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: theme.textSecondary,
   },
   bodyValue: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: colors.textPrimary,
   },
