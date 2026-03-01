@@ -505,6 +505,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                   onDecline={() => handleDeclineSession(item.session.id)}
                   onCancel={() => handleCancelSession(item.session.id)}
                   onLockIn={() => handleLockIn(item.session.id)}
+                  onSendMessage={(text) => handleSend(text)}
                 />
               )
             }
