@@ -39,8 +39,6 @@ import { MatchesStackParamList, useMatchesStack } from '../../navigation/Matches
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'Chat'>;
 
-const declinedToastShown: Record<string, boolean> = {};
-const cancelledToastShown: Record<string, boolean> = {};
 
 export default function ChatScreen({ navigation, route }: Props) {
   const { user } = useAuth();
@@ -57,9 +55,9 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [recentlyCompletedSessions, setRecentlyCompletedSessions] = useState<Record<string, number>>(
     {}
   );
-  const [shownDeclinedSessions, setShownDeclinedSessions] = useState<Record<string, boolean>>({});
-  const [shownCancelledSessions, setShownCancelledSessions] = useState<Record<string, boolean>>({});
-  const [shownMissedSessions, setShownMissedSessions] = useState<Record<string, boolean>>({});
+  // null = AsyncStorage not yet loaded
+  const [shownSessionToasts, setShownSessionToasts] = useState<Set<string> | null>(null);
+  const shownSessionToastsRef = useRef<Set<string>>(new Set()); // ref for sync access in subscription closures
   const [profileModalVisible, setProfileModalVisible] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [profileData, setProfileData] = useState<{
@@ -93,6 +91,13 @@ export default function ChatScreen({ navigation, route }: Props) {
     }, duration);
   }, []);
 
+  const markSessionToastShown = useCallback((key: string) => {
+    const next = new Set([...shownSessionToastsRef.current, key]);
+    shownSessionToastsRef.current = next;
+    setShownSessionToasts(next);
+    AsyncStorage.setItem('session_toasts_shown', JSON.stringify([...next])).catch(() => {});
+  }, []);
+
   const loadSessions = useCallback(async () => {
     if (!user) return;
     setSessionLoading(true);
@@ -103,10 +108,6 @@ export default function ChatScreen({ navigation, route }: Props) {
     const now = Date.now();
     let didUpdate = false;
     const updatedRecentlyCompleted: Record<string, number> = { ...recentlyCompletedSessions };
-    let didDeclineToast = false;
-    let declinedSessionId: string | null = null;
-    let didCancelToast = false;
-    let cancelledSessionId: string | null = null;
     matchSessions.forEach((session) => {
       if (session.status === 'completed' && session.completed_ack) {
         const completedAt = session.completed_at ? new Date(session.completed_at).getTime() : now;
@@ -114,36 +115,11 @@ export default function ChatScreen({ navigation, route }: Props) {
           updatedRecentlyCompleted[session.id] = now;
           didUpdate = true;
         }
-        return;
-      }
-
-      if (session.status === 'declined' && !declinedToastShown[session.id]) {
-        didDeclineToast = true;
-        declinedSessionId = session.id;
-      }
-
-      if (
-        session.status === 'cancelled' &&
-        !session.accepted_at &&
-        !cancelledToastShown[session.id]
-      ) {
-        didCancelToast = true;
-        cancelledSessionId = session.id;
       }
     });
     if (didUpdate) {
       setRecentlyCompletedSessions(updatedRecentlyCompleted);
       showToast('Session Completed 🔒❤️');
-    }
-    if (didDeclineToast && declinedSessionId) {
-      declinedToastShown[declinedSessionId] = true;
-      setShownDeclinedSessions((prev) => ({ ...prev, [declinedSessionId]: true }));
-      showToast('Next Time 🫶🏼');
-    }
-    if (didCancelToast && cancelledSessionId) {
-      cancelledToastShown[cancelledSessionId] = true;
-      setShownCancelledSessions((prev) => ({ ...prev, [cancelledSessionId]: true }));
-      showToast('Invite cancelled');
     }
     setSessionLoading(false);
   }, [matchId, user, recentlyCompletedSessions, showToast]);
@@ -197,18 +173,18 @@ export default function ChatScreen({ navigation, route }: Props) {
           setRecentlyCompletedSessions((prev) => ({ ...prev, [updated.id]: completedAt }));
           showToast('Session Completed 🔒❤️');
         }
-        if (updated.status === 'declined' && !declinedToastShown[updated.id]) {
-          declinedToastShown[updated.id] = true;
-          setShownDeclinedSessions((prev) => ({ ...prev, [updated.id]: true }));
+        const declinedKey = `declined:${updated.id}`;
+        if (updated.status === 'declined' && !shownSessionToastsRef.current.has(declinedKey)) {
+          markSessionToastShown(declinedKey);
           showToast('Next Time 🫶🏼');
         }
+        const cancelledKey = `cancelled:${updated.id}`;
         if (
           updated.status === 'cancelled' &&
           !updated.accepted_at &&
-          !cancelledToastShown[updated.id]
+          !shownSessionToastsRef.current.has(cancelledKey)
         ) {
-          cancelledToastShown[updated.id] = true;
-          setShownCancelledSessions((prev) => ({ ...prev, [updated.id]: true }));
+          markSessionToastShown(cancelledKey);
           showToast('Invite cancelled');
         }
       })
@@ -327,19 +303,51 @@ export default function ChatScreen({ navigation, route }: Props) {
     );
   }, [timelineItems, shownEventIds, otherUser?.name, showToast]);
 
+  // Load persisted session toast IDs from AsyncStorage on mount
   useEffect(() => {
-    const missedSession = sessions.find(
-      (session) =>
+    AsyncStorage.getItem('session_toasts_shown')
+      .then((raw) => {
+        const ids: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+        const s = new Set(ids);
+        shownSessionToastsRef.current = s;
+        setShownSessionToasts(s);
+      })
+      .catch(() => {
+        shownSessionToastsRef.current = new Set();
+        setShownSessionToasts(new Set());
+      });
+  }, []);
+
+  // One-time toasts for declined / cancelled / missed sessions (persisted across restarts)
+  useEffect(() => {
+    if (shownSessionToasts === null) return;
+    sessions.forEach((session) => {
+      const declinedKey = `declined:${session.id}`;
+      if (session.status === 'declined' && !shownSessionToastsRef.current.has(declinedKey)) {
+        markSessionToastShown(declinedKey);
+        showToast('Next Time 🫶🏼');
+      }
+      const cancelledKey = `cancelled:${session.id}`;
+      if (
+        session.status === 'cancelled' &&
+        !session.accepted_at &&
+        !shownSessionToastsRef.current.has(cancelledKey)
+      ) {
+        markSessionToastShown(cancelledKey);
+        showToast('Invite cancelled');
+      }
+      const missedKey = `missed:${session.id}`;
+      if (
         session.status === 'cancelled' &&
         !!session.accepted_at &&
         session.completed_ack === false &&
-        !shownMissedSessions[session.id]
-    );
-    if (missedSession) {
-      showToast('Missed this one 💔');
-      setShownMissedSessions((prev) => ({ ...prev, [missedSession.id]: true }));
-    }
-  }, [sessions, shownMissedSessions, showToast]);
+        !shownSessionToastsRef.current.has(missedKey)
+      ) {
+        markSessionToastShown(missedKey);
+        showToast('Missed this one 💔');
+      }
+    });
+  }, [sessions, shownSessionToasts, markSessionToastShown, showToast]);
 
   const handleSend = async (content: string) => {
     if (!user) return;
