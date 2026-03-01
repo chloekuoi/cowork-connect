@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -68,8 +69,8 @@ export default function ChatScreen({ navigation, route }: Props) {
   } | null>(null);
   const listRef = useRef<FlatList<ChatTimelineItem>>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const shownEventToastsRef = useRef<Set<string>>(new Set());
-  const initialEventsMarkedRef = useRef(false);
+  // null = AsyncStorage not yet loaded; Set = loaded (may be empty on first ever open)
+  const [shownEventIds, setShownEventIds] = useState<Set<string> | null>(null);
 
   const totalSessions = useMemo(
     () => sessions.filter((s) => s.status === 'completed').length,
@@ -296,26 +297,35 @@ export default function ChatScreen({ navigation, route }: Props) {
     }
   }, [timelineItems.length]);
 
-  // Show a dismissing toast (instead of a persistent bubble) for 'accepted' events
+  // Load the set of event IDs that have already shown the "matched" toast
   useEffect(() => {
+    AsyncStorage.getItem('accepted_event_toasts_shown')
+      .then((raw) => {
+        const ids: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+        setShownEventIds(new Set(ids));
+      })
+      .catch(() => setShownEventIds(new Set()));
+  }, []);
+
+  // Show a one-time dismissing toast for each 'accepted' event (persisted across app restarts)
+  useEffect(() => {
+    if (shownEventIds === null) return; // AsyncStorage not loaded yet
     const events = timelineItems.filter(
       (item): item is Extract<ChatTimelineItem, { type: 'event' }> => item.type === 'event'
     );
-    if (!initialEventsMarkedRef.current) {
-      // Mark all events present on initial load as already seen — no toast for history
-      events.forEach((item) => shownEventToastsRef.current.add(item.event.id));
-      initialEventsMarkedRef.current = true;
-      return;
-    }
-    events.forEach((item) => {
-      if (!shownEventToastsRef.current.has(item.event.id)) {
-        shownEventToastsRef.current.add(item.event.id);
-        showToast(
-          `You can now plan coworking details with ${otherUser?.name ?? 'your partner'} 😀`
-        );
-      }
-    });
-  }, [timelineItems, otherUser?.name, showToast]);
+    const newEvents = events.filter((item) => !shownEventIds.has(item.event.id));
+    if (newEvents.length === 0) return;
+
+    newEvents.forEach(() =>
+      showToast(`You can now plan coworking details with ${otherUser?.name ?? 'your partner'} 😀`)
+    );
+
+    const updatedIds = new Set([...shownEventIds, ...newEvents.map((item) => item.event.id)]);
+    setShownEventIds(updatedIds);
+    AsyncStorage.setItem('accepted_event_toasts_shown', JSON.stringify([...updatedIds])).catch(
+      () => {}
+    );
+  }, [timelineItems, shownEventIds, otherUser?.name, showToast]);
 
   useEffect(() => {
     const missedSession = sessions.find(
