@@ -213,14 +213,14 @@ export default function SessionRequestCard({
             </TouchableOpacity>
             <View style={styles.secondaryRow}>
               <TouchableOpacity onPress={onDecline} style={styles.declineBtn} activeOpacity={0.8}>
-                <Text style={styles.declineBtnText}>Decline</Text>
+                <Text style={styles.declineBtnText} numberOfLines={1}>Decline</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setShowProposeInput((v) => !v)}
                 style={styles.proposeBtn}
                 activeOpacity={0.8}
               >
-                <Text style={styles.proposeBtnText}>Propose…</Text>
+                <Text style={styles.proposeBtnText} numberOfLines={1}>Propose…</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -380,6 +380,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 4,
     flexShrink: 0,
+    width: 128,
   },
   acceptBtn: {
     backgroundColor: colors.accentPrimary,
