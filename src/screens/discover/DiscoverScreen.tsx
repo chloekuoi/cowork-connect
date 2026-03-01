@@ -219,8 +219,8 @@ const styles = StyleSheet.create({
     padding: spacing[6],
   },
   loadingText: {
-    marginTop: spacing[4],
-    fontSize: 16,
+    marginTop: spacing[2],
+    fontSize: 14,
     color: theme.textSecondary,
   },
   header: {

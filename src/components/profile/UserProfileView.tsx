@@ -94,6 +94,17 @@ export default function UserProfileView({
     return [];
   }, [photos, profile.id, profile.photo_url]);
 
+  const primaryPhoto = useMemo<ProfilePhoto | null>(() => {
+    if (photoList.length === 0) return null;
+    const explicitPrimary = photoList.find((photo) => photo.position === 0);
+    return explicitPrimary || photoList[0];
+  }, [photoList]);
+
+  const secondaryPhotos = useMemo<ProfilePhoto[]>(
+    () => photoList.filter((photo) => photo.id !== primaryPhoto?.id),
+    [photoList, primaryPhoto?.id]
+  );
+
   const initials = profile.name
     ? profile.name
         .split(' ')
@@ -162,11 +173,15 @@ export default function UserProfileView({
 
   return (
     <>
-      {/* ── Photo stack ─────────────────────────────────────────────── */}
-      <View style={styles.photoStack}>
-        {photoList.length === 0 ? (
+      {/* ── Top photo area ─────────────────────────────────────────── */}
+      <View style={styles.primaryPhotoBlock}>
+        {!primaryPhoto ? (
           <View style={[styles.photoFrame, styles.primaryFrame, styles.initialsFrame]}>
             <Text style={styles.initialsText}>{initials}</Text>
+          </View>
+        ) : isOwnProfile ? (
+          <View style={[styles.photoFrame, styles.primaryFrame]}>
+            <Image source={{ uri: primaryPhoto.photo_url }} style={styles.photoImage} contentFit="cover" />
           </View>
         ) : (
           photoList.map((photo) => (
@@ -177,11 +192,7 @@ export default function UserProfileView({
                 photo.position === 0 ? styles.primaryFrame : styles.secondaryFrame,
               ]}
             >
-              <Image
-                source={{ uri: photo.photo_url }}
-                style={styles.photoImage}
-                contentFit="cover"
-              />
+              <Image source={{ uri: photo.photo_url }} style={styles.photoImage} contentFit="cover" />
             </View>
           ))
         )}
@@ -273,6 +284,19 @@ export default function UserProfileView({
           </View>
         </>
       ) : null}
+
+      {isOwnProfile && secondaryPhotos.length > 0 ? (
+        <>
+          <View style={styles.sectionGap} />
+          <View style={styles.secondaryPhotoBlock}>
+            {secondaryPhotos.map((photo) => (
+              <View key={photo.id} style={[styles.photoFrame, styles.secondaryFrame]}>
+                <Image source={{ uri: photo.photo_url }} style={styles.photoImage} contentFit="cover" />
+              </View>
+            ))}
+          </View>
+        </>
+      ) : null}
     </>
   );
 }
@@ -281,9 +305,12 @@ export default function UserProfileView({
 
 const styles = StyleSheet.create({
   // Photos
-  photoStack: {
+  primaryPhotoBlock: {
     gap: spacing[3],
     paddingTop: spacing[4],
+  },
+  secondaryPhotoBlock: {
+    gap: spacing[3],
   },
   photoFrame: {
     width: '100%',
@@ -312,7 +339,7 @@ const styles = StyleSheet.create({
   },
   // Name block
   nameBlock: {
-    marginTop: spacing[4],
+    marginTop: spacing[3],
     paddingHorizontal: spacing[4],
   },
   nameRow: {
@@ -340,7 +367,7 @@ const styles = StyleSheet.create({
   pillsContent: {
     paddingHorizontal: spacing[4],
     gap: spacing[2],
-    paddingBottom: spacing[1],
+    paddingBottom: spacing[2],
   },
   pill: {
     flexDirection: 'row',
@@ -395,9 +422,9 @@ const styles = StyleSheet.create({
   },
   // Intent card
   intentCard: {
-    marginHorizontal: spacing[4],
-    marginTop: spacing[3],
-    marginBottom: spacing[3],
+    marginHorizontal: spacing[2],
+    marginTop: spacing[2],
+    marginBottom: spacing[2],
     backgroundColor: colors.accentPrimaryLight,
     borderRadius: borderRadius.xl,
     padding: spacing[4],

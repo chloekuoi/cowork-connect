@@ -375,11 +375,19 @@ export default function EditProfileScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} disabled={saving || photoBusy}>
+        <TouchableOpacity
+          style={[styles.headerSide, styles.headerSideLeft]}
+          onPress={() => navigation.goBack()}
+          disabled={saving || photoBusy}
+        >
           <Text style={styles.headerButton}>Cancel</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Edit Profile</Text>
-        <TouchableOpacity onPress={handleSave} disabled={saving || photoBusy}>
+        <TouchableOpacity
+          style={[styles.headerSide, styles.headerSideRight]}
+          onPress={handleSave}
+          disabled={saving || photoBusy}
+        >
           <Text style={[styles.headerButton, styles.saveButton]}>{saving ? 'Saving...' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
@@ -595,10 +603,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.text,
   },
+  headerSide: {
+    minWidth: 44,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  headerSideLeft: {
+    alignItems: 'flex-start',
+  },
+  headerSideRight: {
+    alignItems: 'flex-end',
+  },
   headerButton: {
     fontSize: 16,
     color: theme.textSecondary,
-    minWidth: 64,
   },
   saveButton: {
     textAlign: 'right',

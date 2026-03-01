@@ -116,7 +116,7 @@ export default function PhotoSlots({
               </View>
             )}
             <View style={styles.editBadge}>
-              <Text style={styles.editBadgeText}>✏️  Edit</Text>
+              <Text style={styles.editBadgeText}>Edit</Text>
             </View>
           </>
         ) : (

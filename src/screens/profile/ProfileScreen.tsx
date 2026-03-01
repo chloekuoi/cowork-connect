@@ -10,7 +10,8 @@ import {
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Polygon, Line } from 'react-native-svg';
 import { colors, theme, spacing, borderRadius } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
 import { getFullProfile } from '../../services/profileService';
@@ -18,6 +19,22 @@ import { getTodayIntent } from '../../services/discoveryService';
 import { Profile, ProfilePhoto, WorkIntent } from '../../types';
 import { ProfileStackParamList } from '../../navigation/ProfileStack';
 import UserProfileView from '../../components/profile/UserProfileView';
+
+function NibIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 20 20">
+      <Polygon
+        points="10,4 14,10 10,16 6,10"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+      <Line x1="10" y1="4" x2="10" y2="16" stroke="#FFFFFF" strokeWidth={1.2} />
+      <Line x1="6.2" y1="10" x2="13.8" y2="10" stroke="#FFFFFF" strokeWidth={1.2} />
+    </Svg>
+  );
+}
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
@@ -75,9 +92,12 @@ export default function ProfileScreen() {
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator color={theme.primary} />
-      </View>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
@@ -91,8 +111,11 @@ export default function ProfileScreen() {
           style={styles.headerAction}
           onPress={() => navigation.navigate('EditProfile')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.85}
         >
-          <Text style={styles.pencilIcon}>✏</Text>
+          <View style={styles.headerActionButton}>
+            <NibIcon />
+          </View>
         </TouchableOpacity>
       </View>
 
@@ -147,6 +170,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: theme.background,
   },
+  loadingText: {
+    marginTop: spacing[2],
+    fontSize: 14,
+    color: theme.textSecondary,
+  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -171,9 +199,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 44,
   },
-  pencilIcon: {
-    fontSize: 18,
-    color: theme.textSecondary,
+  headerActionButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   scroll: {
     flex: 1,
