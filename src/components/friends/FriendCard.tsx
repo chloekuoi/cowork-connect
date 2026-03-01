@@ -8,6 +8,7 @@ type FriendCardProps = {
   friend: FriendListItem;
   variant: 'available' | 'simple';
   onPress: () => void;
+  onProfilePress?: () => void;
 };
 
 function getInitials(name: string | null): string {
@@ -32,13 +33,18 @@ function availabilitySummary(friend: FriendListItem): string {
   return `${timeWindow} · ${place}`;
 }
 
-export default function FriendCard({ friend, variant, onPress }: FriendCardProps) {
+export default function FriendCard({ friend, variant, onPress, onProfilePress }: FriendCardProps) {
   const initials = getInitials(friend.name);
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.left}>
-        <View style={styles.avatar}>
+        <TouchableOpacity
+          onPress={onProfilePress}
+          activeOpacity={0.8}
+          disabled={!onProfilePress}
+          style={styles.avatar}
+        >
           {friend.photo_url ? (
             <Image source={{ uri: friend.photo_url }} style={styles.avatarImage} contentFit="cover" />
           ) : (
@@ -46,7 +52,7 @@ export default function FriendCard({ friend, variant, onPress }: FriendCardProps
               <Text style={styles.avatarText}>{initials}</Text>
             </View>
           )}
-        </View>
+        </TouchableOpacity>
 
         <View style={styles.textWrap}>
           <Text style={styles.name}>{friend.name || 'Anonymous'}</Text>

@@ -19,9 +19,12 @@ import { MainTabsParamList } from '../../navigation/MainTabs';
 import FriendRequestCard from '../../components/friends/FriendRequestCard';
 import FriendCard from '../../components/friends/FriendCard';
 import CollapsibleSection from '../../components/friends/CollapsibleSection';
+import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { useAuth } from '../../context/AuthContext';
 import { fetchFriends, fetchPendingRequests, PendingRequestItem, respondToFriendRequest } from '../../services/friendsService';
-import { FriendListItem, MatchPreviewOtherUser } from '../../types';
+import { getFullProfile } from '../../services/profileService';
+import { getTodayIntent } from '../../services/discoveryService';
+import { FriendListItem, MatchPreviewOtherUser, Profile, ProfilePhoto, WorkIntent } from '../../types';
 
 type Props = NativeStackScreenProps<FriendsStackParamList, 'Friends'>;
 
@@ -32,6 +35,13 @@ export default function FriendsScreen({ navigation }: Props) {
   const [pendingRequests, setPendingRequests] = useState<PendingRequestItem[]>([]);
   const [friends, setFriends] = useState<FriendListItem[]>([]);
   const [actingFriendshipId, setActingFriendshipId] = useState<string | null>(null);
+  const [profileModalFriend, setProfileModalFriend] = useState<FriendListItem | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileData, setProfileData] = useState<{
+    profile: Profile | null;
+    photos: ProfilePhoto[];
+    intent: WorkIntent | null;
+  } | null>(null);
 
   const [pendingExpanded, setPendingExpanded] = useState(false);
   const [availableExpanded, setAvailableExpanded] = useState(true);
@@ -124,6 +134,37 @@ export default function FriendsScreen({ navigation }: Props) {
     [navigation]
   );
 
+  const handleOpenProfile = useCallback(async (friend: FriendListItem) => {
+    setProfileModalFriend(friend);
+    setProfileLoading(true);
+    setProfileData(null);
+
+    const [{ data: fullProfile }, intent] = await Promise.all([
+      getFullProfile(friend.user_id),
+      getTodayIntent(friend.user_id),
+    ]);
+
+    setProfileData({
+      profile: fullProfile.profile,
+      photos: fullProfile.photos,
+      intent,
+    });
+    setProfileLoading(false);
+  }, []);
+
+  const handleDismissProfileModal = useCallback(() => {
+    setProfileModalFriend(null);
+    setProfileLoading(false);
+    setProfileData(null);
+  }, []);
+
+  const handleMessageFromProfile = useCallback(() => {
+    if (!profileModalFriend) return;
+    const targetFriend = profileModalFriend;
+    handleDismissProfileModal();
+    openChat(targetFriend);
+  }, [handleDismissProfileModal, openChat, profileModalFriend]);
+
   const availableFriends = useMemo(() => friends.filter((friend) => friend.has_intent_today), [friends]);
   const notAvailableFriends = useMemo(() => friends.filter((friend) => !friend.has_intent_today), [friends]);
 
@@ -208,6 +249,7 @@ export default function FriendsScreen({ navigation }: Props) {
                     friend={friend}
                     variant="available"
                     onPress={() => openChat(friend)}
+                    onProfilePress={() => void handleOpenProfile(friend)}
                   />
                 ))
               )}
@@ -228,6 +270,7 @@ export default function FriendsScreen({ navigation }: Props) {
                     friend={friend}
                     variant="simple"
                     onPress={() => openChat(friend)}
+                    onProfilePress={() => void handleOpenProfile(friend)}
                   />
                 ))
               )}
@@ -235,6 +278,16 @@ export default function FriendsScreen({ navigation }: Props) {
           </>
         )}
       </ScrollView>
+
+      <FriendProfileModal
+        visible={profileModalFriend !== null}
+        profile={profileData?.profile ?? null}
+        photos={profileData?.photos ?? []}
+        intent={profileData?.intent ?? null}
+        loading={profileLoading}
+        onDismiss={handleDismissProfileModal}
+        onMessage={handleMessageFromProfile}
+      />
     </SafeAreaView>
   );
 }

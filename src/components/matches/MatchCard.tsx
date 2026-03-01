@@ -7,6 +7,7 @@ import { MatchPreview } from '../../types';
 type MatchCardProps = {
   matchPreview: MatchPreview;
   onPress: () => void;
+  onAvatarPress?: () => void;
 };
 
 function formatRelativeTime(isoDate: string | null): string {
@@ -23,7 +24,7 @@ function formatRelativeTime(isoDate: string | null): string {
   return `${diffDays}d ago`;
 }
 
-export default function MatchCard({ matchPreview, onPress }: MatchCardProps) {
+export default function MatchCard({ matchPreview, onPress, onAvatarPress }: MatchCardProps) {
   const { other_user, last_message, last_message_at, unread_count } = matchPreview;
   const initials = other_user.name
     ? other_user.name
@@ -40,7 +41,12 @@ export default function MatchCard({ matchPreview, onPress }: MatchCardProps) {
 
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
-      <View style={styles.avatar}>
+      <TouchableOpacity
+        style={styles.avatar}
+        onPress={onAvatarPress}
+        activeOpacity={0.8}
+        disabled={!onAvatarPress}
+      >
         {other_user.photo_url ? (
           <Image source={{ uri: other_user.photo_url }} style={styles.avatarImage} contentFit="cover" />
         ) : (
@@ -48,7 +54,7 @@ export default function MatchCard({ matchPreview, onPress }: MatchCardProps) {
             <Text style={styles.avatarInitials}>{initials}</Text>
           </View>
         )}
-      </View>
+      </TouchableOpacity>
 
       <View style={styles.textContainer}>
         <View style={styles.topRow}>
