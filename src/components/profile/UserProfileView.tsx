@@ -26,16 +26,6 @@ const LOCATION_EMOJI: Record<LocationType, string> = {
   Anywhere: '📍',
 };
 
-function formatBirthdayDisplay(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
-
 function formatDisplayTime(value: string): string {
   const parts = value.split(':');
   if (parts.length < 2) return value;
@@ -143,17 +133,8 @@ export default function UserProfileView({
     { label: 'School', value: profile.school },
   ].filter((r): r is { label: string; value: string } => Boolean(r.value));
 
-  const locationRows = [
-    { label: 'Neighbourhood', value: profile.neighborhood },
-    { label: 'City', value: profile.city },
-    {
-      label: 'Birthday',
-      value: profile.birthday ? formatBirthdayDisplay(profile.birthday) : null,
-    },
-  ].filter((r): r is { label: string; value: string } => Boolean(r.value));
-
   const hasAnyFields =
-    aboutYouRows.length > 0 || workSchoolRows.length > 0 || locationRows.length > 0;
+    aboutYouRows.length > 0 || workSchoolRows.length > 0;
 
   const renderGroup = useCallback((rows: { label: string; value: string }[]) => {
     if (rows.length === 0) return null;
@@ -179,22 +160,10 @@ export default function UserProfileView({
           <View style={[styles.photoFrame, styles.primaryFrame, styles.initialsFrame]}>
             <Text style={styles.initialsText}>{initials}</Text>
           </View>
-        ) : isOwnProfile ? (
+        ) : (
           <View style={[styles.photoFrame, styles.primaryFrame]}>
             <Image source={{ uri: primaryPhoto.photo_url }} style={styles.photoImage} contentFit="cover" />
           </View>
-        ) : (
-          photoList.map((photo) => (
-            <View
-              key={photo.id}
-              style={[
-                styles.photoFrame,
-                photo.position === 0 ? styles.primaryFrame : styles.secondaryFrame,
-              ]}
-            >
-              <Image source={{ uri: photo.photo_url }} style={styles.photoImage} contentFit="cover" />
-            </View>
-          ))
         )}
       </View>
 
@@ -276,16 +245,11 @@ export default function UserProfileView({
               <View style={styles.groupSep} />
             ) : null}
             {renderGroup(workSchoolRows)}
-            {(aboutYouRows.length > 0 || workSchoolRows.length > 0) &&
-            locationRows.length > 0 ? (
-              <View style={styles.groupSep} />
-            ) : null}
-            {renderGroup(locationRows)}
           </View>
         </>
       ) : null}
 
-      {isOwnProfile && secondaryPhotos.length > 0 ? (
+      {secondaryPhotos.length > 0 ? (
         <>
           <View style={styles.sectionGap} />
           <View style={styles.secondaryPhotoBlock}>
