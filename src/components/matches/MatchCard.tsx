@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { colors, spacing, theme } from '../../constants';
+import { borderRadius, colors, spacing, theme } from '../../constants';
 import { MatchPreview } from '../../types';
 
 type MatchCardProps = {
@@ -25,7 +25,7 @@ function formatRelativeTime(isoDate: string | null): string {
 }
 
 export default function MatchCard({ matchPreview, onPress, onAvatarPress }: MatchCardProps) {
-  const { other_user, last_message, last_message_at, unread_count } = matchPreview;
+  const { other_user, last_message, last_message_at, unread_count, has_unread_invite, invite_badge_text } = matchPreview;
   const initials = other_user.name
     ? other_user.name
         .split(' ')
@@ -35,8 +35,11 @@ export default function MatchCard({ matchPreview, onPress, onAvatarPress }: Matc
         .slice(0, 2)
     : '?';
 
-  const isUnread = unread_count > 0;
   const previewText = last_message || 'Say hello!';
+  const hasPendingInvitePreview = /pending cowork invite/i.test(previewText.trim());
+  const showInvitePill = hasPendingInvitePreview || !!invite_badge_text;
+  const isUnread = unread_count > 0 || has_unread_invite;
+  const showPreviewText = !hasPendingInvitePreview;
   const timestamp = formatRelativeTime(last_message_at);
 
   return (
@@ -58,17 +61,31 @@ export default function MatchCard({ matchPreview, onPress, onAvatarPress }: Matc
 
       <View style={styles.textContainer}>
         <View style={styles.topRow}>
-          <Text style={[styles.name, isUnread && styles.nameUnread]}>
+          <Text style={styles.name}>
             {other_user.name || 'Anonymous'}
           </Text>
           <Text style={styles.timestamp}>{timestamp}</Text>
         </View>
-        <Text style={[styles.preview, !last_message && styles.previewEmpty]} numberOfLines={1}>
-          {previewText}
-        </Text>
+        <View style={styles.previewRow}>
+          {showPreviewText ? (
+            <Text
+              style={[styles.preview, !last_message && styles.previewEmpty, isUnread && styles.previewUnread]}
+              numberOfLines={1}
+            >
+              {previewText}
+            </Text>
+          ) : null}
+          {showInvitePill ? (
+            <View style={[styles.invitePillInline, !showPreviewText && styles.invitePillAlignedLeft]}>
+              <Text style={styles.invitePillText}>{invite_badge_text || 'Invite waiting'}</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
 
-      {isUnread && <View style={styles.unreadDot} />}
+      <View style={styles.rightStatus}>
+        {isUnread ? <View style={styles.unreadDot} /> : null}
+      </View>
     </TouchableOpacity>
   );
 }
@@ -117,27 +134,58 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: theme.text,
   },
-  nameUnread: {
-    fontWeight: '700',
-  },
   timestamp: {
     fontSize: 13,
     color: theme.textMuted,
     marginLeft: spacing[2],
   },
   preview: {
+    flex: 1,
     fontSize: 14,
     color: theme.textSecondary,
     marginTop: spacing[1],
   },
+  previewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing[1],
+  },
   previewEmpty: {
     fontStyle: 'italic',
+  },
+  previewUnread: {
+    fontWeight: '700',
+  },
+  rightStatus: {
+    marginLeft: spacing[2],
+    alignItems: 'flex-end',
+    justifyContent: 'flex-start',
+    minWidth: 12,
   },
   unreadDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
     backgroundColor: theme.success,
+  },
+  invitePillInline: {
     marginLeft: spacing[2],
+    backgroundColor: colors.statusPendingBg,
+    borderRadius: borderRadius.full,
+    borderWidth: 1,
+    borderColor: colors.accentSecondary,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    alignSelf: 'center',
+    flexShrink: 0,
+  },
+  invitePillAlignedLeft: {
+    marginLeft: 0,
+    marginTop: spacing[1],
+  },
+  invitePillText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.statusPendingText,
   },
 });
