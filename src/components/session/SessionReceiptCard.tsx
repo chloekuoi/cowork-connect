@@ -144,7 +144,7 @@ export default function SessionReceiptCard({
 
       {/* ── TORN EDGE ── */}
       <View style={styles.tornEdge}>
-        {Array.from({ length: 24 }).map((_, i) => (
+        {Array.from({ length: 30 }).map((_, i) => (
           <View key={i} style={styles.notch} />
         ))}
       </View>
@@ -299,7 +299,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   tornEdge: {
-    height: 5,
+    height: 2,
     backgroundColor: BANNER_BG,
     flexDirection: 'row',
     justifyContent: 'space-around',
@@ -307,9 +307,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   notch: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
+    width: 6,
+    height: 6,
+    borderRadius: 3,
     backgroundColor: CARD_BG,
   },
   body: {
