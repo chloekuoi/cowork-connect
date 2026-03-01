@@ -510,6 +510,7 @@ export default function ChatScreen({ navigation, route }: Props) {
               )
             }
             inverted
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.listContent}
           />
         )}
