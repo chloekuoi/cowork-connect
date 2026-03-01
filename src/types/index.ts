@@ -102,6 +102,8 @@ export type MatchPreview = {
   last_message: string | null;
   last_message_at: string | null;
   unread_count: number;
+  has_unread_invite: boolean;
+  invite_badge_text: string | null;
 };
 
 // Sessions types
