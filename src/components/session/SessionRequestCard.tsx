@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import Button from '../common/Button';
 import { borderRadius, colors, spacing, theme, touchTarget, shadows } from '../../constants';
 import { SessionRecord } from '../../types';
 import SessionReceiptCard from './SessionReceiptCard';
@@ -105,35 +104,6 @@ export default function SessionRequestCard({
     }),
     [statusDotPulse]
   );
-
-  const renderActions = () => {
-    if (session.status === 'pending') {
-      if (isInitiator) {
-        return (
-          <Button
-            title="Cancel"
-            onPress={onCancel}
-            variant="secondary"
-            style={styles.button}
-          />
-        );
-      }
-
-      return (
-        <View style={styles.row}>
-          <Button title="Accept" onPress={onAccept} style={styles.button} />
-          <Button
-            title="Decline"
-            onPress={onDecline}
-            variant="secondary"
-            style={StyleSheet.flatten([styles.button, styles.buttonSpacer])}
-          />
-        </View>
-      );
-    }
-
-    return null;
-  };
 
   const renderDescription = () => {
     if (session.status === 'pending') {
@@ -256,7 +226,6 @@ export default function SessionRequestCard({
         />
       </View>
       {renderDescription() ? <Text style={styles.description}>{renderDescription()}</Text> : null}
-      {renderActions()}
     </Animated.View>
   );
 }
