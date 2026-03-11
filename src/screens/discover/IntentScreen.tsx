@@ -23,13 +23,13 @@ import Button from '../../components/common/Button';
 
 const WORK_STYLES: { value: WorkStyle; emoji: string; label: string }[] = [
   { value: 'Deep focus', emoji: '🎧', label: 'Deep focus' },
-  { value: 'Happy to chat', emoji: '💬', label: 'Chat mode' },
+  { value: 'Chat mode', emoji: '💬', label: 'Chat mode' },
   { value: 'Flexible', emoji: '✌️', label: 'Flexible' },
 ];
 const LOCATION_TYPES: { value: LocationType; emoji: string; label: string }[] = [
   { value: 'Cafe', emoji: '☕️', label: 'Cafe' },
   { value: 'Library', emoji: '📚', label: 'Library' },
-  { value: 'Anywhere/Other', emoji: '📍', label: 'Anywhere' },
+  { value: 'Anywhere', emoji: '📍', label: 'Anywhere' },
 ];
 
 const TIME_START_MINUTES = 7 * 60; // 07:00
@@ -57,7 +57,7 @@ export default function IntentScreen({
   const { user } = useAuth();
   const [taskDescription, setTaskDescription] = useState('');
   const [workStyle, setWorkStyle] = useState<WorkStyle>('Flexible');
-  const [locationType, setLocationType] = useState<LocationType>('Anywhere/Other');
+  const [locationType, setLocationType] = useState<LocationType>('Anywhere');
   const [locationName, setLocationName] = useState('');
   const [startTime, setStartTime] = useState('09:00:00');
   const [endTime, setEndTime] = useState('17:00:00');
@@ -82,14 +82,25 @@ export default function IntentScreen({
       const existingIntent = await getTodayIntent(user.id);
       if (existingIntent && isMounted) {
         setTaskDescription(existingIntent.task_description || '');
-        const normalizedWorkStyle =
-          existingIntent.work_style === 'Pomodoro fan' ? 'Flexible' : existingIntent.work_style;
-        setWorkStyle(normalizedWorkStyle as WorkStyle);
-        const normalizedLocation =
-          existingIntent.location_type === 'Video Call' || existingIntent.location_type === 'Anywhere'
-            ? 'Anywhere/Other'
-            : existingIntent.location_type;
-        setLocationType(normalizedLocation as LocationType);
+        const rawWorkStyle = existingIntent.work_style as string;
+        const normalizedWorkStyle: WorkStyle =
+          rawWorkStyle === 'Pomodoro fan'
+            ? 'Flexible'
+            : rawWorkStyle === 'Happy to chat'
+              ? 'Chat mode'
+              : rawWorkStyle === 'Deep focus' || rawWorkStyle === 'Chat mode' || rawWorkStyle === 'Flexible'
+                ? rawWorkStyle
+                : 'Flexible';
+        setWorkStyle(normalizedWorkStyle);
+        
+        const rawLocationType = existingIntent.location_type as string;
+        const normalizedLocation: LocationType =
+          rawLocationType === 'Video Call' || rawLocationType === 'Anywhere/Other'
+            ? 'Anywhere'
+            : rawLocationType === 'Cafe' || rawLocationType === 'Library' || rawLocationType === 'Anywhere'
+              ? rawLocationType
+              : 'Anywhere';
+        setLocationType(normalizedLocation);
         setLocationName(existingIntent.location_name || '');
         setStartTime(existingIntent.available_from);
         setEndTime(existingIntent.available_until);

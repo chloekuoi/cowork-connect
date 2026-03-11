@@ -37,11 +37,7 @@ export default function InviteComposerCard({
 
   return (
     <View style={styles.card}>
-      <View style={styles.badge}>
-        <Text style={styles.badgeText}>Cowork</Text>
-      </View>
       <Text style={styles.title}>Pick a day</Text>
-      <Text style={styles.subtitle}>When would you like to cowork?</Text>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -90,33 +86,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     ...shadows.card,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    backgroundColor: colors.accentPrimaryLight,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
-    marginBottom: spacing[2],
-  },
-  badgeText: {
-    fontSize: 10,
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-    color: colors.accentPrimary,
-    fontWeight: '600',
-  },
   title: {
     fontSize: 20,
     fontWeight: '700',
     color: colors.textPrimary,
   },
-  subtitle: {
-    fontSize: 13,
-    color: colors.textTertiary,
-    marginTop: spacing[1],
-  },
   pillsRow: {
-    marginTop: spacing[4],
+    marginTop: spacing[3],
     paddingRight: spacing[2],
   },
   pill: {
@@ -153,7 +129,7 @@ const styles = StyleSheet.create({
   },
   actionsRow: {
     flexDirection: 'row',
-    marginTop: spacing[5],
+    marginTop: spacing[4],
     alignItems: 'center',
   },
   sendButton: {

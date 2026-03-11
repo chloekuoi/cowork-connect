@@ -6,8 +6,11 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { theme, spacing } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
 import { fetchMatches } from '../../services/messagingService';
-import { MatchPreview } from '../../types';
+import { getTodayIntent } from '../../services/discoveryService';
+import { getFullProfile } from '../../services/profileService';
+import { MatchPreview, Profile, ProfilePhoto, WorkIntent } from '../../types';
 import MatchCard from '../../components/matches/MatchCard';
+import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'MatchesList'>;
@@ -18,6 +21,13 @@ export default function MatchesListScreen({ navigation }: Props) {
   const [matches, setMatches] = useState<MatchPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedMatch, setSelectedMatch] = useState<MatchPreview | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileData, setProfileData] = useState<{
+    profile: Profile | null;
+    photos: ProfilePhoto[];
+    intent: WorkIntent | null;
+  } | null>(null);
 
   const loadMatches = useCallback(
     async (showLoading: boolean) => {
@@ -49,12 +59,53 @@ export default function MatchesListScreen({ navigation }: Props) {
     loadMatches(false);
   };
 
+  const openChat = useCallback(
+    (match: MatchPreview) => {
+      navigation.navigate('Chat', {
+        matchId: match.match_id,
+        otherUser: match.other_user,
+      });
+    },
+    [navigation]
+  );
+
+  const handleOpenProfile = useCallback(async (match: MatchPreview) => {
+    setSelectedMatch(match);
+    setProfileLoading(true);
+    setProfileData(null);
+
+    const [{ data: fullProfile }, intent] = await Promise.all([
+      getFullProfile(match.other_user.id),
+      getTodayIntent(match.other_user.id),
+    ]);
+
+    setProfileData({
+      profile: fullProfile.profile,
+      photos: fullProfile.photos,
+      intent,
+    });
+    setProfileLoading(false);
+  }, []);
+
+  const closeProfileModal = useCallback(() => {
+    setSelectedMatch(null);
+    setProfileLoading(false);
+    setProfileData(null);
+  }, []);
+
+  const handleMessageFromModal = useCallback(() => {
+    if (!selectedMatch) return;
+    const targetMatch = selectedMatch;
+    closeProfileModal();
+    openChat(targetMatch);
+  }, [closeProfileModal, openChat, selectedMatch]);
+
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.loadingText}>Loading matches...</Text>
+          <Text style={styles.loadingText}>Loading messages...</Text>
         </View>
       </SafeAreaView>
     );
@@ -74,8 +125,7 @@ export default function MatchesListScreen({ navigation }: Props) {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Matches</Text>
-        <Text style={styles.headerSubtitle}>{matches.length} conversations</Text>
+        <Text style={styles.headerTitle}>Chats</Text>
       </View>
 
       <FlatList
@@ -84,18 +134,24 @@ export default function MatchesListScreen({ navigation }: Props) {
         renderItem={({ item }) => (
           <MatchCard
             matchPreview={item}
-            onPress={() =>
-              navigation.navigate('Chat', {
-                matchId: item.match_id,
-                otherUser: item.other_user,
-              })
-            }
+            onPress={() => openChat(item)}
+            onAvatarPress={() => void handleOpenProfile(item)}
           />
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={refreshing}
         onRefresh={handleRefresh}
         contentContainerStyle={styles.listContent}
+      />
+
+      <FriendProfileModal
+        visible={selectedMatch !== null}
+        profile={profileData?.profile ?? null}
+        photos={profileData?.photos ?? []}
+        intent={profileData?.intent ?? null}
+        loading={profileLoading}
+        onDismiss={closeProfileModal}
+        onMessage={handleMessageFromModal}
       />
     </SafeAreaView>
   );
@@ -116,11 +172,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.text,
   },
-  headerSubtitle: {
-    fontSize: 16,
-    color: theme.textSecondary,
-    marginTop: spacing[1],
-  },
   centerContent: {
     flex: 1,
     alignItems: 'center',
@@ -128,8 +179,8 @@ const styles = StyleSheet.create({
     padding: spacing[6],
   },
   loadingText: {
-    marginTop: spacing[4],
-    fontSize: 16,
+    marginTop: spacing[2],
+    fontSize: 14,
     color: theme.textSecondary,
   },
   emptyTitle: {

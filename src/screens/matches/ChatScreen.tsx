@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -25,18 +26,19 @@ import {
   subscribeToSession,
   subscribeToSessionEvents,
 } from '../../services/sessionService';
-import { ChatTimelineItem, Message, SessionEvent, SessionRecord } from '../../types';
+import { getTodayIntent } from '../../services/discoveryService';
+import { getFullProfile } from '../../services/profileService';
+import { ChatTimelineItem, Message, Profile, ProfilePhoto, SessionEvent, SessionRecord, WorkIntent } from '../../types';
 import MessageBubble from '../../components/matches/MessageBubble';
 import ChatInputBar from '../../components/matches/ChatInputBar';
 import StartSessionButton from '../../components/session/StartSessionButton';
 import InviteComposerCard from '../../components/session/InviteComposerCard';
-import SessionEventBubble from '../../components/session/SessionEventBubble';
 import SessionRequestCard from '../../components/session/SessionRequestCard';
+import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'Chat'>;
 
-const declinedToastShown: Record<string, boolean> = {};
 
 export default function ChatScreen({ navigation, route }: Props) {
   const { user } = useAuth();
@@ -53,10 +55,25 @@ export default function ChatScreen({ navigation, route }: Props) {
   const [recentlyCompletedSessions, setRecentlyCompletedSessions] = useState<Record<string, number>>(
     {}
   );
-  const [shownDeclinedSessions, setShownDeclinedSessions] = useState<Record<string, boolean>>({});
-  const [shownMissedSessions, setShownMissedSessions] = useState<Record<string, boolean>>({});
+  // null = AsyncStorage not yet loaded
+  const [shownSessionToasts, setShownSessionToasts] = useState<Set<string> | null>(null);
+  const shownSessionToastsRef = useRef<Set<string>>(new Set()); // ref for sync access in subscription closures
+  const [profileModalVisible, setProfileModalVisible] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [profileData, setProfileData] = useState<{
+    profile: Profile | null;
+    photos: ProfilePhoto[];
+    intent: WorkIntent | null;
+  } | null>(null);
   const listRef = useRef<FlatList<ChatTimelineItem>>(null);
   const toastTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // null = AsyncStorage not yet loaded; Set = loaded (may be empty on first ever open)
+  const [shownEventIds, setShownEventIds] = useState<Set<string> | null>(null);
+
+  const totalSessions = useMemo(
+    () => sessions.filter((s) => s.status === 'completed').length,
+    [sessions]
+  );
 
   const loadMessages = useCallback(async () => {
     const data = await fetchMessages(matchId);
@@ -74,6 +91,13 @@ export default function ChatScreen({ navigation, route }: Props) {
     }, duration);
   }, []);
 
+  const markSessionToastShown = useCallback((key: string) => {
+    const next = new Set([...shownSessionToastsRef.current, key]);
+    shownSessionToastsRef.current = next;
+    setShownSessionToasts(next);
+    AsyncStorage.setItem('session_toasts_shown', JSON.stringify([...next])).catch(() => {});
+  }, []);
+
   const loadSessions = useCallback(async () => {
     if (!user) return;
     setSessionLoading(true);
@@ -84,8 +108,6 @@ export default function ChatScreen({ navigation, route }: Props) {
     const now = Date.now();
     let didUpdate = false;
     const updatedRecentlyCompleted: Record<string, number> = { ...recentlyCompletedSessions };
-    let didDeclineToast = false;
-    let declinedSessionId: string | null = null;
     matchSessions.forEach((session) => {
       if (session.status === 'completed' && session.completed_ack) {
         const completedAt = session.completed_at ? new Date(session.completed_at).getTime() : now;
@@ -93,22 +115,11 @@ export default function ChatScreen({ navigation, route }: Props) {
           updatedRecentlyCompleted[session.id] = now;
           didUpdate = true;
         }
-        return;
-      }
-
-      if (session.status === 'declined' && !declinedToastShown[session.id]) {
-        didDeclineToast = true;
-        declinedSessionId = session.id;
       }
     });
     if (didUpdate) {
       setRecentlyCompletedSessions(updatedRecentlyCompleted);
       showToast('Session Completed 🔒❤️');
-    }
-    if (didDeclineToast && declinedSessionId) {
-      declinedToastShown[declinedSessionId] = true;
-      setShownDeclinedSessions((prev) => ({ ...prev, [declinedSessionId]: true }));
-      showToast('Next Time 🫶🏼');
     }
     setSessionLoading(false);
   }, [matchId, user, recentlyCompletedSessions, showToast]);
@@ -162,10 +173,19 @@ export default function ChatScreen({ navigation, route }: Props) {
           setRecentlyCompletedSessions((prev) => ({ ...prev, [updated.id]: completedAt }));
           showToast('Session Completed 🔒❤️');
         }
-        if (updated.status === 'declined' && !declinedToastShown[updated.id]) {
-          declinedToastShown[updated.id] = true;
-          setShownDeclinedSessions((prev) => ({ ...prev, [updated.id]: true }));
+        const declinedKey = `declined:${updated.id}`;
+        if (updated.status === 'declined' && !shownSessionToastsRef.current.has(declinedKey)) {
+          markSessionToastShown(declinedKey);
           showToast('Next Time 🫶🏼');
+        }
+        const cancelledKey = `cancelled:${updated.id}`;
+        if (
+          updated.status === 'cancelled' &&
+          !updated.accepted_at &&
+          !shownSessionToastsRef.current.has(cancelledKey)
+        ) {
+          markSessionToastShown(cancelledKey);
+          showToast('Invite cancelled');
         }
       })
     );
@@ -200,6 +220,9 @@ export default function ChatScreen({ navigation, route }: Props) {
         return false;
       }
       if (session.status === 'declined') {
+        return false;
+      }
+      if (session.status === 'cancelled') {
         return false;
       }
       return true;
@@ -250,19 +273,81 @@ export default function ChatScreen({ navigation, route }: Props) {
     }
   }, [timelineItems.length]);
 
+  // Load the set of event IDs that have already shown the "matched" toast
   useEffect(() => {
-    const missedSession = sessions.find(
-      (session) =>
+    AsyncStorage.getItem('accepted_event_toasts_shown')
+      .then((raw) => {
+        const ids: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+        setShownEventIds(new Set(ids));
+      })
+      .catch(() => setShownEventIds(new Set()));
+  }, []);
+
+  // Show a one-time dismissing toast for each 'accepted' event (persisted across app restarts)
+  useEffect(() => {
+    if (shownEventIds === null) return; // AsyncStorage not loaded yet
+    const events = timelineItems.filter(
+      (item): item is Extract<ChatTimelineItem, { type: 'event' }> => item.type === 'event'
+    );
+    const newEvents = events.filter((item) => !shownEventIds.has(item.event.id));
+    if (newEvents.length === 0) return;
+
+    newEvents.forEach(() =>
+      showToast(`You can now plan coworking details with ${otherUser?.name ?? 'your partner'} 😀`)
+    );
+
+    const updatedIds = new Set([...shownEventIds, ...newEvents.map((item) => item.event.id)]);
+    setShownEventIds(updatedIds);
+    AsyncStorage.setItem('accepted_event_toasts_shown', JSON.stringify([...updatedIds])).catch(
+      () => {}
+    );
+  }, [timelineItems, shownEventIds, otherUser?.name, showToast]);
+
+  // Load persisted session toast IDs from AsyncStorage on mount
+  useEffect(() => {
+    AsyncStorage.getItem('session_toasts_shown')
+      .then((raw) => {
+        const ids: string[] = raw ? (JSON.parse(raw) as string[]) : [];
+        const s = new Set(ids);
+        shownSessionToastsRef.current = s;
+        setShownSessionToasts(s);
+      })
+      .catch(() => {
+        shownSessionToastsRef.current = new Set();
+        setShownSessionToasts(new Set());
+      });
+  }, []);
+
+  // One-time toasts for declined / cancelled / missed sessions (persisted across restarts)
+  useEffect(() => {
+    if (shownSessionToasts === null) return;
+    sessions.forEach((session) => {
+      const declinedKey = `declined:${session.id}`;
+      if (session.status === 'declined' && !shownSessionToastsRef.current.has(declinedKey)) {
+        markSessionToastShown(declinedKey);
+        showToast('Next Time 🫶🏼');
+      }
+      const cancelledKey = `cancelled:${session.id}`;
+      if (
+        session.status === 'cancelled' &&
+        !session.accepted_at &&
+        !shownSessionToastsRef.current.has(cancelledKey)
+      ) {
+        markSessionToastShown(cancelledKey);
+        showToast('Invite cancelled');
+      }
+      const missedKey = `missed:${session.id}`;
+      if (
         session.status === 'cancelled' &&
         !!session.accepted_at &&
         session.completed_ack === false &&
-        !shownMissedSessions[session.id]
-    );
-    if (missedSession) {
-      showToast('Missed this one 💔');
-      setShownMissedSessions((prev) => ({ ...prev, [missedSession.id]: true }));
-    }
-  }, [sessions, shownMissedSessions, showToast]);
+        !shownSessionToastsRef.current.has(missedKey)
+      ) {
+        markSessionToastShown(missedKey);
+        showToast('Missed this one 💔');
+      }
+    });
+  }, [sessions, shownSessionToasts, markSessionToastShown, showToast]);
 
   const handleSend = async (content: string) => {
     if (!user) return;
@@ -360,13 +445,45 @@ export default function ChatScreen({ navigation, route }: Props) {
     await loadSessions();
   };
 
+  const openOtherUserProfile = useCallback(async () => {
+    setProfileModalVisible(true);
+    setProfileLoading(true);
+    setProfileData(null);
+
+    const [{ data: fullProfile }, intent] = await Promise.all([
+      getFullProfile(otherUser.id),
+      getTodayIntent(otherUser.id),
+    ]);
+
+    setProfileData({
+      profile: fullProfile.profile,
+      photos: fullProfile.photos,
+      intent,
+    });
+    setProfileLoading(false);
+  }, [otherUser.id]);
+
+  const closeOtherUserProfile = useCallback(() => {
+    setProfileModalVisible(false);
+    setProfileLoading(false);
+    setProfileData(null);
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{otherUser.name || 'Chat'}</Text>
+        <TouchableOpacity
+          style={styles.headerTitleButton}
+          onPress={() => void openOtherUserProfile()}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {otherUser.name || 'Chat'}
+          </Text>
+        </TouchableOpacity>
         <View style={styles.headerRight}>
           {!hasMatchSession && (
             <StartSessionButton
@@ -414,29 +531,38 @@ export default function ChatScreen({ navigation, route }: Props) {
             renderItem={({ item }) =>
               item.type === 'message' ? (
                 <MessageBubble message={item.message} isMine={item.message.sender_id === user?.id} />
-              ) : item.type === 'event' ? (
-                <SessionEventBubble
-                  text={`You can now plan coworking details with ${otherUser.name || 'your partner'} 😀`}
-                />
-              ) : (
+              ) : item.type === 'event' ? null : (
                 <SessionRequestCard
                   session={item.session}
                   currentUserId={user?.id ?? ''}
                   otherUserName={otherUser.name}
+                  totalSessions={totalSessions}
                   onAccept={() => handleAcceptSession(item.session.id)}
                   onDecline={() => handleDeclineSession(item.session.id)}
                   onCancel={() => handleCancelSession(item.session.id)}
                   onLockIn={() => handleLockIn(item.session.id)}
+                  onSendMessage={(text) => handleSend(text)}
                 />
               )
             }
             inverted
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.listContent}
           />
         )}
 
         <ChatInputBar onSend={handleSend} disabled={!user} />
       </KeyboardAvoidingView>
+
+      <FriendProfileModal
+        visible={profileModalVisible}
+        profile={profileData?.profile ?? null}
+        photos={profileData?.photos ?? []}
+        intent={profileData?.intent ?? null}
+        loading={profileLoading}
+        onDismiss={closeOtherUserProfile}
+        onMessage={closeOtherUserProfile}
+      />
 
       {toastMessage && (
         <View style={styles.toastContainer}>
@@ -470,12 +596,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: theme.accent,
   },
-  headerTitle: {
+  headerTitleButton: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: theme.text,
     textAlign: 'center',
+    maxWidth: '85%',
   },
   headerRight: {
     minWidth: 60,
@@ -494,9 +625,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[6],
   },
   loadingText: {
-    fontSize: 16,
+    fontSize: 14,
     color: theme.textSecondary,
-    marginTop: spacing[3],
+    marginTop: spacing[2],
   },
   emptyTitle: {
     fontSize: 18,

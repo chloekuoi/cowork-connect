@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, StyleSheet, Dimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -14,6 +14,7 @@ import { theme } from '../../constants';
 import { DiscoveryCard } from '../../types';
 import SwipeCard, { CARD_WIDTH, CARD_HEIGHT } from './SwipeCard';
 import SwipeButtons from './SwipeButtons';
+import UserProfileModal from './UserProfileModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.3;
@@ -26,7 +27,8 @@ type CardStackProps = {
 };
 
 export default function CardStack({ cards, onSwipe, onEmpty }: CardStackProps) {
-  const [currentIndex, setCurrentIndex] = React.useState(0);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedCard, setSelectedCard] = useState<DiscoveryCard | null>(null);
 
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -89,6 +91,17 @@ export default function CardStack({ cards, onSwipe, onEmpty }: CardStackProps) {
         translateY.value = withSpring(0, { damping: 15 });
       }
     });
+
+  // Tap opens the profile modal — Exclusive means pan wins if user moves finger
+  const tapGesture = Gesture.Tap()
+    .maxDuration(250)
+    .onEnd(() => {
+      if (currentCard) {
+        runOnJS(setSelectedCard)(currentCard);
+      }
+    });
+
+  const composedGesture = Gesture.Exclusive(tapGesture, panGesture);
 
   const cardAnimatedStyle = useAnimatedStyle(() => {
     const rotate = interpolate(
@@ -174,7 +187,7 @@ export default function CardStack({ cards, onSwipe, onEmpty }: CardStackProps) {
         )}
 
         {/* Current card (on top) */}
-        <GestureDetector gesture={panGesture}>
+        <GestureDetector gesture={composedGesture}>
           <Animated.View style={[styles.cardWrapper, cardAnimatedStyle]}>
             <SwipeCard card={currentCard} translateX={translateX} isTopCard />
           </Animated.View>
@@ -185,6 +198,21 @@ export default function CardStack({ cards, onSwipe, onEmpty }: CardStackProps) {
       <SwipeButtons
         onSwipeLeft={() => handleButtonSwipe('left')}
         onSwipeRight={() => handleButtonSwipe('right')}
+      />
+
+      {/* Profile modal — Skip/Connect trigger same animation as physical swipe */}
+      <UserProfileModal
+        visible={selectedCard !== null}
+        card={selectedCard}
+        onDismiss={() => setSelectedCard(null)}
+        onSkip={() => {
+          setSelectedCard(null);
+          handleButtonSwipe('left');
+        }}
+        onConnect={() => {
+          setSelectedCard(null);
+          handleButtonSwipe('right');
+        }}
       />
     </View>
   );

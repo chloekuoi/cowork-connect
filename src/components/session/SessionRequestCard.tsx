@@ -1,17 +1,19 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import Button from '../common/Button';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Animated, Easing, View, Text, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
 import { borderRadius, colors, spacing, theme, touchTarget, shadows } from '../../constants';
 import { SessionRecord } from '../../types';
+import SessionReceiptCard from './SessionReceiptCard';
 
 type SessionRequestCardProps = {
   session: SessionRecord;
   currentUserId: string;
   otherUserName?: string | null;
+  totalSessions: number;
   onAccept: () => void;
   onDecline: () => void;
   onCancel: () => void;
   onLockIn: () => void;
+  onSendMessage: (text: string) => void;
 };
 
 function formatStatus(status: SessionRecord['status']) {
@@ -19,7 +21,7 @@ function formatStatus(status: SessionRecord['status']) {
     case 'pending':
       return 'Session Pending';
     case 'active':
-      return 'Invite Accepted';
+      return 'Session Complete?';
     case 'declined':
       return 'Session Declined';
     case 'completed':
@@ -41,10 +43,12 @@ export default function SessionRequestCard({
   session,
   currentUserId,
   otherUserName,
+  totalSessions,
   onAccept,
   onDecline,
   onCancel,
   onLockIn,
+  onSendMessage,
 }: SessionRequestCardProps) {
   const isInitiator = session.initiated_by === currentUserId;
   const currentUserLocked = isInitiator
@@ -54,62 +58,54 @@ export default function SessionRequestCard({
     ? !!session.locked_by_invitee_at
     : !!session.locked_by_initiator_at;
   const scheduledLabel = formatDateLabel(session.scheduled_date || session.session_date);
+  const bothLocked = currentUserLocked && otherUserLocked;
 
-  const renderActions = () => {
-    if (session.status === 'pending') {
-      if (isInitiator) {
-        return (
-          <Button
-            title="Cancel"
-            onPress={onCancel}
-            variant="secondary"
-            style={styles.button}
-          />
-        );
-      }
+  const statusDotPulse = useRef(new Animated.Value(0)).current;
 
-      return (
-        <View style={styles.row}>
-          <Button title="Accept" onPress={onAccept} style={styles.button} />
-          <Button
-            title="Decline"
-            onPress={onDecline}
-            variant="secondary"
-            style={StyleSheet.flatten([styles.button, styles.buttonSpacer])}
-          />
-        </View>
-      );
+  useEffect(() => {
+    if (session.status !== 'pending' || bothLocked) {
+      statusDotPulse.stopAnimation();
+      statusDotPulse.setValue(0);
+      return;
     }
 
-    if (session.status === 'active') {
-      return (
-        <View style={styles.lockRow}>
-          <View style={[styles.lockColumn, styles.lockColumnSpacer]}>
-            <Text style={styles.lockLabel}>{otherUserName || 'Other'}</Text>
-            <View style={[styles.lockPill, otherUserLocked && styles.lockPillActive]}>
-              <Text style={[styles.lockText, otherUserLocked && styles.lockTextActive]}>
-                Locked in 🔒
-              </Text>
-            </View>
-          </View>
-          <View style={styles.lockColumn}>
-            <Text style={styles.lockLabel}>You</Text>
-            <TouchableOpacity
-              onPress={onLockIn}
-              disabled={currentUserLocked}
-              style={[styles.lockPill, currentUserLocked && styles.lockPillActive]}
-            >
-              <Text style={[styles.lockText, currentUserLocked && styles.lockTextActive]}>
-                Locked in 🔒
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      );
-    }
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(statusDotPulse, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(statusDotPulse, {
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [bothLocked, session.status, statusDotPulse]);
 
-    return null;
-  };
+  const dotAnimatedStyle = useMemo(
+    () => ({
+      transform: [
+        {
+          scale: statusDotPulse.interpolate({
+            inputRange: [0, 1],
+            outputRange: [1, 1.4],
+          }),
+        },
+      ],
+      opacity: statusDotPulse.interpolate({
+        inputRange: [0, 1],
+        outputRange: [1, 0.4],
+      }),
+    }),
+    [statusDotPulse]
+  );
 
   const renderDescription = () => {
     if (session.status === 'pending') {
@@ -119,7 +115,7 @@ export default function SessionRequestCard({
     }
 
     if (session.status === 'active') {
-      return 'Confirm when you both lock in.';
+      return '';
     }
 
     if (session.status === 'declined') {
@@ -141,11 +137,26 @@ export default function SessionRequestCard({
     return '';
   };
 
+  const [showProposeInput, setShowProposeInput] = useState(false);
+  const [proposeText, setProposeText] = useState('');
+  // IMPORTANT: All hooks (useRef/useEffect/useMemo) must appear ABOVE this line.
+  // Do not add hooks below — early returns follow and would violate Rules of Hooks.
+  // Capture status before TypeScript narrows it via early returns below.
+  const statusForDisplay = session.status as SessionRecord['status'];
+
   if (session.status === 'cancelled') {
+    return null;
+  }
+
+  if (session.status === 'active') {
     return (
-      <View style={styles.cancelledCard}>
-        <Text style={styles.cancelledText}>Invite cancelled</Text>
-      </View>
+      <SessionReceiptCard
+        session={session}
+        currentUserId={currentUserId}
+        otherUserName={otherUserName}
+        totalSessions={totalSessions}
+        onLockIn={onLockIn}
+      />
     );
   }
 
@@ -171,29 +182,102 @@ export default function SessionRequestCard({
     );
   }
 
+  if (session.status === 'pending' && !isInitiator) {
+    const handleSendProposal = () => {
+      const trimmed = proposeText.trim();
+      if (!trimmed) return;
+      onSendMessage(trimmed);
+      setProposeText('');
+      setShowProposeInput(false);
+    };
+
+    return (
+      <View style={styles.pendingCardOuter}>
+        {/* ── TOP ROW ── */}
+        <View style={styles.pendingRowInner}>
+          <View style={styles.pendingIconBox}>
+            <Text style={styles.pendingIcon}>☕️</Text>
+          </View>
+          <View style={styles.pendingContent}>
+            <View style={styles.pendingTitleRow}>
+              <Text style={styles.pendingTitle}>Cowork Invite</Text>
+              <View style={styles.pendingBadge}>
+                <Text style={styles.pendingBadgeText}>Pending</Text>
+              </View>
+            </View>
+            <Text style={styles.pendingDate}>{scheduledLabel}</Text>
+          </View>
+          <View style={styles.inviteeActions}>
+            <TouchableOpacity onPress={onAccept} style={styles.acceptBtn} activeOpacity={0.8}>
+              <Text style={styles.acceptBtnText}>Accept</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onDecline} style={styles.declineBtn} activeOpacity={0.8}>
+              <Text style={styles.declineBtnText}>Decline</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setShowProposeInput((v) => !v)}
+              style={styles.proposeBtn}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.proposeBtnText}>Propose…</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* ── EXPANDABLE PROPOSE INPUT ── */}
+        {showProposeInput && (
+          <>
+            <View style={styles.proposeDivider} />
+            <View style={styles.proposeInputRow}>
+              <TextInput
+                style={styles.proposeInput}
+                value={proposeText}
+                onChangeText={setProposeText}
+                placeholder="Suggest an alternative…"
+                placeholderTextColor={colors.textTertiary}
+                autoFocus
+                multiline={false}
+                returnKeyType="send"
+                onSubmitEditing={handleSendProposal}
+              />
+              <TouchableOpacity
+                style={[styles.proposeSendBtn, !proposeText.trim() && styles.proposeSendBtnDisabled]}
+                onPress={handleSendProposal}
+                disabled={!proposeText.trim()}
+                activeOpacity={0.8}
+                hitSlop={{ top: 7, bottom: 7, left: 7, right: 7 }}
+              >
+                <Text style={styles.proposeSendIcon}>→</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+      </View>
+    );
+  }
+
   return (
-    <View
+    <Animated.View
       style={[
         styles.card,
-        session.status === 'active' && styles.activeCard,
-        session.status === 'declined' && styles.dimmedCard,
+        statusForDisplay === 'declined' && styles.dimmedCard,
       ]}
     >
       <View style={styles.headerRow}>
-        <Text style={styles.statusLabel}>{formatStatus(session.status)}</Text>
-        <View
+        <Text style={styles.statusLabel}>{formatStatus(statusForDisplay)}</Text>
+        <Animated.View
           style={[
             styles.statusDot,
-            session.status === 'active' && styles.statusDotActive,
-            session.status === 'pending' && styles.statusDotPending,
-            session.status === 'declined' && styles.statusDotDeclined,
-            session.status === 'completed' && styles.statusDotCompleted,
+            statusForDisplay === 'active' && styles.statusDotActive,
+            statusForDisplay === 'pending' && styles.statusDotPending,
+            statusForDisplay === 'declined' && styles.statusDotDeclined,
+            statusForDisplay === 'completed' && styles.statusDotCompleted,
+            statusForDisplay === 'pending' && !bothLocked ? dotAnimatedStyle : null,
           ]}
         />
       </View>
-      <Text style={styles.description}>{renderDescription()}</Text>
-      {renderActions()}
-    </View>
+      {renderDescription() ? <Text style={styles.description}>{renderDescription()}</Text> : null}
+    </Animated.View>
   );
 }
 
@@ -276,21 +360,92 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  cancelledCard: {
-    backgroundColor: colors.bgSecondary,
+  // ── Outer card wrapper for invitee (column, so input row can expand below) ──
+  pendingCardOuter: {
+    backgroundColor: colors.bgCard,
     borderRadius: borderRadius.lg,
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
     marginVertical: spacing[2],
+    ...shadows.card,
   },
-  cancelledText: {
-    fontSize: 13,
+  // ── Inner horizontal row (icon + content + actions) ──
+  pendingRowInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 18,
+  },
+  inviteeActions: {
+    flexDirection: 'column',
+    gap: 4,
+    flexShrink: 0,
+  },
+  acceptBtn: {
+    backgroundColor: colors.accentPrimary,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  acceptBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#FFFFFF',
+  },
+  declineBtn: {
+    backgroundColor: colors.bgSecondary,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  declineBtnText: {
+    fontSize: 11,
     color: colors.textTertiary,
   },
-  activeCard: {
-    borderColor: theme.success,
+  proposeBtn: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.textTertiary,
+    paddingVertical: 5,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    alignItems: 'center',
+  },
+  proposeBtnText: {
+    fontSize: 11,
+    color: colors.textTertiary,
+  },
+  proposeDivider: {
+    height: 1,
+    backgroundColor: colors.bgSecondary,
+  },
+  proposeInputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    gap: 8,
+  },
+  proposeInput: {
+    flex: 1,
+    fontSize: 13,
+    color: colors.textPrimary,
+  },
+  proposeSendBtn: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: colors.accentPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  proposeSendBtnDisabled: {
+    opacity: 0.35,
+  },
+  proposeSendIcon: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
   dimmedCard: {
     opacity: 0.75,
@@ -328,52 +483,97 @@ const styles = StyleSheet.create({
     color: theme.textSecondary,
     fontSize: 14,
   },
-  row: {
+  descriptionCentered: {
+    marginTop: spacing[2],
+    color: theme.textSecondary,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  activeContent: {
+    marginTop: spacing[2],
+  },
+  lockLabelsRow: {
     flexDirection: 'row',
-    marginTop: spacing[3],
+    alignItems: 'center',
   },
-  button: {
-    minHeight: touchTarget.min,
+  lockLabelCell: {
     flex: 1,
-  },
-  buttonSpacer: {
-    marginLeft: spacing[2],
-  },
-  lockRow: {
-    flexDirection: 'row',
-    marginTop: spacing[3],
-  },
-  lockColumn: {
-    flex: 1,
-  },
-  lockColumnSpacer: {
-    marginRight: spacing[3],
   },
   lockLabel: {
     fontSize: 12,
     color: theme.textSecondary,
-    marginBottom: spacing[1],
     textAlign: 'center',
+  },
+  connectorSpacer: {
+    width: 36,
+    marginHorizontal: spacing[2],
+  },
+  lockPillsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing[1],
+  },
+  lockPillCell: {
+    flex: 1,
   },
   lockPill: {
     minHeight: touchTarget.min,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: theme.primary,
+    borderColor: '#3F5443',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing[3],
     backgroundColor: theme.surface,
   },
-  lockPillActive: {
-    backgroundColor: theme.primary,
+  lockPillTouch: {
+    minHeight: touchTarget.min,
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing[3],
   },
-  lockText: {
-    fontSize: 13,
+  lockPillConfirmed: {
+    backgroundColor: '#e8f0ea',
+  },
+  lockTextConfirmed: {
+    color: '#3F5443',
+  },
+  lockEmojiOnly: {
+    fontSize: 22,
+    lineHeight: 24,
+    color: '#3F5443',
+  },
+  connectingLineTrack: {
+    width: 36,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#d8e4da',
+    overflow: 'hidden',
+    marginHorizontal: spacing[2],
+  },
+  connectingLineFill: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    backgroundColor: '#3F5443',
+  },
+  connectingLineShimmer: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    width: 28,
+    backgroundColor: '#6a8f6e',
+    opacity: 0.45,
+  },
+  successMessageWrap: {
+    marginTop: spacing[2],
+  },
+  successMessage: {
+    fontSize: 14,
     fontWeight: '600',
-    color: theme.primary,
-  },
-  lockTextActive: {
-    color: theme.surface,
+    color: '#3F5443',
+    textAlign: 'center',
   },
 });

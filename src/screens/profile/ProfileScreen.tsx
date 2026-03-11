@@ -1,42 +1,160 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { colors, theme, spacing, borderRadius, touchTarget } from '../../constants';
+import React, { useCallback, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  Alert,
+  ScrollView,
+  ActivityIndicator,
+} from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Polygon, Line } from 'react-native-svg';
+import { colors, theme, spacing, borderRadius } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
+import { getFullProfile } from '../../services/profileService';
+import { getTodayIntent } from '../../services/discoveryService';
+import { Profile, ProfilePhoto, WorkIntent } from '../../types';
+import { ProfileStackParamList } from '../../navigation/ProfileStack';
+import UserProfileView from '../../components/profile/UserProfileView';
+
+function NibIcon() {
+  return (
+    <Svg width={20} height={20} viewBox="0 0 20 20">
+      <Polygon
+        points="10,4 14,10 10,16 6,10"
+        fill="none"
+        stroke="#FFFFFF"
+        strokeWidth={1.6}
+        strokeLinejoin="round"
+      />
+      <Line x1="10" y1="4" x2="10" y2="16" stroke="#FFFFFF" strokeWidth={1.2} />
+      <Line x1="6.2" y1="10" x2="13.8" y2="10" stroke="#FFFFFF" strokeWidth={1.2} />
+    </Svg>
+  );
+}
 
 export default function ProfileScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<ProfileStackParamList>>();
+  const insets = useSafeAreaInsets();
   const { user, profile, signOut } = useAuth();
+  const [profileData, setProfileData] = useState<Profile | null>(profile);
+  const [photos, setPhotos] = useState<ProfilePhoto[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [todayIntent, setTodayIntent] = useState<WorkIntent | null>(null);
+
+  const loadProfile = useCallback(async () => {
+    if (!user) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    const [result, intent] = await Promise.all([
+      getFullProfile(user.id),
+      getTodayIntent(user.id),
+    ]);
+    if (result.error) {
+      setProfileData(profile);
+      setPhotos([]);
+    } else {
+      setProfileData(result.data.profile || profile);
+      setPhotos(result.data.photos);
+    }
+    setTodayIntent(intent);
+    setLoading(false);
+  }, [profile, user]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadProfile();
+    }, [loadProfile])
+  );
 
   const handleSignOut = () => {
-    Alert.alert(
-      'Sign Out',
-      'Are you sure you want to sign out?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Sign Out', style: 'destructive', onPress: signOut },
-      ]
-    );
+    Alert.alert('Sign Out', 'Are you sure you want to sign out?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign Out', style: 'destructive', onPress: signOut },
+    ]);
   };
+
+  const isProfileEmpty =
+    photos.length === 0 &&
+    !profileData?.name &&
+    !profileData?.tagline &&
+    !profileData?.currently_working_on &&
+    !profileData?.work &&
+    !profileData?.school &&
+    !profileData?.neighborhood &&
+    !profileData?.city &&
+    !profileData?.work_type;
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={styles.loadingText}>Loading profile...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <View style={styles.avatarPlaceholder}>
-        <Text style={styles.avatarText}>
-          {profile?.name?.charAt(0)?.toUpperCase() || user?.email?.charAt(0)?.toUpperCase() || '?'}
-        </Text>
+      {/* ── Header ── */}
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <View style={styles.headerSpacer} />
+        <Text style={styles.headerTitle}>Profile</Text>
+        <TouchableOpacity
+          style={styles.headerAction}
+          onPress={() => navigation.navigate('EditProfile')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          activeOpacity={0.85}
+        >
+          <View style={styles.headerActionButton}>
+            <NibIcon />
+          </View>
+        </TouchableOpacity>
       </View>
 
-      <Text style={styles.name}>{profile?.name || 'No name set'}</Text>
-      <Text style={styles.email}>{user?.email}</Text>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+        {profileData !== null ? (
+          <UserProfileView
+            profile={profileData}
+            photos={photos}
+            todayIntent={todayIntent}
+            isOwnProfile
+            onSetFocusPress={() => navigation.getParent()?.navigate('Discover' as never)}
+          />
+        ) : null}
 
-      {profile?.work_type && (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{profile.work_type}</Text>
-        </View>
-      )}
+        {/* Nudge card — shown when profile is completely blank */}
+        {isProfileEmpty ? (
+          <View style={styles.nudgeCard}>
+            <Text style={styles.nudgeTitle}>Your profile is blank</Text>
+            <Text style={styles.nudgeBody}>
+              Add a photo and a few details so co-workers know who they'll be meeting.
+            </Text>
+            <TouchableOpacity
+              style={styles.nudgeCta}
+              onPress={() => navigation.navigate('EditProfile')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.nudgeCtaText}>Complete your profile</Text>
+            </TouchableOpacity>
+          </View>
+        ) : null}
 
-      <TouchableOpacity style={styles.signOutButton} onPress={handleSignOut}>
-        <Text style={styles.signOutText}>Sign Out</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.signOutLink}
+          onPress={handleSignOut}
+          hitSlop={{ top: 12, bottom: 12, left: 24, right: 24 }}
+        >
+          <Text style={styles.signOutLinkText}>Sign out</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 }
@@ -45,56 +163,100 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
-    alignItems: 'center',
-    paddingTop: spacing[16],
-    padding: spacing[4],
   },
-  avatarPlaceholder: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: theme.background,
+  },
+  loadingText: {
+    marginTop: spacing[2],
+    fontSize: 14,
+    color: theme.textSecondary,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing[4],
+    minHeight: 56,
+    backgroundColor: theme.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderDefault,
+  },
+  headerSpacer: {
+    minWidth: 44,
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: theme.text,
+  },
+  headerAction: {
+    minWidth: 44,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minHeight: 44,
+  },
+  headerActionButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     backgroundColor: theme.primary,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing[4],
   },
-  avatarText: {
-    fontSize: 40,
-    fontWeight: '600',
-    color: theme.surface,
+  scroll: {
+    flex: 1,
   },
-  name: {
-    fontSize: 24,
-    fontWeight: '600',
+  // No paddingHorizontal — UserProfileView owns horizontal spacing per section
+  content: {
+    paddingBottom: spacing[12],
+  },
+  nudgeCard: {
+    marginTop: spacing[4],
+    marginHorizontal: spacing[4],
+    backgroundColor: colors.accentSecondaryLight,
+    borderRadius: borderRadius.xl,
+    padding: spacing[5],
+    borderWidth: 1,
+    borderColor: colors.accentSecondary,
+  },
+  nudgeTitle: {
+    fontSize: 17,
+    fontWeight: '700',
     color: theme.text,
-    marginBottom: spacing[1],
+    marginBottom: spacing[2],
   },
-  email: {
-    fontSize: 16,
+  nudgeBody: {
+    fontSize: 14,
     color: theme.textSecondary,
+    lineHeight: 21,
     marginBottom: spacing[4],
   },
-  badge: {
-    backgroundColor: colors.accentPrimaryLight,
+  nudgeCta: {
+    backgroundColor: colors.accentPrimary,
+    borderRadius: borderRadius.md,
+    paddingVertical: spacing[3],
     paddingHorizontal: spacing[4],
-    paddingVertical: spacing[2],
-    borderRadius: borderRadius.full,
-    marginBottom: spacing[8],
-  },
-  badgeText: {
-    fontSize: 14,
-    color: colors.accentPrimary,
-    fontWeight: '500',
-  },
-  signOutButton: {
-    marginTop: 'auto',
-    marginBottom: spacing[8],
-    minHeight: touchTarget.min,
+    alignSelf: 'flex-start',
+    minHeight: 44,
     justifyContent: 'center',
   },
-  signOutText: {
-    fontSize: 16,
-    color: theme.error,
-    fontWeight: '500',
+  nudgeCtaText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.textInverse,
+  },
+  signOutLink: {
+    alignSelf: 'center',
+    marginTop: spacing[8],
+    marginBottom: spacing[6],
+  },
+  signOutLinkText: {
+    fontSize: 14,
+    color: theme.textMuted,
+    fontWeight: '400',
   },
 });
