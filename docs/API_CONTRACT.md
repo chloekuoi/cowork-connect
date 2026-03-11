@@ -1919,4 +1919,362 @@ The frontend is allowed to rely on the following guarantees from the data layer:
 |------|--------|
 | `profiles` RLS for public SELECT | Confirmed public READ in Phase 1 — no change needed |
 | `profile_photos` RLS for public SELECT | Confirmed public READ in Phase 5 — no change needed |
+
+---
+
+---
+
+# Phase 7 — Group Chat
+
+---
+
+## Tables Overview (Phase 7 Additions)
+
+| Table | RLS | Purpose |
+|-------|-----|---------|
+| `group_chats` | Enabled | Group conversation metadata (name, creator) |
+| `group_members` | Enabled | Membership roster with per-member read tracking |
+| `group_messages` | Enabled | Messages sent in a group chat |
+| `group_sessions` | Enabled | Co-work session proposals for groups |
+| `group_session_rsvps` | Enabled | Per-member RSVP responses to group sessions |
+
+---
+
+## Table: `group_chats`
+
+**Purpose:** Stores group chat metadata. One row per group conversation.
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | `UUID` | No | `gen_random_uuid()` | Primary key |
+| `name` | `TEXT` | No | — | Group display name |
+| `created_by` | `UUID` | No | — | FK to `profiles.id` — creator (display only, no special role) |
+| `created_at` | `TIMESTAMPTZ` | No | `NOW()` | Row creation time |
+| `updated_at` | `TIMESTAMPTZ` | No | `NOW()` | Last update time (name changes) |
+
+### Indexes
+| Name | Columns | Type |
+|------|---------|------|
+| `group_chats_pkey` | `id` | Primary Key |
+
+### RLS: ENABLED
+
+### Policies
+
+| Policy Name | Operation | Rule |
+|-------------|-----------|------|
+| Members can read own group chats | `SELECT` | `id IN (SELECT group_chat_id FROM group_members WHERE user_id = auth.uid())` |
+| No direct INSERT | — | All mutations via `create_group_chat` RPC |
+
+### Business Rules
+- `name` must be non-empty
+- `created_by` has no special permissions at DB level (equal members)
+- `updated_at` updated whenever name changes
+
+---
+
+## Table: `group_members`
+
+**Purpose:** Links users to group chats they belong to. Controls access and tracks read state.
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | `UUID` | No | `gen_random_uuid()` | Primary key |
+| `group_chat_id` | `UUID` | No | — | FK to `group_chats.id` ON DELETE CASCADE |
+| `user_id` | `UUID` | No | — | FK to `profiles.id` ON DELETE CASCADE |
+| `last_read_at` | `TIMESTAMPTZ` | No | `NOW()` | Per-member read position |
+| `joined_at` | `TIMESTAMPTZ` | No | `NOW()` | When user joined |
+
+### Constraints
+| Name | Definition |
+|------|------------|
+| `group_members_unique_pair` | `UNIQUE(group_chat_id, user_id)` |
+
+### Indexes
+| Name | Columns |
+|------|---------|
+| `idx_group_members_group_chat_id` | `group_chat_id` |
+| `idx_group_members_user_id` | `user_id` |
+
+### RLS: ENABLED
+
+### Policies
+
+| Policy Name | Operation | Rule |
+|-------------|-----------|------|
+| Members can read own membership rows | `SELECT` | `user_id = auth.uid()` |
+| No direct INSERT/DELETE | — | All mutations via SECURITY DEFINER RPCs |
+
+### Business Rules
+- Unread count for a member = `COUNT(group_messages WHERE created_at > last_read_at AND sender_id != member.user_id)`
+- `mark_group_read` RPC updates `last_read_at = NOW()` for the calling user in the specified group
+
+---
+
+## Table: `group_messages`
+
+**Purpose:** Individual messages in a group chat.
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | `UUID` | No | `gen_random_uuid()` | Primary key |
+| `group_chat_id` | `UUID` | No | — | FK to `group_chats.id` ON DELETE CASCADE |
+| `sender_id` | `UUID` | No | — | FK to `profiles.id` ON DELETE CASCADE |
+| `content` | `TEXT` | No | — | Message content — CHECK: `TRIM(content) <> ''` |
+| `created_at` | `TIMESTAMPTZ` | No | `NOW()` | Send time |
+
+### Indexes
+| Name | Columns |
+|------|---------|
+| `idx_group_messages_group_chat_id` | `group_chat_id` |
+| `idx_group_messages_created_at` | `(group_chat_id, created_at)` — for ordered fetch |
+
+### RLS: ENABLED
+
+### Policies
+
+| Policy Name | Operation | Rule |
+|-------------|-----------|------|
+| Members can read group messages | `SELECT` | `group_chat_id IN (SELECT group_chat_id FROM group_members WHERE user_id = auth.uid())` |
+| Members can insert messages | `INSERT` | `auth.uid() = sender_id AND group_chat_id IN (SELECT group_chat_id FROM group_members WHERE user_id = auth.uid())` |
+
+### Realtime
+- **ENABLED** — `INSERT` events subscribed to via Supabase `postgres_changes`, filtered by `group_chat_id`
+
+### Business Rules
+- Messages are **immutable** — no editing or deletion
+- Fetched in `created_at ASC` order (oldest first), rendered newest-at-bottom via inverted FlatList
+- No pagination for MVP (all messages fetched on load)
+
+---
+
+## Table: `group_sessions`
+
+**Purpose:** Co-work session proposals within a group chat. Any member can propose a date; others RSVP.
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | `UUID` | No | `gen_random_uuid()` | Primary key |
+| `group_chat_id` | `UUID` | No | — | FK to `group_chats.id` ON DELETE CASCADE |
+| `proposed_by` | `UUID` | No | — | FK to `profiles.id` — who proposed it |
+| `scheduled_date` | `DATE` | No | — | The proposed co-work date |
+| `status` | `TEXT` | No | `'proposed'` | CHECK: `status IN ('proposed','completed','cancelled')` |
+| `created_at` | `TIMESTAMPTZ` | No | `NOW()` | Proposal time |
+
+### Indexes
+| Name | Columns |
+|------|---------|
+| `idx_group_sessions_group_chat_id` | `group_chat_id` |
+| `idx_group_sessions_status` | `status` |
+
+### RLS: ENABLED
+
+### Policies
+
+| Policy Name | Operation | Rule |
+|-------------|-----------|------|
+| Members can read group sessions | `SELECT` | `group_chat_id IN (SELECT group_chat_id FROM group_members WHERE user_id = auth.uid())` |
+| No direct INSERT/UPDATE | — | All mutations via RPCs |
+
+### Realtime
+- **ENABLED** — `UPDATE` events subscribed to via Supabase `postgres_changes`, filtered by `id`
+
+### Business Rules
+- Any group member can propose a session — no restriction on `proposed_by`
+- Only the proposer (`proposed_by = auth.uid()`) can cancel (enforced in RPC)
+- `completed` status set manually by any member (or future automation) — not auto-triggered
+- A group can have multiple sessions in `proposed` status simultaneously (no limit for MVP)
+
+---
+
+## Table: `group_session_rsvps`
+
+**Purpose:** Per-member RSVP response to a group session proposal.
+
+### Columns
+
+| Column | Type | Nullable | Default | Description |
+|--------|------|----------|---------|-------------|
+| `id` | `UUID` | No | `gen_random_uuid()` | Primary key |
+| `group_session_id` | `UUID` | No | — | FK to `group_sessions.id` ON DELETE CASCADE |
+| `user_id` | `UUID` | No | — | FK to `profiles.id` ON DELETE CASCADE |
+| `response` | `TEXT` | No | — | CHECK: `response IN ('yes','no')` |
+| `responded_at` | `TIMESTAMPTZ` | No | `NOW()` | Response time |
+
+### Constraints
+| Name | Definition |
+|------|------------|
+| `group_session_rsvps_unique` | `UNIQUE(group_session_id, user_id)` — one response per member per session |
+
+### Indexes
+| Name | Columns |
+|------|---------|
+| `idx_group_session_rsvps_session_id` | `group_session_id` |
+
+### RLS: ENABLED
+
+### Policies
+
+| Policy Name | Operation | Rule |
+|-------------|-----------|------|
+| Members can read RSVPs for their group sessions | `SELECT` | `group_session_id IN (SELECT id FROM group_sessions WHERE group_chat_id IN (SELECT group_chat_id FROM group_members WHERE user_id = auth.uid()))` |
+| No direct INSERT/UPDATE | — | All mutations via `rsvp_group_session` RPC (handles upsert) |
+
+### Business Rules
+- A member can change their RSVP (RPC upserts on `UNIQUE` constraint)
+- RSVP counts are derived client-side from the `rsvps` array fetched per session
+- Pending count = group member count minus responded count
+
+---
+
+## RPCs (Phase 7)
+
+All Phase 7 RPCs are `SECURITY DEFINER` and validate membership before performing mutations.
+
+---
+
+### `create_group_chat(p_name TEXT, p_creator_id UUID, p_member_ids UUID[]) → UUID`
+
+**Purpose:** Atomically create a new group chat and add all initial members.
+
+**Logic:**
+1. Validate `p_name` is non-empty
+2. Validate `auth.uid() = p_creator_id`
+3. `INSERT INTO group_chats (name, created_by)` → get `group_chat_id`
+4. `INSERT INTO group_members (group_chat_id, user_id)` for creator + each `p_member_ids` element
+5. Return `group_chat_id`
+
+**Returns:** `UUID` — the new group chat ID
+
+---
+
+### `fetch_group_chat_previews(p_user_id UUID) → TABLE`
+
+**Purpose:** Return all group chats for a user with preview data for the chat list.
+
+**Returns:**
+```
+group_chat_id UUID
+name TEXT
+member_count INTEGER
+last_message TEXT
+last_message_at TIMESTAMPTZ
+last_sender_name TEXT
+unread_count INTEGER
+```
+
+**Logic:**
+- Finds all `group_members` rows for `p_user_id`
+- For each group: counts members, finds latest `group_messages` row, counts unread messages (`created_at > group_members.last_read_at AND sender_id != p_user_id`)
+- Returns null-safe (groups with no messages return `last_message = null`, `last_message_at = null`)
+
+---
+
+### `add_group_members(p_group_chat_id UUID, p_user_ids UUID[]) → VOID`
+
+**Purpose:** Add new members to an existing group chat.
+
+**Validation:**
+- `auth.uid()` must be an existing member of `p_group_chat_id`
+- Silently skips user IDs already in `group_members` (idempotent)
+
+---
+
+### `leave_group(p_group_chat_id UUID, p_user_id UUID) → VOID`
+
+**Purpose:** Remove a user from a group chat.
+
+**Validation:**
+- `auth.uid() = p_user_id`
+- `p_user_id` must be a member of `p_group_chat_id`
+
+**Behavior:**
+- Deletes the `group_members` row for `(p_group_chat_id, p_user_id)`
+- Group chat record is NOT deleted even if no members remain (soft leave)
+
+---
+
+### `rsvp_group_session(p_group_session_id UUID, p_user_id UUID, p_response TEXT) → VOID`
+
+**Purpose:** Record or update a user's RSVP to a group session proposal.
+
+**Validation:**
+- `auth.uid() = p_user_id`
+- `p_response IN ('yes', 'no')`
+- User must be a member of the group the session belongs to
+
+**Logic:**
+- `INSERT INTO group_session_rsvps ... ON CONFLICT (group_session_id, user_id) DO UPDATE SET response = p_response, responded_at = NOW()`
+
+---
+
+### `mark_group_read(p_group_chat_id UUID, p_user_id UUID) → VOID`
+
+**Purpose:** Update `last_read_at` for a member to clear their unread count.
+
+**Validation:**
+- `auth.uid() = p_user_id`
+- User must be a member of `p_group_chat_id`
+
+**Logic:**
+- `UPDATE group_members SET last_read_at = NOW() WHERE group_chat_id = p_group_chat_id AND user_id = p_user_id`
+
+---
+
+## Service Functions (Phase 7)
+
+### `groupChatsService.ts` — `src/services/groupChatsService.ts`
+
+All functions use the `supabase` client from `lib/supabase.ts`.
+
+| Function | Returns | Notes |
+|----------|---------|-------|
+| `fetchGroupChats(userId)` | `GroupChatPreview[]` | Calls `fetch_group_chat_previews` RPC |
+| `createGroupChat(name, creatorId, memberIds[])` | `string \| null` | Calls `create_group_chat` RPC; returns groupChatId |
+| `fetchGroupMessages(groupChatId)` | `GroupMessage[]` | `created_at ASC` |
+| `fetchGroupMembers(groupChatId)` | `GroupMember[]` | All members of a group |
+| `fetchGroupSessions(groupChatId)` | `GroupSession[]` | All sessions for a group |
+| `sendGroupMessage(groupChatId, senderId, content)` | `GroupMessage \| null` | Direct `INSERT` with RLS |
+| `proposeGroupSession(groupChatId, proposedBy, scheduledDate)` | `GroupSession \| null` | Direct `INSERT` |
+| `rsvpGroupSession(groupSessionId, userId, response)` | `boolean` | Calls `rsvp_group_session` RPC |
+| `cancelGroupSession(groupSessionId, userId)` | `boolean` | UPDATE status='cancelled'; validates proposer |
+| `addGroupMembers(groupChatId, userIds[])` | `boolean` | Calls `add_group_members` RPC |
+| `leaveGroup(groupChatId, userId)` | `boolean` | Calls `leave_group` RPC |
+| `renameGroup(groupChatId, newName)` | `boolean` | Direct `UPDATE` on `group_chats` (RLS allows member to update) |
+| `markGroupRead(groupChatId, userId)` | `void` | Calls `mark_group_read` RPC |
+| `subscribeToGroupMessages(groupChatId, callback)` | `() => void` | Realtime INSERT on `group_messages` filtered by `group_chat_id` |
+| `subscribeToGroupSessions(groupChatId, callback)` | `() => void` | Realtime UPDATE on `group_sessions` filtered by `id` |
+
+---
+
+## UI Assumptions for Phase 7
+
+The frontend is allowed to rely on the following guarantees from the data layer:
+
+- `fetch_group_chat_previews` always returns an array (empty if user has no groups); never throws
+- `create_group_chat` atomically inserts group + all members; either all succeed or none do
+- `group_members.last_read_at` is always non-null (defaults to `NOW()` on insert)
+- `group_messages` are immutable — no UPDATE or DELETE via API
+- `rsvp_group_session` is idempotent — safe to call multiple times (upserts)
+- `leave_group` is idempotent — calling for a non-member is a no-op (or returns silently)
+- `group_session_rsvps` for a session can be fetched alongside the session; counts are derived client-side
+- `renameGroup` is allowed for any member (no admin check) — RLS allows any member to UPDATE `group_chats.name`
+
+---
+
+## To Be Confirmed
+
+| Item | Status |
+|------|--------|
+| Max group size | Not enforced at DB level for MVP — accept unlimited |
+| `renameGroup` RLS | Confirm UPDATE policy on `group_chats` allows any member (not just `created_by`) |
+| Group session `completed` trigger | For MVP, manually set via RPC call from client — no auto-trigger |
 | `work_intents` RLS for public SELECT | Confirmed public READ in Phase 2 — no change needed |

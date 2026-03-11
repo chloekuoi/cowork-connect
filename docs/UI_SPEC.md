@@ -2294,4 +2294,302 @@ User swipes modal down
 | Profile fetch returns null profile | Modal stays in loading state; no crash (null guard in modal) |
 | User taps two avatars quickly | Second fetch overwrites first; modal shows latest data (acceptable for MVP) |
 | Friend has no `match_id` | `onMessage` falls through to `openChat` which shows an alert ("Chat unavailable") |
+
+---
+
+---
+
+# Phase 7 — Group Chat
+
+---
+
+## New Screen: CreateGroupScreen
+
+**File:** `src/screens/matches/CreateGroupScreen.tsx`
+
+**Purpose:** Create a named group chat and select initial members before submitting.
+
+**Components used:**
+- `TextInput` — group name
+- `TextInput` — friend search (debounced 300ms)
+- `CollapsibleSection` — "Available Today" / "Others" friend sections
+- `MemberChip` — selected member pills in horizontal `ScrollView`
+- Header "Create" `Pressable` — disabled state until conditions met
+
+**Layout order (top → bottom):**
+```
+┌─────────────────────────────────┐
+│  ← Create Group        [Create] │  ← Create disabled until name + ≥1 member
+├─────────────────────────────────┤
+│  Group name                     │
+│  ┌─────────────────────────┐   │
+│  │ Friday Co-workers       │   │
+│  └─────────────────────────┘   │
+│                                 │
+│  [Alex ✕] [Jamie ✕]            │  ← MemberChip row (scrollable, hidden if empty)
+│                                 │
+│  ┌─────────────────────────┐   │
+│  │ 🔍 Search friends...   │   │
+│  └─────────────────────────┘   │
+│                                 │
+│  ▼ AVAILABLE TODAY (2)          │  ← CollapsibleSection, expanded by default
+│  ● Alex Chen                    │  ← checked = selected
+│  ○ Sam Lee                      │
+│                                 │
+│  ▼ OTHERS (3)                   │  ← CollapsibleSection, expanded by default
+│  ○ Jamie Park                   │
+│  ○ ...                          │
+└─────────────────────────────────┘
+```
+
+**States:**
+- Loading friends: `ActivityIndicator` centered in list area
+- No friends: "Add some friends first to create a group" empty state with link to Add Friend
+- Create loading: "Create" button shows spinner, disabled
+
+**Interactions:**
+- Tap friend row → toggles selection (adds/removes MemberChip)
+- Tap MemberChip ✕ → removes member from selection
+- Group name input: empty → Create button disabled
+- 0 members selected → Create button disabled
+- "Create" tap → calls `createGroupChat` → on success, `navigation.replace('GroupChat', { groupChatId, groupName })`
+- Back → confirm discard if name or members entered (optional; acceptable to discard silently for MVP)
+
+**Edge cases:**
+- Friend list empty (user has no friends): show empty state prompt
+- All friends already searched and selected: search shows no results gracefully
+- `createGroupChat` error: show inline error below the name input
+
+---
+
+## New Screen: GroupChatScreen
+
+**File:** `src/screens/matches/GroupChatScreen.tsx`
+
+**Purpose:** Real-time group conversation with messages and co-work session RSVP cards.
+
+**Components used:**
+- `GroupMessageBubble` — for message timeline items
+- `GroupSessionRSVPCard` — for session timeline items
+- `ChatInputBar` — text input + send button (reused unchanged)
+- `InviteComposerCard` (date pill pattern) — shown when 📅 is tapped
+- `UserProfileModal` — shown when avatar tapped on received message
+
+**Layout order (top → bottom):**
+```
+┌─────────────────────────────────┐
+│  ← GroupName (N members) [📅][ⓘ]│
+├─────────────────────────────────┤
+│  InviteComposerCard (if open)   │  ← slides in when 📅 tapped
+├─────────────────────────────────┤
+│                                 │
+│  [Inverted FlatList timeline]   │
+│                                 │
+│  Alex · 2:30pm                  │
+│  ┌─────────────────────┐        │  ← GroupMessageBubble (received)
+│  │ Anyone free Friday? │        │
+│  └─────────────────────┘        │
+│                                 │
+│         ┌────────────────────┐  │  ← GroupMessageBubble (sent, mine)
+│         │ Let's do it!       │  │
+│         └────────────────────┘  │
+│                                 │
+│  ┌─── 📅 Group Session ────┐   │  ← GroupSessionRSVPCard
+│  │ Friday, Mar 13           │   │
+│  │ Proposed by Alex         │   │
+│  │ ✓ 2 going · 1 pending   │   │
+│  │  [Yes ✓]  [No ✗]         │   │
+│  └──────────────────────────┘   │
+├─────────────────────────────────┤
+│  Type a message...         [↑]  │
+└─────────────────────────────────┘
+```
+
+**States:**
+- Loading (initial fetch): `ActivityIndicator` centered in timeline area
+- Empty (no messages): "No messages yet. Say hi! 👋" centered
+- Date picker open: `InviteComposerCard` appears above timeline; tapping outside or "Cancel" closes it
+- Sending message: send button disabled until content is non-empty (same as 1:1 ChatScreen)
+
+**Interactions:**
+- Type + Send: calls `sendGroupMessage` → message appears immediately via subscription
+- Tap 📅: opens `InviteComposerCard` with 7-day options → tap "Send" → `proposeGroupSession` → card appears in timeline
+- Tap ⓘ: `navigation.navigate('GroupInfo', { groupChatId })`
+- Tap avatar on received bubble: opens `UserProfileModal` (read-only profile of sender)
+- RSVP Yes/No on `GroupSessionRSVPCard`: calls `rsvpGroupSession` → card updates
+
+**Edge cases:**
+- Member leaves group while viewing chat: their messages remain in timeline (no retroactive deletion)
+- Group renamed: header name updates when screen re-focuses from GroupInfoScreen
+- Network error sending message: show brief error toast; message input retained
+
+---
+
+## New Screen: GroupInfoScreen
+
+**File:** `src/screens/matches/GroupInfoScreen.tsx`
+
+**Purpose:** View and manage group settings — rename, add members, leave.
+
+**Components used:**
+- `TextInput` — group name (edit mode)
+- FlatList — members list
+
+**Layout order (top → bottom):**
+```
+┌─────────────────────────────────┐
+│  ← Group Info                   │
+├─────────────────────────────────┤
+│  [Edit] Friday Co-workers  [✓]  │  ← tap name or pencil → edit mode; ✓ to save
+│  Created by Alex · 3 members    │
+├─────────────────────────────────┤
+│  MEMBERS                        │
+│  ○ Alex Chen (You)              │
+│  ○ Jamie Park                   │
+│  ○ Sam Lee                      │
+├─────────────────────────────────┤
+│  [+ Add Members]                │
+├─────────────────────────────────┤
+│  [Leave Group]                  │  ← red text, confirmation alert
+└─────────────────────────────────┘
+```
+
+**States:**
+- Name edit mode: TextInput replaces name label; ✓ (save) and ✕ (cancel) buttons appear in header
+- Saving name: spinner; input disabled
+- Loading members: `ActivityIndicator`
+- Adding members: navigate to a friend picker screen/modal filtered to friends not in group
+
+**Interactions:**
+- Tap group name or pencil icon → edit mode
+- ✓ → calls `renameGroup` → returns to display mode; header updates
+- ✕ → cancels edit, restores previous name
+- "+ Add Members" → opens friend search filtered by not-already-in-group → confirm → `addGroupMembers`
+- "Leave Group" → `Alert.alert` confirmation → `leaveGroup` → `navigation.popToTop()`
+
+**Edge cases:**
+- Rename to empty string: "Save" disabled when name is empty
+- Rename server error: show error toast; stay in edit mode
+- Last member leaves: group record persists in DB (soft leave); user navigates to MatchesList
+
+---
+
+## Modified Screen: MatchesListScreen
+
+**File:** `src/screens/matches/MatchesListScreen.tsx`
+
+**Change:** Two additions — "+" header button and group chat rows in the unified list.
+
+**New "+" button:**
+- Position: top-right of screen header, same row as "Chats" title
+- Tap: `navigation.navigate('CreateGroup')`
+- Always visible (not conditional on having any groups)
+
+**Unified list logic:**
+- `fetchMatches` + `fetchGroupChats` called in parallel on mount and `useFocusEffect`
+- Results merged into single array, sorted by `lastMessageAt DESC` (nulls last)
+- `MatchCard` rendered for `type: 'dm'` items (unchanged)
+- `GroupChatCard` rendered for `type: 'group'` items
+
+**Tab badge:**
+- Existing: DM unread count via `get_unread_count` RPC
+- New: sum of `GroupChatPreview.unreadCount` values from `fetchGroupChats`
+- Total = DM unread + group unread
+
+**Interactions (unchanged for 1:1):**
+- Tap MatchCard → navigate to Chat (unchanged)
+- Avatar tap on MatchCard → FriendProfileModal (unchanged)
+
+**Interactions (new for groups):**
+- Tap GroupChatCard → `navigation.navigate('GroupChat', { groupChatId, groupName })`
+- No avatar tap interaction on GroupChatCard (👥 group icon is not tappable)
+
+**Edge cases:**
+- No groups yet: list shows 1:1 chats only; no "Groups" empty section shown
+- No 1:1 chats or groups: existing empty state unchanged
+- Group with no messages: `lastMessageAt` is null; sorted last; preview shows "No messages yet"
+
+---
+
+## New Component: GroupChatCard
+
+**File:** `src/components/matches/GroupChatCard.tsx`
+
+**Purpose:** Chat list row for a group chat in `MatchesListScreen`.
+
+- Left: 👥 icon in a filled circle (40pt, primary color)
+- Center: group name (bold, primary text) + "SenderName: last message" (1 line, muted, truncated) OR "No messages yet" (italic, muted)
+- Right: "N members" label (small, muted) + green unread dot (✦) when `unreadCount > 0`
+- Touch target: full row, ≥ 44pt height
+
+---
+
+## New Component: GroupMessageBubble
+
+**File:** `src/components/matches/GroupMessageBubble.tsx`
+
+**Purpose:** Message bubble for group chats with sender identity for received messages.
+
+**Sent (mine):**
+- Right-aligned
+- Bubble: `accentSecondary` background, rounded corners
+- No name or avatar shown
+- Timestamp below bubble (11px, muted)
+
+**Received:**
+- Left-aligned
+- Avatar (40pt circle, `photo_url` or initials) — tappable if `onAvatarPress` provided
+- Sender name (12px, muted) above bubble
+- Bubble: `bgCard` + border, rounded corners
+- Timestamp below bubble (11px, muted)
+
+---
+
+## New Component: GroupSessionRSVPCard
+
+**File:** `src/components/session/GroupSessionRSVPCard.tsx`
+
+**Purpose:** Inline session proposal card in `GroupChatScreen` timeline.
+
+**States:**
+
+| State | Condition | UI |
+|-------|-----------|-----|
+| `unvoted` | `status='proposed'` + no rsvp for current user | Date, proposed by, RSVP counts, Yes/No buttons |
+| `voted` | `status='proposed'` + rsvp exists for current user | Date, proposed by, RSVP counts, response pill, Cancel (proposer only) |
+| `completed` | `status='completed'` | "Session confirmed 🎉" read-only |
+| `cancelled` | `status='cancelled'` | Returns `null` — not rendered |
+
+**RSVP count format:** `"3 going · 1 not going · 1 pending"`
+
+**Response pill colors:**
+- Yes: success green (`#6B9B6B`) background
+- No: error red (`#B57070`) background
+
+---
+
+## New Component: MemberChip
+
+**File:** `src/components/friends/MemberChip.tsx`
+
+**Purpose:** Removable member chip in `CreateGroupScreen`.
+
+- 28pt circular avatar (`photo_url` or initials)
+- Name label (12px, truncated)
+- ✕ button (right side, ≥ 20pt touch area)
+- Displayed in horizontal `ScrollView`
+
+---
+
+## Phase 7 Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| Group created with 0 messages | `GroupChatCard` shows "No messages yet" in muted italic; `lastMessageAt` null; sorted last in list |
+| Group member leaves while others are viewing chat | Leaver's messages remain; member count in header updates on next focus |
+| Two members RSVP simultaneously | Last write wins via `UNIQUE(group_session_id, user_id)` constraint; counts reflect actual DB state after re-fetch |
+| Group renamed by another member | `GroupChatScreen` header updates when screen re-focuses (fetches group on `useFocusEffect`) |
+| User is last member to leave | Group record remains in DB (soft leave); user sees MatchesList without that group |
+| `GroupSessionRSVPCard` status is `cancelled` | Component returns `null`; filtered from timeline render |
+| `fetchGroupChats` returns empty | MatchesList shows only 1:1 chats; no "Groups" empty section |
 | Android platform | `presentationStyle="pageSheet"` is ignored; modal renders full-screen — acceptable for MVP |

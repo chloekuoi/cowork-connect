@@ -1837,4 +1837,229 @@ Phase 6 requires no new SQL migrations. All data is read from tables introduced 
 | `💬` icon not visible | Check modal header layout; verify icon is not hidden behind safe area inset or padding |
 | Tapping `💬` doesn't navigate to chat | Check `onMessage` handler closes modal before calling `openChat`; verify `profileModalFriend` is not null at call time |
 | TypeScript errors | Ensure `Profile`, `ProfilePhoto`, `WorkIntent` imported from `../../types` in `FriendProfileModal` and `FriendsScreen` |
+
+---
+
+---
+
+## Phase 7 — Group Chat
+
+### Database Migration
+
+Before testing Phase 7, run the new migration in Supabase SQL Editor:
+
+- `supabase/008_group_chats.sql` — group_chats, group_members, group_messages, group_sessions, group_session_rsvps tables + RPCs
+
+---
+
+### 39. Verify Phase 7 Database
+
+**Preconditions:** Supabase dashboard access; `008_group_chats.sql` executed
+
+**Steps:**
+1. In Supabase SQL Editor, run:
+   ```sql
+   SELECT table_name FROM information_schema.tables
+   WHERE table_schema = 'public'
+   AND table_name LIKE 'group%';
+   ```
+2. Run:
+   ```sql
+   SELECT routine_name FROM information_schema.routines
+   WHERE routine_schema = 'public'
+   AND routine_name LIKE '%group%';
+   ```
+3. Run:
+   ```sql
+   SELECT tablename, rowsecurity FROM pg_tables
+   WHERE schemaname = 'public'
+   AND tablename LIKE 'group%';
+   ```
+
+**Expected:**
+- [ ] Tables visible: `group_chats`, `group_members`, `group_messages`, `group_sessions`, `group_session_rsvps`
+- [ ] RPCs visible: `create_group_chat`, `fetch_group_chat_previews`, `add_group_members`, `leave_group`, `rsvp_group_session`, `mark_group_read`
+- [ ] All 5 tables show `rowsecurity = true`
+
+---
+
+### 40. Create Group Chat
+
+**Preconditions:**
+- User A is logged in
+- User A has at least 2 friends (matched or manual)
+
+**Steps:**
+1. Navigate to the Chats tab
+2. Tap the `+` button in the top-right of the screen header
+3. Enter group name: "Friday Squad"
+4. Tap 2 friends from the list to select them
+5. Tap "Create" in the header
+
+**Expected:**
+- [ ] `+` button is visible in Chats tab header
+- [ ] `CreateGroupScreen` opens
+- [ ] "Create" button is disabled initially (name empty + 0 members)
+- [ ] Typing name enables "Create" only after ≥1 member also selected
+- [ ] Selected friends appear as `MemberChip` row below search
+- [ ] Friends with `has_intent_today = true` appear above others in list
+- [ ] Tapping "Create" navigates to `GroupChatScreen` with title "Friday Squad"
+- [ ] Group name visible in header as "Friday Squad (3 members)"
+
+**Persistence check:**
+- In Supabase: `group_chats` table shows new row with `name = 'Friday Squad'`
+- `group_members` table shows 3 rows (creator + 2 selected friends) for that group
+
+---
+
+### 41. Send and Receive Group Messages
+
+**Preconditions:**
+- User A and User B are both members of the same group
+- Both users have the app open to the same `GroupChatScreen`
+
+**Steps:**
+1. User A types "Anyone at Blue Bottle Friday?" and taps send
+2. User B observes their GroupChatScreen
+
+**Expected:**
+- [ ] User A: message appears right-aligned immediately after send
+- [ ] User B: message appears left-aligned with User A's avatar and name above bubble
+- [ ] Both users see the message in under 2 seconds (real-time subscription)
+- [ ] User B: avatar is tappable → opens `UserProfileModal` for User A
+- [ ] User B: Chats tab badge clears after opening the group chat
+
+**Persistence check:**
+- In Supabase: `group_messages` table shows new row with correct `group_chat_id` and `sender_id`
+
+---
+
+### 42. Group Chat Appears in Unified Chats List
+
+**Preconditions:**
+- User A has at least 1 group chat and at least 1 1:1 match
+
+**Steps:**
+1. Navigate to the Chats tab
+2. Observe the list
+
+**Expected:**
+- [ ] Group "Friday Squad" appears in the same list as 1:1 match chats
+- [ ] Group row shows 👥 icon, "Friday Squad", member count, and last message preview
+- [ ] List is sorted by most recent activity (most recently active at top)
+- [ ] If group has no messages: preview shows "No messages yet" in muted italic; sorted last
+- [ ] Unread groups show a green dot (✦) on the row
+
+---
+
+### 43. Propose Group Session and RSVP
+
+**Preconditions:**
+- User A, User B, and User C are all members of "Friday Squad"
+- All three have the app open to the `GroupChatScreen`
+
+**Steps:**
+1. User A taps the 📅 button in the `GroupChatScreen` header
+2. User A selects "Friday, Mar 13" from the date options
+3. User A taps "Send"
+4. User B sees the `GroupSessionRSVPCard` appear in the timeline
+5. User B taps "Yes ✓"
+6. User C taps "No ✗"
+
+**Expected:**
+- [ ] User A: `InviteComposerCard` opens with 7-day date options when 📅 tapped
+- [ ] User A: Tapping "Send" closes the composer and RSVP card appears in timeline
+- [ ] RSVP card shows: "Friday, Mar 13" + "Proposed by Alex" + "0 going · 0 not going · 3 pending"
+- [ ] User B sees card appear in real time
+- [ ] User B taps Yes → card updates: "1 going · 0 not going · 2 pending"; response pill shows "You're going ✓"
+- [ ] User C taps No → card updates: "1 going · 1 not going · 1 pending"; response pill shows "You can't make it ✗"
+- [ ] User A sees RSVP counts update in real time
+- [ ] Cancel button visible to User A (proposer only)
+
+**Persistence check:**
+- In Supabase: `group_sessions` table shows new row with `status = 'proposed'` and `scheduled_date = '2026-03-13'`
+- `group_session_rsvps` table shows 2 rows: one `yes` (User B), one `no` (User C)
+
+---
+
+### 44. Group Info and Management
+
+**Preconditions:**
+- User A is a member of "Friday Squad" (3 members)
+- User A has a 4th friend not currently in the group
+
+**Steps:**
+1. In `GroupChatScreen`, tap the ⓘ button
+2. Observe `GroupInfoScreen`
+3. Tap the group name "Friday Squad" to enter edit mode
+4. Rename to "Blue Bottle Crew" and save
+5. Navigate back to `GroupChatScreen`
+6. Return to `GroupInfoScreen` and tap "+ Add Members"
+7. Search for and select the 4th friend
+8. Confirm add
+
+**Expected:**
+- [ ] `GroupInfoScreen` shows group name + "Created by [name]" + member list (3 members with "You" badge)
+- [ ] Tapping name enters edit mode (TextInput appears)
+- [ ] Tapping ✓ saves name and returns to display mode
+- [ ] `GroupChatScreen` header shows "Blue Bottle Crew" after navigating back
+- [ ] "+ Add Members" opens friend search filtered to friends NOT already in group
+- [ ] Adding the 4th friend → member list now shows 4 members
+- [ ] `npx tsc --noEmit` passes
+
+---
+
+### 45. Leave Group
+
+**Preconditions:**
+- User A is a member of "Blue Bottle Crew" (4 members)
+
+**Steps:**
+1. In `GroupInfoScreen`, tap "Leave Group"
+2. Confirm the alert
+
+**Expected:**
+- [ ] Confirmation `Alert` appears with group name
+- [ ] Confirming navigates back to MatchesList (`navigation.popToTop()`)
+- [ ] "Blue Bottle Crew" no longer appears in User A's Chats list
+- [ ] Other members (B, C, D) still see the group in their Chats list
+
+**Persistence check:**
+- In Supabase: `group_members` shows no row for `(group_chat_id, user_a_id)`
+- `group_chats` row still exists (soft leave)
+
+---
+
+### 46. Group Unread Badge
+
+**Preconditions:**
+- User A is a member of "Friday Squad"
+- User A is on a different tab (not Chats)
+- User B sends a message to the group
+
+**Steps:**
+1. While User A is on the Discover tab, User B sends "Are we still on for Friday?"
+2. User A switches to Chats tab
+3. User A taps the "Friday Squad" group row
+
+**Expected:**
+- [ ] Chats tab badge shows a count (or dot) indicating unread messages
+- [ ] "Friday Squad" row shows green unread dot (✦) before User A opens it
+- [ ] After opening `GroupChatScreen`, the unread dot clears
+- [ ] Chats tab badge count decreases (or disappears) after reading
+
+---
+
+## Phase 7 Common Failures
+
+| Issue | Solution |
+|-------|---------|
+| "+" button missing from Chats tab | Check `MatchesListScreen` header options; ensure Pressable is added to `navigation.setOptions` or inline header |
+| Group chats not appearing in list | Check `fetchGroupChats` is called in parallel with `fetchMatches`; verify `fetch_group_chat_previews` RPC exists and user is in `group_members` |
+| Real-time messages not appearing | Check `subscribeToGroupMessages` subscription is active; verify `group_messages` table has realtime enabled in Supabase; check `group_chat_id` filter matches |
+| RSVP counts not updating | Check `rsvpGroupSession` calls `rsvp_group_session` RPC; verify `group_session_rsvps` `UNIQUE` constraint allows upsert; re-fetch sessions after RSVP |
+| GroupChatScreen header still shows old name after rename | Check `GroupInfoScreen` uses `navigation.setParams` or caller re-fetches on `useFocusEffect` |
+| TypeScript errors | Run `npx tsc --noEmit`; check all new types exported from `src/types/index.ts`; check `MatchesStackParamList` includes all 3 new routes |
+| `create_group_chat` RPC not found | Verify `008_group_chats.sql` was executed in Supabase SQL Editor |
+| Avatar in `GroupMessageBubble` not showing photo | Check `sender_id` is joined to `profiles.photo_url` when fetching messages; initials fallback should always render |
 | Modal won't swipe-to-dismiss | Verify `onRequestClose={onDismiss}` is set on `<Modal>` and `presentationStyle="pageSheet"` is present |
