@@ -1,5 +1,11 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
 import { colors, spacing, theme } from '../../constants';
 import { Message } from '../../types';
 
@@ -8,6 +14,10 @@ type MessageBubbleProps = {
   isMine: boolean;
 };
 
+// Only animate messages that arrived in the last 3 seconds — history appears instantly
+const ENTER_THRESHOLD_MS = 3000;
+const SLIDE_OFFSET = 16;
+
 export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
   const time = new Date(message.created_at).toLocaleTimeString([], {
     hour: '2-digit',
@@ -15,8 +25,36 @@ export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
     hour12: false,
   });
 
+  const isNew = Date.now() - new Date(message.created_at).getTime() < ENTER_THRESHOLD_MS;
+
+  const translateX = useSharedValue(isNew ? (isMine ? SLIDE_OFFSET : -SLIDE_OFFSET) : 0);
+  const scale     = useSharedValue(isNew ? 0.88 : 1);
+  const opacity   = useSharedValue(isNew ? 0 : 1);
+
+  useEffect(() => {
+    if (!isNew) return;
+    const easing = Easing.bezier(0.22, 1, 0.36, 1); // ease-out-expo
+    translateX.value = withTiming(0, { duration: 280, easing });
+    scale.value      = withTiming(1, { duration: 280, easing });
+    opacity.value    = withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) });
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { translateX: translateX.value } as { translateX: number },
+      { scale: scale.value } as { scale: number },
+    ],
+  }));
+
   return (
-    <View style={[styles.container, isMine ? styles.containerRight : styles.containerLeft]}>
+    <Animated.View
+      style={[
+        styles.container,
+        isMine ? styles.containerRight : styles.containerLeft,
+        animStyle,
+      ]}
+    >
       <View style={[styles.bubble, isMine ? styles.bubbleSent : styles.bubbleReceived]}>
         <Text style={[styles.messageText, isMine ? styles.textSent : styles.textReceived]}>
           {message.content}
@@ -25,7 +63,7 @@ export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
       <Text style={[styles.timestamp, isMine ? styles.timestampRight : styles.timestampLeft]}>
         {time}
       </Text>
-    </View>
+    </Animated.View>
   );
 }
 
