@@ -4,7 +4,6 @@ import { Image } from 'expo-image';
 import { theme, spacing, borderRadius, colors } from '../../constants';
 import { DiscoveryCard } from '../../types';
 import { formatDistance } from '../../hooks/useLocation';
-import Tag from '../common/Tag';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -14,7 +13,7 @@ import Animated, {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 export const CARD_WIDTH = SCREEN_WIDTH - spacing[8];
-export const CARD_HEIGHT = CARD_WIDTH * 1.3;
+export const CARD_HEIGHT = CARD_WIDTH * 1.35;
 
 type SwipeCardProps = {
   card: DiscoveryCard;
@@ -25,7 +24,6 @@ type SwipeCardProps = {
 export default function SwipeCard({ card, translateX, isTopCard = false }: SwipeCardProps) {
   const { profile, intent, distance } = card;
 
-  // Get initials for placeholder
   const initials = profile.name
     ? profile.name
         .split(' ')
@@ -35,35 +33,23 @@ export default function SwipeCard({ card, translateX, isTopCard = false }: Swipe
         .slice(0, 2)
     : '?';
 
-  // Format availability time
-  const formatAvailability = () => {
-    const from = intent.available_from.slice(0, 5);
-    const until = intent.available_until.slice(0, 5);
-    return `${from} - ${until}`;
-  };
-
   const getAge = () => {
     if (!profile.birthday) return null;
     const birthDate = new Date(profile.birthday);
     if (Number.isNaN(birthDate.getTime())) return null;
-
     const today = new Date();
     let age = today.getFullYear() - birthDate.getFullYear();
     const monthDiff = today.getMonth() - birthDate.getMonth();
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
       age -= 1;
     }
-
     return age > 0 ? `${age}` : null;
   };
 
   const age = getAge();
-  const ageNeighborhoodLine = [age, profile.neighborhood].filter(Boolean).join(' · ');
 
   const likeOpacity = useAnimatedStyle(() => {
-    if (!translateX || !isTopCard) {
-      return { opacity: 0 };
-    }
+    if (!translateX || !isTopCard) return { opacity: 0 };
     return {
       opacity: interpolate(
         translateX.value,
@@ -75,9 +61,7 @@ export default function SwipeCard({ card, translateX, isTopCard = false }: Swipe
   });
 
   const nopeOpacity = useAnimatedStyle(() => {
-    if (!translateX || !isTopCard) {
-      return { opacity: 0 };
-    }
+    if (!translateX || !isTopCard) return { opacity: 0 };
     return {
       opacity: interpolate(
         translateX.value,
@@ -90,72 +74,44 @@ export default function SwipeCard({ card, translateX, isTopCard = false }: Swipe
 
   return (
     <View style={styles.card}>
-      {/* Photo or initials */}
-      <View style={styles.photoContainer}>
-        {/* LIKE / NOPE labels (top card only) */}
-        <Animated.View style={[styles.stamp, styles.likeStamp, likeOpacity]}>
-          <Text style={styles.stampText}>LIKE</Text>
-        </Animated.View>
-        <Animated.View style={[styles.stamp, styles.nopeStamp, nopeOpacity]}>
-          <Text style={[styles.stampText, styles.nopeText]}>NOPE</Text>
-        </Animated.View>
+      {/* LIKE / NOPE stamps */}
+      <Animated.View style={[styles.stamp, styles.likeStamp, likeOpacity]}>
+        <Text style={styles.stampText}>LIKE</Text>
+      </Animated.View>
+      <Animated.View style={[styles.stamp, styles.nopeStamp, nopeOpacity]}>
+        <Text style={[styles.stampText, styles.nopeText]}>NOPE</Text>
+      </Animated.View>
 
-        {profile.photo_url ? (
-          <Image
-            source={{ uri: profile.photo_url }}
-            style={styles.photo}
-            contentFit="cover"
-          />
-        ) : (
-          <View style={styles.initialsContainer}>
-            <Text style={styles.initials}>{initials}</Text>
-          </View>
-        )}
-
-        {/* Gradient overlay */}
-        <View style={styles.gradient} />
-
-        {/* Name and distance overlay */}
-        <View style={styles.overlay}>
-          <View style={styles.nameRow}>
-            <Text style={styles.name}>{profile.name || 'Anonymous'}</Text>
-            <Text style={styles.distance}>{formatDistance(distance)}</Text>
-          </View>
-          {profile.work_type && (
-            <Text style={styles.workType}>{profile.work_type}</Text>
-          )}
-          {profile.tagline ? (
-            <Text style={styles.tagline} numberOfLines={1}>
-              {profile.tagline}
-            </Text>
-          ) : null}
-          {ageNeighborhoodLine ? <Text style={styles.ageNeighborhood}>{ageNeighborhoodLine}</Text> : null}
+      {/* Photo or warm sage gradient placeholder */}
+      {profile.photo_url ? (
+        <Image
+          source={{ uri: profile.photo_url }}
+          style={styles.photo}
+          contentFit="cover"
+        />
+      ) : (
+        <View style={styles.placeholder}>
+          <Text style={styles.placeholderInitial}>{initials}</Text>
         </View>
-      </View>
+      )}
 
-      {/* Details */}
-      <View style={styles.details}>
-        {/* Task */}
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Working on</Text>
-          <Text style={styles.task} numberOfLines={2}>
-            {intent.task_description}
-          </Text>
-        </View>
+      {/* Dark overlay at bottom */}
+      <View style={styles.gradientOverlay} />
 
-        {/* Tags */}
-        <View style={styles.tagsRow}>
-          <Tag label={intent.work_style} size="sm" selected />
-          <Tag label={intent.location_type} size="sm" selected style={styles.tagSpacing} />
+      {/* Info overlay */}
+      <View style={styles.infoOverlay}>
+        <Text style={styles.distance}>📍 {formatDistance(distance)}</Text>
+        <View style={styles.nameRow}>
+          <Text style={styles.name}>{profile.name || 'Anonymous'}</Text>
+          {age ? <Text style={styles.age}>{age}</Text> : null}
         </View>
-
-        {/* Location and availability */}
-        <View style={styles.metaRow}>
-          {intent.location_name && (
-            <Text style={styles.metaText}>{intent.location_name}</Text>
-          )}
-          <Text style={styles.metaText}>{formatAvailability()}</Text>
-        </View>
+        {profile.work_type ? (
+          <Text style={styles.profession}>{profile.work_type}</Text>
+        ) : null}
+        <View style={styles.divider} />
+        <Text style={styles.intent} numberOfLines={2}>
+          {intent.task_description}
+        </Text>
       </View>
     </View>
   );
@@ -165,7 +121,6 @@ const styles = StyleSheet.create({
   card: {
     width: CARD_WIDTH,
     height: CARD_HEIGHT,
-    backgroundColor: theme.surface,
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -174,108 +129,83 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 8,
   },
-  photoContainer: {
-    height: '55%',
-    position: 'relative',
-  },
   photo: {
-    width: '100%',
-    height: '100%',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
-  initialsContainer: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colors.accentSubtle,
+  placeholder: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#8fa893',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initials: {
-    fontSize: 64,
+  placeholderInitial: {
+    fontSize: CARD_WIDTH * 0.22,
     fontWeight: '700',
-    color: colors.textSecondary,
+    color: 'rgba(255,255,255,0.25)',
   },
-  gradient: {
+  gradientOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: 100,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    height: 140,
+    backgroundColor: 'rgba(20,32,22,0.78)',
   },
-  overlay: {
+  infoOverlay: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
     padding: spacing[4],
-    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  distance: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.6)',
+    marginBottom: spacing[1],
   },
   nameRow: {
     flexDirection: 'row',
     alignItems: 'baseline',
-    justifyContent: 'space-between',
+    gap: spacing[1],
+    marginBottom: 2,
   },
   name: {
-    fontSize: 24,
+    fontSize: 21,
     fontWeight: '700',
     color: '#fff',
+    letterSpacing: -0.3,
   },
-  distance: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
+  age: {
+    fontSize: 17,
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.52)',
+    marginLeft: spacing[1],
   },
-  workType: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: spacing[1],
-  },
-  tagline: {
-    fontSize: 13,
-    color: '#FFFFFF',
-    fontStyle: 'italic',
-    marginTop: spacing[1],
-  },
-  ageNeighborhood: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.9)',
-    marginTop: spacing[1],
-  },
-  details: {
-    flex: 1,
-    padding: spacing[4],
-    justifyContent: 'space-between',
-  },
-  section: {
+  profession: {
+    fontSize: 10.5,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.65)',
     marginBottom: spacing[2],
   },
-  sectionLabel: {
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginBottom: spacing[2],
+  },
+  intent: {
     fontSize: 12,
-    fontWeight: '500',
-    color: theme.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    marginBottom: spacing[1],
-  },
-  task: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.text,
-    lineHeight: 22,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    marginBottom: spacing[2],
-  },
-  tagSpacing: {
-    marginLeft: spacing[2],
-  },
-  metaRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  metaText: {
-    fontSize: 13,
-    color: theme.textSecondary,
+    fontWeight: '600',
+    color: '#fff',
+    lineHeight: 16.8,
   },
   stamp: {
     position: 'absolute',

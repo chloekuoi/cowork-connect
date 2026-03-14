@@ -166,11 +166,6 @@ export default function DiscoverScreen() {
           <>
             <View style={styles.header}>
               <Text style={styles.headerTitle}>Discover</Text>
-              <Text style={styles.headerSubtitle}>
-                {intent?.task_description
-                  ? `Working on: ${intent.task_description}`
-                  : 'Working on: Today'}
-              </Text>
             </View>
             <View style={styles.centerContent}>
               <Text style={styles.emptyTitle}>No one nearby right now</Text>
@@ -190,11 +185,6 @@ export default function DiscoverScreen() {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Discover</Text>
-        <Text style={styles.headerSubtitle}>
-          {intent?.task_description
-            ? `Working on: ${intent.task_description}`
-            : 'Working on: Today'}
-        </Text>
       </View>
 
       <CardStack
