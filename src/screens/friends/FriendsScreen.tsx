@@ -6,7 +6,6 @@ import {
   ScrollView,
   RefreshControl,
   TouchableOpacity,
-  ActivityIndicator,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +18,7 @@ import { MainTabsParamList } from '../../navigation/MainTabs';
 import FriendRequestCard from '../../components/friends/FriendRequestCard';
 import FriendCard from '../../components/friends/FriendCard';
 import FadeInRow from '../../components/common/FadeInRow';
+import { SkeletonSectionCard } from '../../components/common/SkeletonListItem';
 import CollapsibleSection from '../../components/friends/CollapsibleSection';
 import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { useAuth } from '../../context/AuthContext';
@@ -174,9 +174,12 @@ export default function FriendsScreen({ navigation }: Props) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.loadingText}>Loading friends...</Text>
+        <View style={styles.header}>
+          <Text style={styles.title}>Friends</Text>
+        </View>
+        <View style={styles.content}>
+          <SkeletonSectionCard rows={2} />
+          <SkeletonSectionCard rows={3} />
         </View>
       </SafeAreaView>
     );
@@ -300,16 +303,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
-  },
-  loadingWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    marginTop: spacing[2],
-    fontSize: 14,
-    color: theme.textSecondary,
   },
   header: {
     paddingHorizontal: spacing[4],
