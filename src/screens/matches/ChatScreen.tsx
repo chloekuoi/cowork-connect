@@ -109,10 +109,16 @@ export default function ChatScreen({ navigation, route }: Props) {
     let didUpdate = false;
     const updatedRecentlyCompleted: Record<string, number> = { ...recentlyCompletedSessions };
     matchSessions.forEach((session) => {
+      const completedKey = `completed:${session.id}`;
       if (session.status === 'completed' && session.completed_ack) {
         const completedAt = session.completed_at ? new Date(session.completed_at).getTime() : now;
-        if (!updatedRecentlyCompleted[session.id] && now - completedAt <= 60000) {
+        if (
+          !updatedRecentlyCompleted[session.id] &&
+          !shownSessionToastsRef.current.has(completedKey) &&
+          now - completedAt <= 60000
+        ) {
           updatedRecentlyCompleted[session.id] = now;
+          markSessionToastShown(completedKey);
           didUpdate = true;
         }
       }
@@ -168,9 +174,15 @@ export default function ChatScreen({ navigation, route }: Props) {
     const unsubscribers = sessions.map((session) =>
       subscribeToSession(session.id, (updated) => {
         setSessions((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-        if (updated.status === 'completed' && updated.completed_ack) {
+        const completedKey = `completed:${updated.id}`;
+        if (
+          updated.status === 'completed' &&
+          updated.completed_ack &&
+          !shownSessionToastsRef.current.has(completedKey)
+        ) {
           const completedAt = Date.now();
           setRecentlyCompletedSessions((prev) => ({ ...prev, [updated.id]: completedAt }));
+          markSessionToastShown(completedKey);
           showToast('Session Completed 🔒❤️');
         }
         const declinedKey = `declined:${updated.id}`;
@@ -426,6 +438,33 @@ export default function ChatScreen({ navigation, route }: Props) {
     await loadSessions();
   };
 
+  const handleProposeAlternative = async (sessionId: string, text: string) => {
+    if (!user) return;
+
+    const newMessage = await sendMessage(matchId, user.id, text);
+    if (!newMessage) {
+      Alert.alert('Failed to send', 'Please try again.');
+      return;
+    }
+
+    setMessages((prev) => {
+      if (prev.find((item) => item.id === newMessage.id)) {
+        return prev;
+      }
+      return [...prev, newMessage];
+    });
+
+    markSessionToastShown(`declined:${sessionId}`);
+
+    const { error } = await respondToSession(sessionId, user.id, 'decline');
+    if (error) {
+      Alert.alert('Unable to update invite', error);
+      return;
+    }
+
+    await loadSessions();
+  };
+
   const handleCancelSession = async (sessionId: string) => {
     if (!user) return;
     const { error } = await cancelSession(sessionId, user.id);
@@ -542,6 +581,7 @@ export default function ChatScreen({ navigation, route }: Props) {
                   onCancel={() => handleCancelSession(item.session.id)}
                   onLockIn={() => handleLockIn(item.session.id)}
                   onSendMessage={(text) => handleSend(text)}
+                  onProposeAlternative={(text) => handleProposeAlternative(item.session.id, text)}
                 />
               )
             }

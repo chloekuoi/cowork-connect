@@ -106,6 +106,69 @@ export type MatchPreview = {
   invite_badge_text: string | null;
 };
 
+export type GroupChat = {
+  id: string;
+  name: string;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GroupMember = {
+  id: string;
+  group_chat_id: string;
+  user_id: string;
+  name: string | null;
+  photo_url: string | null;
+  last_read_at: string;
+  created_at: string;
+};
+
+export type GroupMessage = {
+  id: string;
+  group_chat_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  sender_name: string | null;
+  sender_photo_url: string | null;
+};
+
+export type GroupSessionStatus = 'proposed' | 'completed' | 'cancelled';
+
+export type GroupSession = {
+  id: string;
+  group_chat_id: string;
+  proposed_by: string;
+  scheduled_date: string;
+  status: GroupSessionStatus;
+  created_at: string;
+  updated_at: string;
+};
+
+export type GroupSessionRsvp = {
+  id: string;
+  group_session_id: string;
+  user_id: string;
+  response: 'yes' | 'no';
+  created_at: string;
+  updated_at: string;
+};
+
+export type GroupChatPreview = {
+  groupChatId: string;
+  name: string;
+  memberCount: number;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  lastSenderName: string | null;
+  unreadCount: number;
+};
+
+export type GroupTimelineItem =
+  | { type: 'message'; message: GroupMessage }
+  | { type: 'session'; session: GroupSession };
+
 // Sessions types
 export type SessionStatus = 'pending' | 'active' | 'declined' | 'completed' | 'cancelled';
 

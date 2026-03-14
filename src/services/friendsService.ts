@@ -234,25 +234,47 @@ export async function respondToFriendRequest(
 export async function fetchFriends(
   userId: string
 ): Promise<{ data: FriendListItem[]; error: string | null }> {
-  const [{ data: matchesAsUser1, error: matchError1 }, { data: matchesAsUser2, error: matchError2 }] =
+  const [
+    { data: matchesAsUser1, error: matchError1 },
+    { data: matchesAsUser2, error: matchError2 },
+    { data: friendshipsData, error: friendshipsError },
+  ] =
     await Promise.all([
       supabase.from('matches').select('id,user1_id,user2_id').eq('user1_id', userId),
       supabase.from('matches').select('id,user1_id,user2_id').eq('user2_id', userId),
+      supabase
+        .from('friendships')
+        .select('id,requester_id,recipient_id,status,created_at,updated_at')
+        .eq('status', 'accepted')
+        .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`),
     ]);
 
-  if (matchError1 || matchError2) {
-    const message = extractSupabaseErrorMessage(matchError1 || matchError2, 'Failed to fetch friends');
+  if (matchError1 || matchError2 || friendshipsError) {
+    const message = extractSupabaseErrorMessage(
+      matchError1 || matchError2 || friendshipsError,
+      'Failed to fetch friends'
+    );
     console.error('Error fetching friend matches:', message);
     return { data: [], error: message };
   }
 
   const allMatches = [...((matchesAsUser1 || []) as MatchRow[]), ...((matchesAsUser2 || []) as MatchRow[])];
+  const acceptedFriendships = (friendshipsData || []) as FriendshipRow[];
 
   const friendMap = new Map<string, { matchId: string }>();
   for (const match of allMatches) {
     const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
     if (!friendMap.has(otherUserId)) {
       friendMap.set(otherUserId, { matchId: match.id });
+    }
+  }
+
+  for (const friendship of acceptedFriendships) {
+    const otherUserId =
+      friendship.requester_id === userId ? friendship.recipient_id : friendship.requester_id;
+
+    if (!friendMap.has(otherUserId)) {
+      friendMap.set(otherUserId, { matchId: '' });
     }
   }
 

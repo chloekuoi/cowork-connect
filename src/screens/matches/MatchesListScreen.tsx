@@ -1,24 +1,35 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { theme, spacing } from '../../constants';
 import { useAuth } from '../../context/AuthContext';
 import { fetchMatches } from '../../services/messagingService';
+import { fetchGroupChats } from '../../services/groupChatsService';
 import { getTodayIntent } from '../../services/discoveryService';
 import { getFullProfile } from '../../services/profileService';
-import { MatchPreview, Profile, ProfilePhoto, WorkIntent } from '../../types';
+import { GroupChatPreview, MatchPreview, Profile, ProfilePhoto, WorkIntent } from '../../types';
 import MatchCard from '../../components/matches/MatchCard';
+import GroupChatCard from '../../components/matches/GroupChatCard';
 import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'MatchesList'>;
+type ChatListItem =
+  | { type: 'dm'; data: MatchPreview }
+  | { type: 'group'; data: GroupChatPreview };
+
+function toEpoch(value: string | null): number {
+  if (!value) return 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
 
 export default function MatchesListScreen({ navigation }: Props) {
   const { user } = useAuth();
   const { refreshUnreadCount } = useMatchesStack();
-  const [matches, setMatches] = useState<MatchPreview[]>([]);
+  const [chatItems, setChatItems] = useState<ChatListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedMatch, setSelectedMatch] = useState<MatchPreview | null>(null);
@@ -35,8 +46,22 @@ export default function MatchesListScreen({ navigation }: Props) {
       if (showLoading) {
         setLoading(true);
       }
-      const data = await fetchMatches(user.id);
-      setMatches(data);
+      const [matches, groupChats] = await Promise.all([
+        fetchMatches(user.id),
+        fetchGroupChats(user.id),
+      ]);
+      const items: ChatListItem[] = [
+        ...matches.map((match) => ({ type: 'dm' as const, data: match })),
+        ...groupChats.map((chat) => ({ type: 'group' as const, data: chat })),
+      ].sort((a, b) => {
+        const aDate = a.type === 'dm' ? a.data.last_message_at : a.data.lastMessageAt;
+        const bDate = b.type === 'dm' ? b.data.last_message_at : b.data.lastMessageAt;
+        if (!aDate && !bDate) return 0;
+        if (!aDate) return 1;
+        if (!bDate) return -1;
+        return toEpoch(bDate) - toEpoch(aDate);
+      });
+      setChatItems(items);
       setLoading(false);
       setRefreshing(false);
       await refreshUnreadCount();
@@ -111,7 +136,7 @@ export default function MatchesListScreen({ navigation }: Props) {
     );
   }
 
-  if (matches.length === 0) {
+  if (chatItems.length === 0) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
         <View style={styles.centerContent}>
@@ -126,17 +151,36 @@ export default function MatchesListScreen({ navigation }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Chats</Text>
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={() => navigation.navigate('CreateGroup')}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.addButtonText}>+</Text>
+        </TouchableOpacity>
       </View>
 
       <FlatList
-        data={matches}
-        keyExtractor={(item) => item.match_id}
+        data={chatItems}
+        keyExtractor={(item) => (item.type === 'dm' ? item.data.match_id : item.data.groupChatId)}
         renderItem={({ item }) => (
-          <MatchCard
-            matchPreview={item}
-            onPress={() => openChat(item)}
-            onAvatarPress={() => void handleOpenProfile(item)}
-          />
+          item.type === 'dm' ? (
+            <MatchCard
+              matchPreview={item.data}
+              onPress={() => openChat(item.data)}
+              onAvatarPress={() => void handleOpenProfile(item.data)}
+            />
+          ) : (
+            <GroupChatCard
+              groupChat={item.data}
+              onPress={() =>
+                navigation.navigate('GroupChat', {
+                  groupChatId: item.data.groupChatId,
+                  groupName: item.data.name,
+                })
+              }
+            />
+          )
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={refreshing}
@@ -166,11 +210,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[5],
     paddingTop: spacing[2],
     paddingBottom: spacing[3],
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: '700',
     color: theme.text,
+  },
+  addButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: theme.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addButtonText: {
+    color: theme.surface,
+    fontSize: 22,
+    lineHeight: 22,
+    marginTop: -1,
   },
   centerContent: {
     flex: 1,

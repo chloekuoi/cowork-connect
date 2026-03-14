@@ -8,15 +8,10 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, theme, spacing, borderRadius } from '../../constants';
+import { colors, theme, spacing } from '../../constants';
 import { DiscoveryCard } from '../../types';
 import UserProfileView from '../profile/UserProfileView';
 
-// Skip/Connect palette — approved from design mockup
-const SKIP_BG = '#FFF0F0';
-const SKIP_BORDER = '#F5C2C2';
-const SKIP_TEXT = '#C0392B';
-const CONNECT_BORDER = '#C4DDD0';
 
 interface UserProfileModalProps {
   visible: boolean;
@@ -64,18 +59,18 @@ export default function UserProfileModal({
         {/* Sticky Skip / Connect bar */}
         <View style={styles.actionBar}>
           <TouchableOpacity
-            style={styles.btnSkip}
+            style={[styles.btn, styles.btnSkip]}
             onPress={onSkip}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnSkipText}>Skip</Text>
+            <Text style={styles.btnSkipText}>✕</Text>
           </TouchableOpacity>
           <TouchableOpacity
-            style={styles.btnConnect}
+            style={[styles.btn, styles.btnConnect]}
             onPress={onConnect}
             activeOpacity={0.8}
           >
-            <Text style={styles.btnConnectText}>Connect</Text>
+            <Text style={styles.btnConnectText}>✓</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -103,49 +98,53 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingBottom: spacing[4],
+    paddingBottom: 100,
   },
-  // Action bar
+  // Action bar — floats over content
   actionBar: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
-    gap: spacing[3],
-    paddingHorizontal: spacing[4],
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing[8],
     paddingTop: spacing[3],
-    paddingBottom: spacing[4],
-    backgroundColor: theme.surface,
-    borderTopWidth: 1,
-    borderTopColor: colors.borderDefault,
+    paddingBottom: spacing[6],
+  },
+  btn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   btnSkip: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[4],
-    borderRadius: borderRadius.lg,
-    backgroundColor: SKIP_BG,
+    backgroundColor: theme.surface,
     borderWidth: 1.5,
-    borderColor: SKIP_BORDER,
-    minHeight: 54,
+    borderColor: 'rgba(184,92,77,0.4)',
   },
   btnSkipText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: SKIP_TEXT,
+    fontSize: 17,
+    fontWeight: '600',
+    color: colors.accentDanger,
   },
   btnConnect: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: spacing[4],
-    borderRadius: borderRadius.lg,
-    backgroundColor: colors.accentPrimaryLight,
-    borderWidth: 1.5,
-    borderColor: CONNECT_BORDER,
-    minHeight: 54,
+    backgroundColor: colors.accentSuccess,
+    shadowColor: colors.accentSuccess,
+    shadowOpacity: 0.42,
+    shadowRadius: 12,
+    elevation: 4,
   },
   btnConnectText: {
-    fontSize: 16,
+    fontSize: 19,
     fontWeight: '700',
-    color: colors.accentPrimary,
+    color: theme.surface,
   },
 });

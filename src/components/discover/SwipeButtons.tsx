@@ -23,7 +23,7 @@ export default function SwipeButtons({ onSwipeLeft, onSwipeRight }: SwipeButtons
         onPress={onSwipeRight}
         activeOpacity={0.8}
       >
-        <Text style={styles.likeIcon}>OK</Text>
+        <Text style={styles.likeIcon}>✓</Text>
       </TouchableOpacity>
     </View>
   );
@@ -38,32 +38,36 @@ const styles = StyleSheet.create({
     gap: spacing[8],
   },
   button: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.08,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 3,
   },
   nopeButton: {
     backgroundColor: theme.surface,
-    borderWidth: 2,
-    borderColor: colors.accentDanger,
+    borderWidth: 1.5,
+    borderColor: 'rgba(184,92,77,0.4)',
   },
   likeButton: {
     backgroundColor: colors.accentSuccess,
+    shadowColor: colors.accentSuccess,
+    shadowOpacity: 0.42,
+    shadowRadius: 12,
+    elevation: 4,
   },
   nopeIcon: {
-    fontSize: 28,
+    fontSize: 17,
     fontWeight: '600',
     color: colors.accentDanger,
   },
   likeIcon: {
-    fontSize: 18,
+    fontSize: 19,
     fontWeight: '700',
     color: theme.surface,
   },
