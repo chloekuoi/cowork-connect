@@ -37,6 +37,12 @@ export default function MatchCard({ matchPreview, onPress, onAvatarPress }: Matc
 
   const previewText = last_message || 'Say hello!';
   const hasPendingInvitePreview = /pending cowork invite/i.test(previewText.trim());
+  const hasSessionStatusPreview =
+    /^cowork invite sent for /i.test(previewText.trim()) ||
+    /^lock-in pending/i.test(previewText.trim()) ||
+    /^session completed$/i.test(previewText.trim()) ||
+    /^cowork invite declined$/i.test(previewText.trim()) ||
+    /^you declined the cowork invite$/i.test(previewText.trim());
   const showInvitePill = hasPendingInvitePreview || !!invite_badge_text;
   const isUnread = unread_count > 0 || has_unread_invite;
   const showPreviewText = !hasPendingInvitePreview;
@@ -69,7 +75,11 @@ export default function MatchCard({ matchPreview, onPress, onAvatarPress }: Matc
         <View style={styles.previewRow}>
           {showPreviewText ? (
             <Text
-              style={[styles.preview, !last_message && styles.previewEmpty, isUnread && styles.previewUnread]}
+              style={[
+                styles.preview,
+                (!last_message || hasSessionStatusPreview) && styles.previewEmpty,
+                isUnread && styles.previewUnread,
+              ]}
               numberOfLines={1}
             >
               {previewText}

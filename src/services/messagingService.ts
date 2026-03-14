@@ -50,7 +50,7 @@ function toSessionPreviewText(session: SessionPreviewRow, userId: string): strin
         ? `Cowork invite sent for ${formatSessionDate(session.scheduled_date)}`
         : `Pending cowork invite for ${formatSessionDate(session.scheduled_date)}`;
     case 'active':
-      return 'Invite accepted';
+      return 'Lock-in pending 🔏';
     case 'declined':
       return byYou ? 'Cowork invite declined' : 'You declined the cowork invite';
     case 'completed':

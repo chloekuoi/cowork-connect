@@ -14,6 +14,7 @@ type SessionRequestCardProps = {
   onCancel: () => void;
   onLockIn: () => void;
   onSendMessage: (text: string) => void;
+  onProposeAlternative: (text: string) => void;
 };
 
 function formatStatus(status: SessionRecord['status']) {
@@ -49,6 +50,7 @@ export default function SessionRequestCard({
   onCancel,
   onLockIn,
   onSendMessage,
+  onProposeAlternative,
 }: SessionRequestCardProps) {
   const isInitiator = session.initiated_by === currentUserId;
   const currentUserLocked = isInitiator
@@ -186,7 +188,7 @@ export default function SessionRequestCard({
     const handleSendProposal = () => {
       const trimmed = proposeText.trim();
       if (!trimmed) return;
-      onSendMessage(trimmed);
+      onProposeAlternative(trimmed);
       setProposeText('');
       setShowProposeInput(false);
     };
