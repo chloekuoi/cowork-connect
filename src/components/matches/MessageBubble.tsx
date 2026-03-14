@@ -4,6 +4,7 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  withRepeat,
   Easing,
 } from 'react-native-reanimated';
 import { colors, spacing, theme } from '../../constants';
@@ -12,13 +13,14 @@ import { Message } from '../../types';
 type MessageBubbleProps = {
   message: Message;
   isMine: boolean;
+  isPending?: boolean;
 };
 
 // Only animate messages that arrived in the last 3 seconds — history appears instantly
 const ENTER_THRESHOLD_MS = 3000;
 const SLIDE_OFFSET = 16;
 
-export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
+export default function MessageBubble({ message, isMine, isPending = false }: MessageBubbleProps) {
   const time = new Date(message.created_at).toLocaleTimeString([], {
     hour: '2-digit',
     minute: '2-digit',
@@ -31,6 +33,9 @@ export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
   const scale     = useSharedValue(isNew ? 0.88 : 1);
   const opacity   = useSharedValue(isNew ? 0 : 1);
 
+  // Spinning ✳ for pending state
+  const rotation  = useSharedValue(0);
+
   useEffect(() => {
     if (!isNew) return;
     const easing = Easing.bezier(0.22, 1, 0.36, 1); // ease-out-expo
@@ -39,12 +44,25 @@ export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
     opacity.value    = withTiming(1, { duration: 200, easing: Easing.out(Easing.ease) });
   }, []);
 
+  useEffect(() => {
+    if (isPending) {
+      rotation.value = withRepeat(
+        withTiming(360, { duration: 900, easing: Easing.linear }),
+        -1
+      );
+    }
+  }, [isPending]);
+
   const animStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [
       { translateX: translateX.value } as { translateX: number },
       { scale: scale.value } as { scale: number },
     ],
+  }));
+
+  const spinStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
   }));
 
   return (
@@ -60,9 +78,18 @@ export default function MessageBubble({ message, isMine }: MessageBubbleProps) {
           {message.content}
         </Text>
       </View>
-      <Text style={[styles.timestamp, isMine ? styles.timestampRight : styles.timestampLeft]}>
-        {time}
-      </Text>
+      {isPending ? (
+        <View style={styles.sendingRow}>
+          <Animated.View style={[styles.asteriskWrap, spinStyle]}>
+            <Text style={styles.asteriskText}>✳</Text>
+          </Animated.View>
+          <Text style={styles.sendingLabel}>Sending…</Text>
+        </View>
+      ) : (
+        <Text style={[styles.timestamp, isMine ? styles.timestampRight : styles.timestampLeft]}>
+          {time}
+        </Text>
+      )}
     </Animated.View>
   );
 }
@@ -120,5 +147,27 @@ const styles = StyleSheet.create({
   },
   timestampRight: {
     textAlign: 'right',
+  },
+  sendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+    gap: 4,
+    marginTop: spacing[1],
+  },
+  asteriskWrap: {
+    width: 13,
+    height: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  asteriskText: {
+    fontSize: 12,
+    color: colors.accentSecondaryText,
+    lineHeight: 13,
+  },
+  sendingLabel: {
+    fontSize: 11,
+    color: theme.textMuted,
   },
 });
