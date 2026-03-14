@@ -1,6 +1,5 @@
 import React from 'react';
 import {
-  TouchableOpacity,
   Text,
   StyleSheet,
   ActivityIndicator,
@@ -8,6 +7,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { colors, theme, spacing, borderRadius, touchTarget, shadows } from '../../constants';
+import PressableScale from './PressableScale';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost';
 
@@ -33,7 +33,7 @@ export default function Button({
   const isDisabled = disabled || loading;
 
   return (
-    <TouchableOpacity
+    <PressableScale
       style={[
         styles.base,
         styles[variant],
@@ -42,7 +42,6 @@ export default function Button({
       ]}
       onPress={onPress}
       disabled={isDisabled}
-      activeOpacity={0.8}
     >
       {loading ? (
         <ActivityIndicator
@@ -59,7 +58,7 @@ export default function Button({
           {title}
         </Text>
       )}
-    </TouchableOpacity>
+    </PressableScale>
   );
 }
 
