@@ -36,6 +36,7 @@ import InviteComposerCard from '../../components/session/InviteComposerCard';
 import SessionRequestCard from '../../components/session/SessionRequestCard';
 import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
+import Animated, { FadeInUp, FadeOutDown } from 'react-native-reanimated';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'Chat'>;
 
@@ -606,9 +607,13 @@ export default function ChatScreen({ navigation, route }: Props) {
 
       {toastMessage && (
         <View style={styles.toastContainer}>
-          <View style={styles.toastBubble}>
+          <Animated.View
+            style={styles.toastBubble}
+            entering={FadeInUp.springify().damping(14).stiffness(180)}
+            exiting={FadeOutDown.duration(150)}
+          >
             <Text style={styles.toastText}>{toastMessage}</Text>
-          </View>
+          </Animated.View>
         </View>
       )}
     </SafeAreaView>
