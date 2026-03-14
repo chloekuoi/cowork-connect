@@ -12,6 +12,7 @@ import { getFullProfile } from '../../services/profileService';
 import { GroupChatPreview, MatchPreview, Profile, ProfilePhoto, WorkIntent } from '../../types';
 import MatchCard from '../../components/matches/MatchCard';
 import GroupChatCard from '../../components/matches/GroupChatCard';
+import FadeInRow from '../../components/common/FadeInRow';
 import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
 
@@ -163,24 +164,26 @@ export default function MatchesListScreen({ navigation }: Props) {
       <FlatList
         data={chatItems}
         keyExtractor={(item) => (item.type === 'dm' ? item.data.match_id : item.data.groupChatId)}
-        renderItem={({ item }) => (
-          item.type === 'dm' ? (
-            <MatchCard
-              matchPreview={item.data}
-              onPress={() => openChat(item.data)}
-              onAvatarPress={() => void handleOpenProfile(item.data)}
-            />
-          ) : (
-            <GroupChatCard
-              groupChat={item.data}
-              onPress={() =>
-                navigation.navigate('GroupChat', {
-                  groupChatId: item.data.groupChatId,
-                  groupName: item.data.name,
-                })
-              }
-            />
-          )
+        renderItem={({ item, index }) => (
+          <FadeInRow index={index}>
+            {item.type === 'dm' ? (
+              <MatchCard
+                matchPreview={item.data}
+                onPress={() => openChat(item.data)}
+                onAvatarPress={() => void handleOpenProfile(item.data)}
+              />
+            ) : (
+              <GroupChatCard
+                groupChat={item.data}
+                onPress={() =>
+                  navigation.navigate('GroupChat', {
+                    groupChatId: item.data.groupChatId,
+                    groupName: item.data.name,
+                  })
+                }
+              />
+            )}
+          </FadeInRow>
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={refreshing}

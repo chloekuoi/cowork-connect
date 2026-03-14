@@ -48,6 +48,7 @@ export default function FriendProfileModal({
         {loading || !profile ? (
           <View style={styles.loadingState}>
             <ActivityIndicator size="large" color={colors.accentPrimary} />
+            <Text style={styles.loadingText}>Loading profile...</Text>
           </View>
         ) : (
           <ScrollView
@@ -116,6 +117,12 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    padding: spacing[6],
+  },
+  loadingText: {
+    marginTop: spacing[2],
+    fontSize: 14,
+    color: theme.textSecondary,
   },
   scroll: {
     flex: 1,

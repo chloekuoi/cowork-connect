@@ -15,6 +15,7 @@ import * as Haptics from 'expo-haptics';
 import { colors, spacing, theme, borderRadius } from '../../constants';
 import { FriendsStackParamList } from '../../navigation/FriendsStack';
 import UserSearchResultCard from '../../components/friends/UserSearchResultCard';
+import FadeInRow from '../../components/common/FadeInRow';
 import { useAuth } from '../../context/AuthContext';
 import {
   getRelationshipStatuses,
@@ -185,13 +186,15 @@ export default function AddFriendScreen({ navigation }: Props) {
       <FlatList
         data={results}
         keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <UserSearchResultCard
-            result={item}
-            onAdd={handleAdd}
-            onAccept={handleAccept}
-            loadingAction={actionUserId === item.id}
-          />
+        renderItem={({ item, index }) => (
+          <FadeInRow index={index}>
+            <UserSearchResultCard
+              result={item}
+              onAdd={handleAdd}
+              onAccept={handleAccept}
+              loadingAction={actionUserId === item.id}
+            />
+          </FadeInRow>
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.listContent}

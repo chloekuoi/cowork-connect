@@ -18,6 +18,7 @@ import { FriendsStackParamList } from '../../navigation/FriendsStack';
 import { MainTabsParamList } from '../../navigation/MainTabs';
 import FriendRequestCard from '../../components/friends/FriendRequestCard';
 import FriendCard from '../../components/friends/FriendCard';
+import FadeInRow from '../../components/common/FadeInRow';
 import CollapsibleSection from '../../components/friends/CollapsibleSection';
 import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { useAuth } from '../../context/AuthContext';
@@ -222,14 +223,15 @@ export default function FriendsScreen({ navigation }: Props) {
               {pendingRequests.length === 0 ? (
                 <Text style={styles.sectionEmpty}>No pending requests</Text>
               ) : (
-                pendingRequests.map((request) => (
-                  <FriendRequestCard
-                    key={request.friendship_id}
-                    request={request}
-                    onAccept={() => void handleRespond(request.friendship_id, 'accept')}
-                    onDecline={() => void handleRespond(request.friendship_id, 'decline')}
-                    loading={actingFriendshipId === request.friendship_id}
-                  />
+                pendingRequests.map((request, index) => (
+                  <FadeInRow key={request.friendship_id} index={index}>
+                    <FriendRequestCard
+                      request={request}
+                      onAccept={() => void handleRespond(request.friendship_id, 'accept')}
+                      onDecline={() => void handleRespond(request.friendship_id, 'decline')}
+                      loading={actingFriendshipId === request.friendship_id}
+                    />
+                  </FadeInRow>
                 ))
               )}
             </CollapsibleSection>
@@ -243,14 +245,15 @@ export default function FriendsScreen({ navigation }: Props) {
               {availableFriends.length === 0 ? (
                 <Text style={styles.sectionEmpty}>No friends available right now</Text>
               ) : (
-                availableFriends.map((friend) => (
-                  <FriendCard
-                    key={friend.user_id}
-                    friend={friend}
-                    variant="available"
-                    onPress={() => openChat(friend)}
-                    onProfilePress={() => void handleOpenProfile(friend)}
-                  />
+                availableFriends.map((friend, index) => (
+                  <FadeInRow key={friend.user_id} index={index}>
+                    <FriendCard
+                      friend={friend}
+                      variant="available"
+                      onPress={() => openChat(friend)}
+                      onProfilePress={() => void handleOpenProfile(friend)}
+                    />
+                  </FadeInRow>
                 ))
               )}
             </CollapsibleSection>
@@ -264,14 +267,15 @@ export default function FriendsScreen({ navigation }: Props) {
               {notAvailableFriends.length === 0 ? (
                 <Text style={styles.sectionEmpty}>Everyone is available today</Text>
               ) : (
-                notAvailableFriends.map((friend) => (
-                  <FriendCard
-                    key={friend.user_id}
-                    friend={friend}
-                    variant="simple"
-                    onPress={() => openChat(friend)}
-                    onProfilePress={() => void handleOpenProfile(friend)}
-                  />
+                notAvailableFriends.map((friend, index) => (
+                  <FadeInRow key={friend.user_id} index={index}>
+                    <FriendCard
+                      friend={friend}
+                      variant="simple"
+                      onPress={() => openChat(friend)}
+                      onProfilePress={() => void handleOpenProfile(friend)}
+                    />
+                  </FadeInRow>
                 ))
               )}
             </CollapsibleSection>
