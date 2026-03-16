@@ -55,3 +55,18 @@ it('returns null for cancelled session', () => {
   );
   expect(toJSON()).toBeNull();
 });
+
+// ── formatDateLabel (tested via rendered meta line) ──────────────────────────
+
+describe('meta line date format', () => {
+  // '2026-03-16' is a Monday
+  it('uses short weekday — shows "Mon,"', () => {
+    const { getByText } = render(<GroupSessionRSVPCard {...defaultProps} />);
+    expect(getByText(/Mon,/)).toBeTruthy();
+  });
+
+  it('does NOT show full weekday "Monday,"', () => {
+    const { queryByText } = render(<GroupSessionRSVPCard {...defaultProps} />);
+    expect(queryByText(/Monday,/)).toBeNull();
+  });
+});
