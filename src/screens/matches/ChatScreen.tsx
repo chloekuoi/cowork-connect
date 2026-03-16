@@ -36,6 +36,7 @@ import InviteComposerCard from '../../components/session/InviteComposerCard';
 import SessionRequestCard from '../../components/session/SessionRequestCard';
 import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
+import Animated, { FadeInUp, FadeOutDown } from 'react-native-reanimated';
 
 type Props = NativeStackScreenProps<MatchesStackParamList, 'Chat'>;
 
@@ -45,6 +46,7 @@ export default function ChatScreen({ navigation, route }: Props) {
   const { refreshUnreadCount } = useMatchesStack();
   const { matchId, otherUser } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
+  const [pendingMessageIds, setPendingMessageIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [sessionLoading, setSessionLoading] = useState(false);
   const [sessions, setSessions] = useState<SessionRecord[]>([]);
@@ -363,11 +365,35 @@ export default function ChatScreen({ navigation, route }: Props) {
 
   const handleSend = async (content: string) => {
     if (!user) return;
+
+    // Immediately show a pending bubble while the server confirms
+    const tempId = `temp-${Date.now()}`;
+    const tempMessage: Message = {
+      id: tempId,
+      match_id: matchId,
+      sender_id: user.id,
+      content,
+      created_at: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, tempMessage]);
+    setPendingMessageIds((prev) => new Set([...prev, tempId]));
+
     const newMessage = await sendMessage(matchId, user.id, content);
+
+    // Remove the temp bubble regardless of outcome
+    setMessages((prev) => prev.filter((m) => m.id !== tempId));
+    setPendingMessageIds((prev) => {
+      const next = new Set(prev);
+      next.delete(tempId);
+      return next;
+    });
+
     if (!newMessage) {
       Alert.alert('Failed to send', 'Please try again.');
       return;
     }
+
+    // Add the confirmed message (subscription may already have delivered it)
     setMessages((prev) => {
       if (prev.find((item) => item.id === newMessage.id)) {
         return prev;
@@ -569,7 +595,11 @@ export default function ChatScreen({ navigation, route }: Props) {
             }
             renderItem={({ item }) =>
               item.type === 'message' ? (
-                <MessageBubble message={item.message} isMine={item.message.sender_id === user?.id} />
+                <MessageBubble
+                  message={item.message}
+                  isMine={item.message.sender_id === user?.id}
+                  isPending={pendingMessageIds.has(item.message.id)}
+                />
               ) : item.type === 'event' ? null : (
                 <SessionRequestCard
                   session={item.session}
@@ -606,9 +636,13 @@ export default function ChatScreen({ navigation, route }: Props) {
 
       {toastMessage && (
         <View style={styles.toastContainer}>
-          <View style={styles.toastBubble}>
+          <Animated.View
+            style={styles.toastBubble}
+            entering={FadeInUp.springify().damping(14).stiffness(180)}
+            exiting={FadeOutDown.duration(150)}
+          >
             <Text style={styles.toastText}>{toastMessage}</Text>
-          </View>
+          </Animated.View>
         </View>
       )}
     </SafeAreaView>

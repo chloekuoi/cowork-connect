@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { theme, spacing, colors, touchTarget } from '../../constants';
+import PressableScale from '../common/PressableScale';
 
 type SwipeButtonsProps = {
   onSwipeLeft: () => void;
@@ -10,21 +11,19 @@ type SwipeButtonsProps = {
 export default function SwipeButtons({ onSwipeLeft, onSwipeRight }: SwipeButtonsProps) {
   return (
     <View style={styles.container}>
-      <TouchableOpacity
+      <PressableScale
         style={[styles.button, styles.nopeButton]}
         onPress={onSwipeLeft}
-        activeOpacity={0.8}
       >
         <Text style={styles.nopeIcon}>✕</Text>
-      </TouchableOpacity>
+      </PressableScale>
 
-      <TouchableOpacity
+      <PressableScale
         style={[styles.button, styles.likeButton]}
         onPress={onSwipeRight}
-        activeOpacity={0.8}
       >
         <Text style={styles.likeIcon}>✓</Text>
-      </TouchableOpacity>
+      </PressableScale>
     </View>
   );
 }

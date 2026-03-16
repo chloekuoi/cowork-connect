@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, FlatList, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -12,6 +12,8 @@ import { getFullProfile } from '../../services/profileService';
 import { GroupChatPreview, MatchPreview, Profile, ProfilePhoto, WorkIntent } from '../../types';
 import MatchCard from '../../components/matches/MatchCard';
 import GroupChatCard from '../../components/matches/GroupChatCard';
+import FadeInRow from '../../components/common/FadeInRow';
+import SkeletonListItem from '../../components/common/SkeletonListItem';
 import FriendProfileModal from '../../components/friends/FriendProfileModal';
 import { MatchesStackParamList, useMatchesStack } from '../../navigation/MatchesStack';
 
@@ -128,10 +130,15 @@ export default function MatchesListScreen({ navigation }: Props) {
   if (loading) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={theme.primary} />
-          <Text style={styles.loadingText}>Loading messages...</Text>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Chats</Text>
         </View>
+        {[0, 1, 2, 3, 4, 5].map((i) => (
+          <View key={i}>
+            <SkeletonListItem />
+            {i < 5 && <View style={styles.separator} />}
+          </View>
+        ))}
       </SafeAreaView>
     );
   }
@@ -163,24 +170,26 @@ export default function MatchesListScreen({ navigation }: Props) {
       <FlatList
         data={chatItems}
         keyExtractor={(item) => (item.type === 'dm' ? item.data.match_id : item.data.groupChatId)}
-        renderItem={({ item }) => (
-          item.type === 'dm' ? (
-            <MatchCard
-              matchPreview={item.data}
-              onPress={() => openChat(item.data)}
-              onAvatarPress={() => void handleOpenProfile(item.data)}
-            />
-          ) : (
-            <GroupChatCard
-              groupChat={item.data}
-              onPress={() =>
-                navigation.navigate('GroupChat', {
-                  groupChatId: item.data.groupChatId,
-                  groupName: item.data.name,
-                })
-              }
-            />
-          )
+        renderItem={({ item, index }) => (
+          <FadeInRow index={index}>
+            {item.type === 'dm' ? (
+              <MatchCard
+                matchPreview={item.data}
+                onPress={() => openChat(item.data)}
+                onAvatarPress={() => void handleOpenProfile(item.data)}
+              />
+            ) : (
+              <GroupChatCard
+                groupChat={item.data}
+                onPress={() =>
+                  navigation.navigate('GroupChat', {
+                    groupChatId: item.data.groupChatId,
+                    groupName: item.data.name,
+                  })
+                }
+              />
+            )}
+          </FadeInRow>
         )}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         refreshing={refreshing}
@@ -227,22 +236,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addButtonText: {
-    color: theme.surface,
-    fontSize: 22,
-    lineHeight: 22,
-    marginTop: -1,
-  },
   centerContent: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing[6],
   },
-  loadingText: {
-    marginTop: spacing[2],
-    fontSize: 14,
-    color: theme.textSecondary,
+  addButtonText: {
+    color: theme.surface,
+    fontSize: 22,
+    lineHeight: 22,
+    marginTop: -1,
   },
   emptyTitle: {
     fontSize: 24,

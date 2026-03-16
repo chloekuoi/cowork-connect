@@ -1,5 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+  Easing,
+  FadeInDown,
+  FadeOut,
+} from 'react-native-reanimated';
 import { colors, spacing, theme } from '../../constants';
 
 type CollapsibleSectionProps = {
@@ -19,17 +27,38 @@ export default function CollapsibleSection({
   showDot = false,
   children,
 }: CollapsibleSectionProps) {
+  const chevronRotation = useSharedValue(expanded ? 90 : 0);
+
+  useEffect(() => {
+    chevronRotation.value = withTiming(expanded ? 90 : 0, {
+      duration: 260,
+      easing: Easing.out(Easing.ease),
+    });
+  }, [expanded]);
+
+  const chevronStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${chevronRotation.value}deg` }],
+  }));
+
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.header} onPress={onToggle} activeOpacity={0.8}>
         <View style={styles.left}>
-          <Text style={styles.chevron}>{expanded ? '▼' : '▶'}</Text>
+          <Animated.Text style={[styles.chevron, chevronStyle]}>▶</Animated.Text>
           <Text style={styles.title}>{title} ({count})</Text>
         </View>
         {showDot ? <View style={styles.dot} /> : null}
       </TouchableOpacity>
 
-      {expanded ? <View style={styles.body}>{children}</View> : null}
+      {expanded && (
+        <Animated.View
+          entering={FadeInDown.duration(240).easing(Easing.out(Easing.ease))}
+          exiting={FadeOut.duration(160)}
+          style={styles.body}
+        >
+          {children}
+        </Animated.View>
+      )}
     </View>
   );
 }
