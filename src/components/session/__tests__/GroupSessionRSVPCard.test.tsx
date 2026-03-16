@@ -202,6 +202,17 @@ describe('State 2 — responded yes', () => {
     expect(onRsvp).toHaveBeenCalledWith('yes');
     expect(queryByText('☕️ Count me in')).toBeNull();
   });
+
+  it('after tapping Change then Pass, calls onRsvp("no") and hides buttons', () => {
+    const onRsvp = jest.fn();
+    const { getByText, queryByText } = render(
+      <GroupSessionRSVPCard {...props} onRsvp={onRsvp} />
+    );
+    fireEvent.press(getByText('Change'));
+    fireEvent.press(getByText('Pass'));
+    expect(onRsvp).toHaveBeenCalledWith('no');
+    expect(queryByText('Pass')).toBeNull();
+  });
 });
 
 // ── State 3a: responded no, non-proposer ────────────────────────────────────
