@@ -40,7 +40,10 @@ export default function GroupSessionRSVPCard({
   const yesCount = rsvps.filter((item) => item.response === 'yes').length;
   const noCount = rsvps.filter((item) => item.response === 'no').length;
   const pendingCount = Math.max(0, memberCount - yesCount - noCount);
-  const countText = `${yesCount} going · ${noCount} not going · ${pendingCount} pending`;
+  const countText =
+    noCount === 0
+      ? `${yesCount} going · ${memberCount - yesCount} haven't replied`
+      : `${yesCount} going · ${noCount} not going · ${pendingCount} pending`;
   const isProposer = session.proposed_by === currentUserId;
 
   if (session.status === 'completed') {

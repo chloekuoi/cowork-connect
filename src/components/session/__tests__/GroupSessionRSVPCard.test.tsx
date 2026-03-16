@@ -70,3 +70,40 @@ describe('meta line date format', () => {
     expect(queryByText(/Monday,/)).toBeNull();
   });
 });
+
+// ── count line ───────────────────────────────────────────────────────────────
+
+describe('count line', () => {
+  it('two-segment when no one has declined', () => {
+    const { getByText } = render(
+      <GroupSessionRSVPCard
+        {...defaultProps}
+        rsvps={[makeRsvp('user-a', 'yes')]}
+        memberCount={4}
+      />
+    );
+    expect(getByText("1 going · 3 haven't replied")).toBeTruthy();
+  });
+
+  it('three-segment when at least one person declined', () => {
+    const { getByText } = render(
+      <GroupSessionRSVPCard
+        {...defaultProps}
+        rsvps={[makeRsvp('user-a', 'yes'), makeRsvp('user-b', 'no')]}
+        memberCount={4}
+      />
+    );
+    expect(getByText('1 going · 1 not going · 2 pending')).toBeTruthy();
+  });
+
+  it('count line is absent in completed state', () => {
+    const { queryByText } = render(
+      <GroupSessionRSVPCard
+        {...defaultProps}
+        session={{ ...baseSession, status: 'completed' }}
+      />
+    );
+    // Neither format should appear
+    expect(queryByText(/going ·/)).toBeNull();
+  });
+});
