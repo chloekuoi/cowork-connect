@@ -1,7 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { borderRadius, colors, spacing, theme } from '../../constants';
+import { borderRadius, colors, shadows, spacing, theme, touchTarget } from '../../constants';
 import { GroupSession, GroupSessionRsvp } from '../../types';
+
+// No errorBg token exists in the design system — hardcoded to match the
+// existing value already in this file.
+const ERROR_BG = '#FBEDEA';
 
 type GroupSessionRSVPCardProps = {
   session: GroupSession;
@@ -32,171 +36,328 @@ export default function GroupSessionRSVPCard({
   onRsvp,
   onCancel,
 }: GroupSessionRSVPCardProps) {
+  const [isChanging, setIsChanging] = useState(false);
+
   if (session.status === 'cancelled') {
     return null;
   }
 
-  const myRsvp = rsvps.find((item) => item.user_id === currentUserId) || null;
+  const myRsvp = rsvps.find((item) => item.user_id === currentUserId) ?? null;
   const yesCount = rsvps.filter((item) => item.response === 'yes').length;
   const noCount = rsvps.filter((item) => item.response === 'no').length;
   const pendingCount = Math.max(0, memberCount - yesCount - noCount);
+  const isProposer = session.proposed_by === currentUserId;
+  const isCompleted = session.status === 'completed';
+
+  const metaDate = formatDateLabel(session.scheduled_date);
+  const metaWho = isProposer ? 'You proposed' : `${proposedByName} proposed`;
+
   const countText =
     noCount === 0
       ? `${yesCount} going · ${memberCount - yesCount} haven't replied`
       : `${yesCount} going · ${noCount} not going · ${pendingCount} pending`;
-  const isProposer = session.proposed_by === currentUserId;
 
-  if (session.status === 'completed') {
-    return (
-      <View style={styles.card}>
-        <Text style={styles.title}>☕ Group Session</Text>
-        <Text style={styles.date}>{formatDateLabel(session.scheduled_date)}</Text>
-        <View style={[styles.responsePill, styles.successPill]}>
-          <Text style={[styles.responseText, styles.successText]}>Session confirmed 🎉</Text>
-        </View>
-      </View>
-    );
+  // Show action buttons when: no rsvp yet, OR user tapped "Change"
+  const showButtons = !myRsvp || isChanging;
+
+  function handleRsvp(response: 'yes' | 'no') {
+    setIsChanging(false);
+    onRsvp(response);
   }
 
   return (
-    <View style={styles.card}>
-      <Text style={styles.title}>☕ Group Session</Text>
-      <Text style={styles.date}>{formatDateLabel(session.scheduled_date)}</Text>
-      <Text style={styles.subtitle}>Proposed by {proposedByName}</Text>
-      <Text style={styles.countText}>{countText}</Text>
-
-      {myRsvp ? (
-        <View style={styles.respondedRow}>
-          <View
-            style={[
-              styles.responsePill,
-              myRsvp.response === 'yes' ? styles.successPill : styles.errorPill,
-            ]}
-          >
-            <Text
-              style={[
-                styles.responseText,
-                myRsvp.response === 'yes' ? styles.successText : styles.errorText,
-              ]}
-            >
-              {myRsvp.response === 'yes' ? "You're going ✓" : "You can't make it ✗"}
-            </Text>
+    <View style={[styles.card, styles.cardShadow]}>
+      {/* ── card-top: icon box + title + badge + meta ── */}
+      <View style={styles.cardTop}>
+        <View style={styles.iconBox} testID="group-session-icon-box">
+          <Text style={styles.iconEmoji}>☕️</Text>
+        </View>
+        <View style={styles.cardContent}>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>Group Session</Text>
+            <View style={[styles.badge, isCompleted && styles.badgeConfirmed]}>
+              <Text style={[styles.badgeText, isCompleted && styles.badgeTextConfirmed]}>
+                {isCompleted ? 'CONFIRMED' : 'PENDING'}
+              </Text>
+            </View>
           </View>
-          {isProposer ? (
-            <TouchableOpacity onPress={onCancel} style={styles.cancelButton} activeOpacity={0.8}>
-              <Text style={styles.cancelText}>Cancel</Text>
+          <Text style={styles.meta}>{metaDate} · {metaWho}</Text>
+        </View>
+      </View>
+
+      {/* ── divider ── */}
+      <View style={styles.divider} />
+
+      {/* ── card-bottom ── */}
+      <View style={styles.cardBottom}>
+        {/* Count line — hidden in completed state */}
+        {!isCompleted && (
+          <Text style={styles.countText}>{countText}</Text>
+        )}
+
+        {/* Action area — varies by state */}
+        {showButtons && !isCompleted ? (
+          // State 1: action buttons
+          <View style={styles.btnRow}>
+            <TouchableOpacity
+              style={[styles.btn, styles.btnYes]}
+              onPress={() => handleRsvp('yes')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.btnYesText}>☕️ Count me in</Text>
             </TouchableOpacity>
-          ) : null}
-        </View>
-      ) : (
-        <View style={styles.actionsRow}>
-          <TouchableOpacity onPress={() => onRsvp('yes')} style={[styles.actionButton, styles.yesButton]}>
-            <Text style={[styles.actionText, styles.yesText]}>Yes ✓</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => onRsvp('no')} style={[styles.actionButton, styles.noButton]}>
-            <Text style={[styles.actionText, styles.noText]}>No ✗</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+            <TouchableOpacity
+              style={[styles.btn, styles.btnNo]}
+              onPress={() => handleRsvp('no')}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.btnNoText}>Pass</Text>
+            </TouchableOpacity>
+          </View>
+        ) : isCompleted ? (
+          // State 4: session confirmed
+          <View style={styles.statusRow}>
+            <View style={[styles.statusCircle, styles.statusCircleDone]}>
+              <Text style={[styles.statusCircleText, styles.statusCircleTextDone]}>🎉</Text>
+            </View>
+            <Text style={[styles.statusLabel, styles.statusLabelDone]}>Session confirmed</Text>
+          </View>
+        ) : myRsvp?.response === 'yes' ? (
+          // State 2: responded yes
+          <View style={styles.statusRow}>
+            <View style={[styles.statusCircle, styles.statusCircleYes]}>
+              <Text style={[styles.statusCircleText, styles.statusCircleTextYes]}>✓</Text>
+            </View>
+            <Text style={[styles.statusLabel, styles.statusLabelYes]}>You're going</Text>
+            <View style={styles.spacer} />
+            <TouchableOpacity
+              onPress={() => setIsChanging(true)}
+              style={styles.actionLink}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.changeText}>Change</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // State 3: responded no
+          <View style={styles.statusRow}>
+            <View style={[styles.statusCircle, styles.statusCircleNo]}>
+              <Text style={[styles.statusCircleText, styles.statusCircleTextNo]}>✗</Text>
+            </View>
+            <Text style={[styles.statusLabel, styles.statusLabelNo]}>Can't make it</Text>
+            <View style={styles.spacer} />
+            {isProposer ? (
+              <TouchableOpacity
+                onPress={onCancel}
+                style={styles.actionLink}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.cancelText}>Cancel</Text>
+              </TouchableOpacity>
+            ) : (
+              <TouchableOpacity
+                onPress={() => setIsChanging(true)}
+                style={styles.actionLink}
+                activeOpacity={0.7}
+              >
+                <Text style={styles.changeText}>Change</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  // ── outer card ──────────────────────────────────────────────────────────────
+  // shadows.card spread is kept in a separate style to avoid TypeScript issues
+  // with StyleSheet.create() and 'as const' typed objects.
   card: {
     marginHorizontal: spacing[4],
     marginVertical: spacing[2],
-    padding: spacing[4],
-    backgroundColor: theme.surface,
+    backgroundColor: colors.bgCard,
     borderRadius: borderRadius.lg,
-    borderWidth: 1,
-    borderColor: colors.borderDefault,
+    overflow: 'hidden',
+  },
+  cardShadow: {
+    ...shadows.card,
+  },
+
+  // ── card-top ─────────────────────────────────────────────────────────────────
+  cardTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingTop: 14,
+    paddingHorizontal: spacing[4],
+    paddingBottom: 12,
+  },
+  iconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: borderRadius.md,
+    backgroundColor: colors.statusPendingBg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconEmoji: {
+    fontSize: 21,
+  },
+  cardContent: {
+    flex: 1,
+    minWidth: 0,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    flexWrap: 'wrap',
+    marginBottom: 2,
   },
   title: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '700',
-    color: theme.text,
+    color: colors.textPrimary,
   },
-  date: {
-    marginTop: spacing[1],
-    fontSize: 15,
-    fontWeight: '600',
-    color: theme.text,
+  badge: {
+    backgroundColor: colors.statusPendingBg,
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
   },
-  subtitle: {
-    marginTop: spacing[1],
-    fontSize: 13,
-    color: theme.textSecondary,
+  badgeConfirmed: {
+    backgroundColor: colors.statusConfirmedBg,
+  },
+  badgeText: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: colors.statusPendingText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  badgeTextConfirmed: {
+    color: colors.statusConfirmedText,
+  },
+  meta: {
+    fontSize: 12,
+    color: colors.textTertiary,
+  },
+
+  // ── divider ───────────────────────────────────────────────────────────────────
+  divider: {
+    height: 1,
+    backgroundColor: colors.borderDefault,
+    marginHorizontal: spacing[4],
+  },
+
+  // ── card-bottom ───────────────────────────────────────────────────────────────
+  cardBottom: {
+    paddingTop: 11,
+    paddingHorizontal: 14,
+    paddingBottom: 14,
   },
   countText: {
-    marginTop: spacing[2],
-    fontSize: 13,
-    color: theme.textSecondary,
+    fontSize: 12,
+    color: colors.textTertiary,
+    marginBottom: 9,
   },
-  actionsRow: {
+
+  // ── State 1: action buttons ───────────────────────────────────────────────────
+  btnRow: {
     flexDirection: 'row',
-    marginTop: spacing[3],
+    gap: 8,
   },
-  actionButton: {
-    flex: 1,
-    minHeight: 44,
+  btn: {
     borderRadius: borderRadius.md,
+    paddingVertical: 11,
+    paddingHorizontal: 8,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    minHeight: touchTarget.min,
   },
-  yesButton: {
-    backgroundColor: colors.statusConfirmedBg,
-    borderColor: colors.accentSuccess,
-    marginRight: spacing[2],
+  btnYes: {
+    flex: 2,
+    backgroundColor: colors.accentPrimary,
   },
-  noButton: {
-    backgroundColor: '#FBEDEA',
-    borderColor: theme.error,
+  btnNo: {
+    flex: 1,
+    backgroundColor: colors.bgSecondary,
   },
-  actionText: {
-    fontSize: 15,
-    fontWeight: '600',
+  btnYesText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.textInverse,
   },
-  yesText: {
-    color: colors.statusConfirmedText,
-  },
-  noText: {
-    color: theme.error,
-  },
-  respondedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: spacing[3],
-    gap: spacing[2],
-  },
-  responsePill: {
-    borderRadius: borderRadius.full,
-    paddingHorizontal: spacing[3],
-    paddingVertical: spacing[2],
-  },
-  successPill: {
-    backgroundColor: colors.statusConfirmedBg,
-  },
-  errorPill: {
-    backgroundColor: '#FBEDEA',
-  },
-  responseText: {
+  btnNoText: {
     fontSize: 13,
     fontWeight: '600',
+    color: colors.textTertiary,
   },
-  successText: {
-    color: colors.statusConfirmedText,
+
+  // ── States 2, 3, 4: circle icon + text row ────────────────────────────────────
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
-  errorText: {
-    color: theme.error,
-  },
-  cancelButton: {
-    minHeight: 36,
-    paddingHorizontal: spacing[3],
+  statusCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
+    flexShrink: 0,
+  },
+  statusCircleYes: {
+    backgroundColor: colors.statusConfirmedBg,
+  },
+  statusCircleNo: {
+    backgroundColor: ERROR_BG,
+  },
+  statusCircleDone: {
+    backgroundColor: colors.statusConfirmedBg,
+  },
+  statusCircleText: {
+    fontSize: 14,
+  },
+  // Per-state color for the symbol inside the circle
+  statusCircleTextYes: {
+    color: colors.statusConfirmedText,
+  },
+  statusCircleTextNo: {
+    color: theme.error,
+  },
+  statusCircleTextDone: {
+    color: colors.statusConfirmedText,
+  },
+  statusLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  statusLabelYes: {
+    color: colors.statusConfirmedText,
+  },
+  statusLabelNo: {
+    color: theme.error,
+  },
+  statusLabelDone: {
+    color: colors.statusConfirmedText,
+  },
+  spacer: {
+    flex: 1,
+  },
+  actionLink: {
+    minHeight: touchTarget.min,
+    paddingHorizontal: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  changeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.textTertiary,
   },
   cancelText: {
     fontSize: 13,
