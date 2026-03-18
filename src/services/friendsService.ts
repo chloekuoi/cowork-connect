@@ -84,12 +84,12 @@ async function getRelationshipDetails(
     await Promise.all([
       supabase
         .from('matches')
-        .select('id,user1_id,user2_id')
+        .select('id,user1_id,user2_id,status')
         .eq('user1_id', currentUserId)
         .in('user2_id', userIds),
       supabase
         .from('matches')
-        .select('id,user1_id,user2_id')
+        .select('id,user1_id,user2_id,status')
         .eq('user2_id', currentUserId)
         .in('user1_id', userIds),
     ]);
@@ -102,9 +102,18 @@ async function getRelationshipDetails(
 
   const matchRows = [...((matchesAsUser1 || []) as MatchRow[]), ...((matchesAsUser2 || []) as MatchRow[])];
 
+  const unmatchedUserIds = new Set<string>();
+
   for (const match of matchRows) {
     const otherId = match.user1_id === currentUserId ? match.user2_id : match.user1_id;
-    if (statuses[otherId]) {
+    if (!statuses[otherId]) continue;
+
+    if (match.status === 'unmatched') {
+      unmatchedUserIds.add(otherId);
+      continue;
+    }
+
+    if (match.status === 'active') {
       statuses[otherId] = { status: 'friends', friendshipId: statuses[otherId].friendshipId };
     }
   }
@@ -129,6 +138,9 @@ async function getRelationshipDetails(
     if (!statuses[otherId]) continue;
 
     if (friendship.status === 'accepted') {
+      if (unmatchedUserIds.has(otherId)) {
+        continue;
+      }
       statuses[otherId] = { status: 'friends', friendshipId: friendship.id };
       continue;
     }
@@ -239,16 +251,15 @@ export async function fetchFriends(
     { data: matchesAsUser1, error: matchError1 },
     { data: matchesAsUser2, error: matchError2 },
     { data: friendshipsData, error: friendshipsError },
-  ] =
-    await Promise.all([
-      supabase.from('matches').select('id,user1_id,user2_id,status').eq('user1_id', userId).eq('status', 'active'),
-      supabase.from('matches').select('id,user1_id,user2_id,status').eq('user2_id', userId).eq('status', 'active'),
-      supabase
-        .from('friendships')
-        .select('id,requester_id,recipient_id,status,created_at,updated_at')
-        .eq('status', 'accepted')
-        .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`),
-    ]);
+  ] = await Promise.all([
+    supabase.from('matches').select('id,user1_id,user2_id,status').eq('user1_id', userId),
+    supabase.from('matches').select('id,user1_id,user2_id,status').eq('user2_id', userId),
+    supabase
+      .from('friendships')
+      .select('id,requester_id,recipient_id,status,created_at,updated_at')
+      .eq('status', 'accepted')
+      .or(`requester_id.eq.${userId},recipient_id.eq.${userId}`),
+  ]);
 
   if (matchError1 || matchError2 || friendshipsError) {
     const message = extractSupabaseErrorMessage(
@@ -262,9 +273,18 @@ export async function fetchFriends(
   const allMatches = [...((matchesAsUser1 || []) as MatchRow[]), ...((matchesAsUser2 || []) as MatchRow[])];
   const acceptedFriendships = (friendshipsData || []) as FriendshipRow[];
 
+  const unmatchedUserIds = new Set<string>();
   const friendMap = new Map<string, { matchId: string }>();
+
   for (const match of allMatches) {
     const otherUserId = match.user1_id === userId ? match.user2_id : match.user1_id;
+
+    if (match.status === 'unmatched') {
+      unmatchedUserIds.add(otherUserId);
+      friendMap.delete(otherUserId);
+      continue;
+    }
+
     if (!friendMap.has(otherUserId)) {
       friendMap.set(otherUserId, { matchId: match.id });
     }
@@ -273,6 +293,10 @@ export async function fetchFriends(
   for (const friendship of acceptedFriendships) {
     const otherUserId =
       friendship.requester_id === userId ? friendship.recipient_id : friendship.requester_id;
+
+    if (unmatchedUserIds.has(otherUserId)) {
+      continue;
+    }
 
     if (!friendMap.has(otherUserId)) {
       friendMap.set(otherUserId, { matchId: '' });
