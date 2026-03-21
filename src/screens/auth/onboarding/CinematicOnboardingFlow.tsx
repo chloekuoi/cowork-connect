@@ -6,8 +6,7 @@ import { onboardingTheme as t } from './theme';
 import { HookScreen } from './screens/HookScreen';
 import { IdentityScreen } from './screens/IdentityScreen';
 import { BirthdayScreen } from './screens/BirthdayScreen';
-import { MissionScreen } from './screens/MissionScreen';
-import { WorkContextScreen } from './screens/WorkContextScreen';
+import { AboutScreen } from './screens/AboutScreen';
 import { NotificationsScreen } from './screens/NotificationsScreen';
 import { ContactSyncScreen } from './screens/ContactSyncScreen';
 import { SuccessScreen } from './screens/SuccessScreen';
@@ -16,7 +15,7 @@ export interface OnboardingState {
   name: string;
   photoUri: string | null;
   birthday: string;           // ISO: YYYY-MM-DD
-  workType: string;
+  workType: string[];
   currentlyWorkingOn: string;
   school: string;
   notificationsGranted: boolean;
@@ -37,13 +36,13 @@ interface CinematicOnboardingFlowProps {
   onComplete: () => void;
 }
 
-const TOTAL_STEPS = 8;
+const TOTAL_STEPS = 7;
 
 const INITIAL_STATE: OnboardingState = {
   name: '',
   photoUri: null,
   birthday: '',
-  workType: '',
+  workType: [],
   currentlyWorkingOn: '',
   school: '',
   notificationsGranted: false,
@@ -89,11 +88,10 @@ export function CinematicOnboardingFlow({ onComplete }: CinematicOnboardingFlowP
       case 0: return <HookScreen {...props} />;
       case 1: return <IdentityScreen {...props} />;
       case 2: return <BirthdayScreen {...props} />;
-      case 3: return <MissionScreen {...props} />;
-      case 4: return <WorkContextScreen {...props} />;
-      case 5: return <NotificationsScreen {...props} />;
-      case 6: return <ContactSyncScreen {...props} />;
-      case 7: return <SuccessScreen {...props} />;
+      case 3: return <AboutScreen {...props} />;
+      case 4: return <NotificationsScreen {...props} />;
+      case 5: return <ContactSyncScreen {...props} />;
+      case 6: return <SuccessScreen {...props} />;
       default: return null;
     }
   };

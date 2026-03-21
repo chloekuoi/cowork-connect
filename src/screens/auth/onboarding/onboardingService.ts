@@ -26,7 +26,7 @@ export async function completeOnboarding(
     .update({
       name: state.name.trim() || null,
       birthday: state.birthday || null,
-      work_type: state.workType || null,
+      work_type: (state.workType as string[]).length > 0 ? (state.workType as string[]).join(', ') : null,
       currently_working_on: state.currentlyWorkingOn.trim() || null,
       school: state.school.trim() || null,
       onboarding_complete: true,
