@@ -554,7 +554,7 @@ export default function ChatScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={styles.headerTitleButton}
@@ -680,10 +680,11 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
   },
   backButton: {
-    paddingRight: spacing[3],
+    minWidth: 44,
+    justifyContent: 'center',
   },
   backText: {
-    fontSize: 16,
+    fontSize: 22,
     color: theme.accent,
   },
   headerTitleButton: {
@@ -692,14 +693,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
+    fontFamily: 'CormorantGaramond-Light',
+    fontSize: 28,
+    fontWeight: '300',
     color: theme.text,
     textAlign: 'center',
-    maxWidth: '85%',
   },
   headerRight: {
-    minWidth: 60,
+    minWidth: 44,
     alignItems: 'flex-end',
   },
   content: {

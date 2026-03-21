@@ -20,7 +20,7 @@ export default function StartSessionButton({
       style={[styles.button, disabled && styles.disabled, style]}
       activeOpacity={0.8}
     >
-      <Text style={styles.text}>Send Cowork Invite</Text>
+      <Text style={styles.text}>+ Cowork</Text>
     </TouchableOpacity>
   );
 }
@@ -29,12 +29,17 @@ const styles = StyleSheet.create({
   button: {
     minHeight: touchTarget.min,
     paddingHorizontal: spacing[3],
+    paddingVertical: 7,
     justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: theme.primary,
+    borderRadius: 999,
   },
   text: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
-    color: theme.accent,
+    color: '#FFFFFF',
+    letterSpacing: 0.2,
   },
   disabled: {
     opacity: 0.4,
