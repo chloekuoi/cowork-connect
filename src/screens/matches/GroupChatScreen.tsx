@@ -279,12 +279,17 @@ export default function GroupChatScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backText}>← Back</Text>
+          <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle} numberOfLines={1}>
-          {currentGroupName} ({members.length} members)
-        </Text>
+        <View style={styles.headerTitleBlock}>
+          <Text style={styles.headerTitle} numberOfLines={1}>
+            {currentGroupName}
+          </Text>
+          <Text style={styles.headerSub}>
+            {members.length} {members.length === 1 ? 'member' : 'members'}
+          </Text>
+        </View>
 
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={openComposer} style={styles.headerIconButton} activeOpacity={0.8}>
@@ -389,34 +394,51 @@ const styles = StyleSheet.create({
     backgroundColor: theme.surface,
   },
   backButton: {
-    paddingRight: spacing[3],
+    minWidth: 44,
+    justifyContent: 'center',
   },
   backText: {
-    fontSize: 16,
+    fontSize: 22,
     color: theme.accent,
   },
-  headerTitle: {
+  headerTitleBlock: {
     flex: 1,
-    fontSize: 18,
-    fontWeight: '600',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontFamily: 'CormorantGaramond-Light',
+    fontSize: 26,
+    fontWeight: '300',
     color: theme.text,
     textAlign: 'center',
-    marginRight: spacing[2],
+    letterSpacing: -0.2,
+  },
+  headerSub: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 10,
+    fontWeight: '400',
+    color: theme.textMuted,
+    letterSpacing: 0.4,
+    marginTop: 1,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[1],
+    minWidth: 44,
+    justifyContent: 'flex-end',
   },
   headerIconButton: {
-    width: 36,
-    height: 36,
+    width: 32,
+    height: 32,
     borderRadius: borderRadius.full,
+    backgroundColor: colors.bgSecondary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerIcon: {
-    fontSize: 18,
+    fontSize: 15,
   },
   content: {
     flex: 1,
