@@ -402,7 +402,7 @@ const styles = StyleSheet.create({
   },
   star: {
     fontSize: 22,
-    color: '#C97B4B',
+    color: colors.accentSecondaryDark,
     lineHeight: 28,
   },
   title: {
