@@ -105,7 +105,6 @@ export default function ProfileScreen() {
     <View style={styles.container}>
       {/* ── Header ── */}
       <View style={[styles.header, { paddingTop: insets.top }]}>
-        <View style={styles.headerSpacer} />
         <Text style={styles.headerTitle}>Profile</Text>
         <TouchableOpacity
           style={styles.headerAction}
@@ -180,17 +179,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing[4],
-    minHeight: 56,
-    backgroundColor: theme.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.borderDefault,
-  },
-  headerSpacer: {
-    minWidth: 44,
+    paddingBottom: spacing[3],
   },
   headerTitle: {
     fontFamily: 'CormorantGaramond-Light',
-    fontSize: 20,
+    fontSize: 32,
     fontWeight: '300',
     color: theme.text,
   },
