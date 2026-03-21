@@ -41,7 +41,7 @@ export function BirthdayScreen({ state, setState, onNext, onBack, currentStep, t
   const mmRef = useRef<TextInput>(null);
   const yyyyRef = useRef<TextInput>(null);
 
-  const allFilled = dd.length === 2 && mm.length === 2 && yyyy.length === 4;
+  const allFilled = dd.length >= 1 && mm.length >= 1 && yyyy.length === 4;
   const isValid = allFilled && isAtLeast18(dd, mm, yyyy);
 
   const handleDdChange = (val: string) => {
