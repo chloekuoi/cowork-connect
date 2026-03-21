@@ -15,7 +15,7 @@ interface TypewriterTextProps {
 export function TypewriterText({
   text,
   style,
-  charDelay = 55,
+  charDelay = 30,
   onFinished,
   startDelay = 300,
 }: TypewriterTextProps) {
