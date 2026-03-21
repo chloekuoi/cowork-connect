@@ -156,7 +156,7 @@ export default function GroupInfoScreen({ navigation, route }: Props) {
     <SafeAreaView style={styles.container} edges={['top']}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton} activeOpacity={0.8}>
-          <Text style={styles.backText}>← Group Info</Text>
+          <Text style={styles.backText}>←</Text>
         </TouchableOpacity>
       </View>
 
@@ -195,7 +195,9 @@ export default function GroupInfoScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             )}
             {savingName ? <ActivityIndicator size="small" color={theme.primary} /> : null}
-            <Text style={styles.createdBy}>Created by {createdByName}</Text>
+            <Text style={styles.groupSubLabel}>
+              {members.length} {members.length === 1 ? 'member' : 'members'} · created by {createdByName}
+            </Text>
           </View>
         }
         renderItem={({ item }) => (
@@ -238,7 +240,7 @@ export default function GroupInfoScreen({ navigation, route }: Props) {
         <SafeAreaView style={styles.modalContainer}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setAddingOpen(false)} activeOpacity={0.8}>
-              <Text style={styles.backText}>← Add Members</Text>
+              <Text style={styles.backText}>←</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => void handleConfirmAdd()}
@@ -309,8 +311,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
   },
   backText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 22,
     color: theme.primary,
   },
   listContent: {
@@ -348,14 +349,19 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   groupName: {
-    fontSize: 26,
-    fontWeight: '700',
+    fontFamily: 'CormorantGaramond-Light',
+    fontSize: 36,
+    fontWeight: '300',
     color: theme.text,
+    letterSpacing: -0.3,
   },
-  createdBy: {
+  groupSubLabel: {
+    fontFamily: 'Inter-Regular',
+    fontSize: 10,
+    fontWeight: '400',
+    color: theme.textMuted,
+    letterSpacing: 0.4,
     marginTop: spacing[1],
-    fontSize: 14,
-    color: theme.textSecondary,
   },
   memberRow: {
     flexDirection: 'row',
@@ -391,7 +397,7 @@ const styles = StyleSheet.create({
   },
   memberName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '400',
     color: theme.text,
   },
   youBadge: {
@@ -427,8 +433,8 @@ const styles = StyleSheet.create({
     minHeight: 44,
   },
   leaveText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '400',
     color: theme.error,
   },
   modalContainer: {
