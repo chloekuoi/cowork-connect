@@ -77,8 +77,9 @@ export function AboutScreen({ state, setState, onNext, onBack, currentStep, tota
           multiline={false}
         />
 
-        {/* Work type multi-select */}
-        <View style={[styles.divider, styles.listTopMargin]} />
+        {/* Work type section heading */}
+        <Text style={styles.sectionHeading}>how do you spend your 9-to-5?</Text>
+        <View style={styles.divider} />
         {WORK_OPTIONS.map((option) => (
           <TouchableOpacity
             key={option}
@@ -142,13 +143,22 @@ const styles = StyleSheet.create({
   },
   fieldLabel: {
     fontFamily: t.fontSerif.lightItalic,
-    fontSize: 12,
+    fontSize: 15,
     color: t.accent,
     marginBottom: 6,
     fontStyle: 'italic',
   },
   fieldLabelSpaced: {
     marginTop: 20,
+  },
+  sectionHeading: {
+    fontFamily: t.fontSerif.light,
+    fontSize: 17,
+    color: t.text,
+    marginTop: 28,
+    marginBottom: 14,
+    letterSpacing: -0.2,
+    lineHeight: 24,
   },
   input: {
     fontFamily: t.fontSerif.light,
@@ -158,9 +168,6 @@ const styles = StyleSheet.create({
     borderBottomColor: t.divider,
     paddingVertical: 8,
     marginBottom: 4,
-  },
-  listTopMargin: {
-    marginTop: 24,
   },
   divider: {
     height: 1,
