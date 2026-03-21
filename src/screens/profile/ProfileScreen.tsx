@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: spacing[4],
-    paddingBottom: spacing[3],
+    paddingBottom: spacing[2],
   },
   headerTitle: {
     fontFamily: 'CormorantGaramond-Light',

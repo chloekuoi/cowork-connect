@@ -271,7 +271,7 @@ const styles = StyleSheet.create({
   // Photos
   primaryPhotoBlock: {
     gap: spacing[3],
-    paddingTop: spacing[4],
+    paddingTop: spacing[2],
   },
   secondaryPhotoBlock: {
     gap: spacing[3],
