@@ -243,11 +243,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: theme.text,
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    marginTop: spacing[1],
-  },
   emptyTitle: {
     fontSize: 24,
     fontWeight: '600',
@@ -261,9 +256,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 24,
     marginBottom: spacing[6],
-  },
-  button: {
-    minWidth: 200,
   },
   centeredMessage: {
     flex: 1,
