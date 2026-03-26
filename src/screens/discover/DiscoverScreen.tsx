@@ -53,6 +53,7 @@ export default function DiscoverScreen() {
   const sheetAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
 
   const openSheet = () => {
+    sheetAnim.setValue(SHEET_HEIGHT);
     setIsFocusModalVisible(true);
     Animated.spring(sheetAnim, {
       toValue: 0,
@@ -190,7 +191,7 @@ export default function DiscoverScreen() {
         >
           <View style={styles.sheetHandle} />
           <Text style={styles.sheetSubtitle}>Set availability to connect</Text>
-          <View style={{ flex: 1 }}>
+          <View style={styles.sheetContent}>
             <IntentScreen
               latitude={latitude ?? 0}
               longitude={longitude ?? 0}
@@ -384,5 +385,8 @@ const styles = StyleSheet.create({
     color: theme.textMuted,
     textAlign: 'center',
     marginBottom: 4,
+  },
+  sheetContent: {
+    flex: 1,
   },
 });
