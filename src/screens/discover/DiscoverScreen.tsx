@@ -177,35 +177,35 @@ export default function DiscoverScreen() {
     </View>
   );
 
-  const renderFocusSheet = () => {
-    if (!isFocusModalVisible) return null;
-    return (
-      <>
+  const renderFocusSheet = () => (
+    <>
+      {isFocusModalVisible && (
         <TouchableOpacity
           style={styles.sheetOverlay}
           activeOpacity={1}
           onPress={closeSheet}
         />
-        <Animated.View
-          style={[styles.sheetContainer, { transform: [{ translateY: sheetAnim }] }]}
-        >
-          <View style={styles.sheetHandle} />
-          <Text style={styles.sheetSubtitle}>Set availability to connect</Text>
-          <View style={styles.sheetContent}>
-            <IntentScreen
-              latitude={latitude ?? 0}
-              longitude={longitude ?? 0}
-              onIntentSet={() => {
-                closeSheet();
-                loadDiscoveryData();
-              }}
-              isBottomSheet
-            />
-          </View>
-        </Animated.View>
-      </>
-    );
-  };
+      )}
+      <Animated.View
+        style={[styles.sheetContainer, { transform: [{ translateY: sheetAnim }] }]}
+        pointerEvents={isFocusModalVisible ? 'auto' : 'none'}
+      >
+        <View style={styles.sheetHandle} />
+        <Text style={styles.sheetSubtitle}>Set availability to connect</Text>
+        <View style={styles.sheetContent}>
+          <IntentScreen
+            latitude={latitude ?? 0}
+            longitude={longitude ?? 0}
+            onIntentSet={() => {
+              closeSheet();
+              loadDiscoveryData();
+            }}
+            isBottomSheet
+          />
+        </View>
+      </Animated.View>
+    </>
+  );
 
   // Render based on state
   if (state === 'loading') {
