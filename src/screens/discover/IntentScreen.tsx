@@ -380,14 +380,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    padding: spacing[5],
-    paddingBottom: spacing[12],
+    padding: spacing[4],
+    paddingBottom: spacing[10],
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: spacing[4],
+    marginBottom: spacing[3],
   },
   star: {
     fontSize: 22,
@@ -407,10 +407,10 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     fontSize: 13,
     color: theme.textMuted,
-    marginBottom: spacing[4],
+    marginBottom: spacing[2],
   },
   section: {
-    marginBottom: spacing[5],
+    marginBottom: spacing[4],
   },
   loadingContainer: {
     flex: 1,
@@ -462,17 +462,17 @@ const styles = StyleSheet.create({
   optionsCard: {
     backgroundColor: colors.bgCard,
     borderRadius: borderRadius.lg,
-    padding: 20,
-    marginBottom: spacing[5],
+    padding: 16,
+    marginBottom: spacing[4],
   },
   chipRow: {
     flexDirection: 'row',
-    marginTop: spacing[2],
+    marginTop: spacing[1],
   },
   chip: {
     flex: 1,
-    paddingVertical: 10,
-    paddingHorizontal: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     borderRadius: borderRadius.md,
     borderWidth: 1,
     borderColor: colors.borderDefault,
@@ -499,7 +499,7 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: colors.divider,
-    marginVertical: spacing[4],
+    marginVertical: spacing[3],
   },
   availabilityText: {
     fontSize: 16,
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
     color: colors.accentPrimary,
   },
   button: {
-    marginTop: spacing[4],
+    marginTop: spacing[2],
   },
   modalOverlay: {
     flex: 1,
