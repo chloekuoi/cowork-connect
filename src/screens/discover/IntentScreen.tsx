@@ -46,6 +46,7 @@ type IntentScreenProps = {
   locationLoading?: boolean;
   locationError?: string | null;
   onRequestLocation?: () => void;
+  isBottomSheet?: boolean;
 };
 
 export default function IntentScreen({
@@ -55,6 +56,7 @@ export default function IntentScreen({
   locationLoading = false,
   locationError = null,
   onRequestLocation,
+  isBottomSheet = false,
 }: IntentScreenProps) {
   const { user } = useAuth();
   const [taskDescription, setTaskDescription] = useState('');
@@ -175,19 +177,21 @@ export default function IntentScreen({
   };
 
   if (locationLoading || initialLoading) {
+    const Wrapper = isBottomSheet ? View : SafeAreaView;
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <Wrapper style={styles.container} {...(!isBottomSheet && { edges: ['top'] as const })}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={theme.primary} />
           <Text style={styles.loadingText}>Loading...</Text>
         </View>
-      </SafeAreaView>
+      </Wrapper>
     );
   }
 
   if (locationError) {
+    const Wrapper = isBottomSheet ? View : SafeAreaView;
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <Wrapper style={styles.container} {...(!isBottomSheet && { edges: ['top'] as const })}>
         <View style={styles.loadingContainer}>
           <Text style={styles.errorTitle}>Location Required</Text>
           <Text style={styles.errorText}>
@@ -199,14 +203,15 @@ export default function IntentScreen({
             style={styles.button}
           />
         </View>
-      </SafeAreaView>
+      </Wrapper>
     );
   }
 
+  const Wrapper = isBottomSheet ? View : SafeAreaView;
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <Wrapper style={styles.container} {...(!isBottomSheet && { edges: ['top'] as const })}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={isBottomSheet ? 'padding' : (Platform.OS === 'ios' ? 'padding' : 'height')}
         style={styles.flex}
       >
         <ScrollView
@@ -214,7 +219,9 @@ export default function IntentScreen({
           contentContainerStyle={styles.content}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.subtitle}>Set availability to connect</Text>
+          {!isBottomSheet && (
+            <Text style={styles.subtitle}>Set availability to connect</Text>
+          )}
           <View style={styles.titleRow}>
             <Animated.Text style={[styles.star, { transform: [{ rotate: spin }] }]}>
               ✦
@@ -362,7 +369,7 @@ export default function IntentScreen({
           setEndTime(value);
         }}
       />
-    </SafeAreaView>
+    </Wrapper>
   );
 }
 
