@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { theme, spacing, colors } from '../../constants';
-import { CLOVER_FOREST, CLOVER_BG } from '../../constants/clover';
+import { CLOVER_FOREST, CLOVER_BG, FONT_DM_SANS_MEDIUM } from '../../constants/clover';
 import { useAuth } from '../../context/AuthContext';
 import { useLocation } from '../../hooks/useLocation';
 import {
@@ -31,6 +31,22 @@ import { MainTabsParamList } from '../../navigation/MainTabs';
 const SHEET_HEIGHT = Dimensions.get('window').height * 0.65;
 
 type DiscoverState = 'loading' | 'error' | 'discovering' | 'empty';
+
+// ── Toast banner ──────────────────────────────────────────────────────────────
+
+interface ToastBannerProps {
+  visible: boolean;
+  opacity: Animated.Value;
+}
+
+function ToastBanner({ visible, opacity }: ToastBannerProps) {
+  if (!visible) return null;
+  return (
+    <Animated.View style={[styles.toastBanner, { opacity }]} pointerEvents="none">
+      <Text style={styles.toastText}>Your focus for today is set ✦</Text>
+    </Animated.View>
+  );
+}
 
 export default function DiscoverScreen() {
   const { user, profile } = useAuth();
@@ -51,6 +67,34 @@ export default function DiscoverScreen() {
   });
 
   const sheetAnim = useRef(new Animated.Value(SHEET_HEIGHT)).current;
+  const [showToast, setShowToast] = useState(false);
+  const toastOpacity = useRef(new Animated.Value(0)).current;
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Toast animation: fade in → hold → fade out
+  useEffect(() => {
+    if (!showToast) return;
+    toastOpacity.setValue(0); // reset in case of rapid re-trigger
+    Animated.timing(toastOpacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start(() => {
+      timerRef.current = setTimeout(() => {
+        Animated.timing(toastOpacity, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => setShowToast(false));
+      }, 2500);
+    });
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+    };
+  }, [showToast]);
 
   const openSheet = () => {
     sheetAnim.setValue(SHEET_HEIGHT);
@@ -63,13 +107,16 @@ export default function DiscoverScreen() {
     }).start();
   };
 
-  const closeSheet = () => {
+  const closeSheet = (onComplete?: () => void) => {
     Animated.timing(sheetAnim, {
       toValue: SHEET_HEIGHT,
       duration: 220,
       easing: Easing.in(Easing.ease),
       useNativeDriver: true,
-    }).start(() => setIsFocusModalVisible(false));
+    }).start(() => {
+      setIsFocusModalVisible(false);
+      onComplete?.();
+    });
   };
 
   // Check intent and load cards
@@ -196,8 +243,8 @@ export default function DiscoverScreen() {
             latitude={latitude ?? 0}
             longitude={longitude ?? 0}
             onIntentSet={() => {
-              closeSheet();
-              loadDiscoveryData();
+              setShowToast(true);
+              closeSheet(() => loadDiscoveryData());
             }}
             isBottomSheet
           />
@@ -215,6 +262,7 @@ export default function DiscoverScreen() {
           <Text style={styles.loadingText}>Finding co-workers nearby...</Text>
         </View>
         {renderMatchModal()}
+        <ToastBanner visible={showToast} opacity={toastOpacity} />
       </SafeAreaView>
     );
   }
@@ -231,6 +279,7 @@ export default function DiscoverScreen() {
             <Text style={styles.errorButtonText}>Enable Location</Text>
           </TouchableOpacity>
         </View>
+        <ToastBanner visible={showToast} opacity={toastOpacity} />
       </SafeAreaView>
     );
   }
@@ -251,6 +300,7 @@ export default function DiscoverScreen() {
         )}
         {renderMatchModal()}
         {renderFocusSheet()}
+        <ToastBanner visible={showToast} opacity={toastOpacity} />
       </SafeAreaView>
     );
   }
@@ -262,6 +312,7 @@ export default function DiscoverScreen() {
       <CardStack cards={cards} onSwipe={handleSwipe} onEmpty={handleEmpty} />
       {renderMatchModal()}
       {renderFocusSheet()}
+      <ToastBanner visible={showToast} opacity={toastOpacity} />
     </SafeAreaView>
   );
 }
@@ -382,5 +433,26 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     flex: 1,
+  },
+  toastBanner: {
+    position: 'absolute',
+    top: 72,
+    alignSelf: 'center',
+    zIndex: 99,
+    backgroundColor: CLOVER_FOREST,
+    borderRadius: 9999,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    shadowColor: CLOVER_FOREST,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  toastText: {
+    fontFamily: FONT_DM_SANS_MEDIUM,
+    fontSize: 13,
+    letterSpacing: 0.3,
+    color: CLOVER_BG,
   },
 });
