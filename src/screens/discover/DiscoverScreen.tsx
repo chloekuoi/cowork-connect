@@ -269,7 +269,7 @@ export default function DiscoverScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.accentSecondaryLight,
+    backgroundColor: theme.background,
   },
   centerContent: {
     flex: 1,
