@@ -231,7 +231,7 @@ export default function DiscoverScreen() {
         <TouchableOpacity
           style={styles.sheetOverlay}
           activeOpacity={1}
-          onPress={closeSheet}
+          onPress={() => closeSheet()}
         />
       )}
       <Animated.View
