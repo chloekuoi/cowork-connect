@@ -404,7 +404,7 @@ const styles = StyleSheet.create({
   },
   emptyCta: {
     marginTop: spacing[4],
-    backgroundColor: theme.primary,
+    backgroundColor: CLOVER_FOREST,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2],
     borderRadius: 999,

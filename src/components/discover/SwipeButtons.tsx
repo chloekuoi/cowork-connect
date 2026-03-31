@@ -40,7 +40,7 @@ export default function SwipeButtons({ onSwipeLeft, onSwipeRight }: SwipeButtons
         style={[styles.button, styles.likeButton]}
         onPress={onSwipeRight}
       >
-        <HeartIcon size={24} />
+        <HeartIcon size={27} />
       </PressableScale>
     </View>
   );
@@ -51,13 +51,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: spacing[6],
-    gap: spacing[8],
+    marginTop: spacing[5],
+    gap: 36,
   },
   button: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   nopeIcon: {
-    fontSize: 17,
+    fontSize: 19,
     fontWeight: '600',
     color: colors.accentDanger,
   },
