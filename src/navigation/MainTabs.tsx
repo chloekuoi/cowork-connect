@@ -20,7 +20,7 @@ export type MainTabsParamList = {
 
 const Tab = createBottomTabNavigator<MainTabsParamList>();
 
-const ACTIVE_COLOR = '#7c5cbf';
+const ACTIVE_COLOR = '#d0c8f0';
 const INACTIVE_COLOR = '#999999';
 const ICON_STROKE_WIDTH = 1.8;
 
