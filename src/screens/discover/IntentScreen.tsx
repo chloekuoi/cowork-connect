@@ -15,6 +15,7 @@ import {
   Modal,
   FlatList,
   Pressable,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { colors, theme, spacing, borderRadius, shadows } from '../../constants';
@@ -212,15 +213,17 @@ export default function IntentScreen({
 
   return (
     <Wrapper style={styles.container} {...(!isBottomSheet && { edges: ['top'] as const })}>
-      <KeyboardAvoidingView
-        behavior={isBottomSheet ? 'padding' : (Platform.OS === 'ios' ? 'padding' : 'height')}
-        style={styles.flex}
-      >
-        <ScrollView
+      <Pressable style={styles.flex} onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          behavior={isBottomSheet ? 'padding' : (Platform.OS === 'ios' ? 'padding' : 'height')}
           style={styles.flex}
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
         >
+          <ScrollView
+            style={styles.flex}
+            contentContainerStyle={[styles.content, isBottomSheet && styles.bottomSheetContent]}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'on-drag'}
+          >
           <View style={styles.titleRow}>
             <Animated.View style={{ transform: [{ rotate: spin }] }}>
               <CloverMark size={22} />
@@ -340,8 +343,9 @@ export default function IntentScreen({
             loading={loading}
             style={styles.button}
           />
-        </ScrollView>
-      </KeyboardAvoidingView>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Pressable>
 
       <TimePickerModal
         visible={isStartPickerOpen}
@@ -383,6 +387,9 @@ const styles = StyleSheet.create({
   content: {
     padding: spacing[4],
     paddingBottom: spacing[2],
+  },
+  bottomSheetContent: {
+    paddingBottom: spacing[10],
   },
   titleRow: {
     flexDirection: 'row',
