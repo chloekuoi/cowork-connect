@@ -4,6 +4,8 @@ import { borderRadius, colors, spacing, theme, touchTarget, shadows } from '../.
 import { getSessionScheduledDate, isSessionVisible } from '../../services/sessionVisibility';
 import { SessionRecord } from '../../types';
 import SessionReceiptCard from './SessionReceiptCard';
+import { CLOVER_FOREST } from '../../constants/clover';
+import CloverMark from '../common/CloverMark';
 
 type SessionRequestCardProps = {
   session: SessionRecord;
@@ -142,6 +144,32 @@ export default function SessionRequestCard({
 
   const [showProposeInput, setShowProposeInput] = useState(false);
   const [proposeText, setProposeText] = useState('');
+
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (session.status !== 'pending') {
+      spinAnim.stopAnimation();
+      spinAnim.setValue(0); // reset so next pending cycle starts from 0deg
+      return;
+    }
+    const loop = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 8000,
+        easing: Easing.linear,
+        useNativeDriver: false, // required: react-native-svg views are not native-driver compatible
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [session.status, spinAnim]);
+
+  const spinRotation = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   // IMPORTANT: All hooks (useRef/useEffect/useMemo) must appear ABOVE this line.
   // Do not add hooks below — early returns follow and would violate Rules of Hooks.
   // Capture status before TypeScript narrows it via early returns below.
