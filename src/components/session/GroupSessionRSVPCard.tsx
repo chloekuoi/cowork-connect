@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
+import { CLOVER_FOREST } from '../../constants/clover';
+import CloverMark from '../common/CloverMark';
 import { borderRadius, colors, shadows, spacing, theme, touchTarget } from '../../constants';
 import { isGroupSessionVisible } from '../../services/groupSessionVisibility';
 import { GroupSession, GroupSessionRsvp } from '../../types';
@@ -39,6 +41,28 @@ export default function GroupSessionRSVPCard({
 }: GroupSessionRSVPCardProps) {
   const [isChanging, setIsChanging] = useState(false);
 
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    // isGroupSessionVisible only returns true when status === 'proposed',
+    // so the spin runs for the entire visible lifetime of this card.
+    const loop = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 8000,
+        easing: Easing.linear,
+        useNativeDriver: false, // required: react-native-svg views are not native-driver compatible
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [spinAnim]);
+
+  const spinRotation = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
   if (!isGroupSessionVisible(session)) {
     return null;
   }
@@ -70,7 +94,9 @@ export default function GroupSessionRSVPCard({
       {/* ── card-top: icon box + title + badge + meta ── */}
       <View style={styles.cardTop}>
         <View style={styles.iconBox} testID="group-session-icon-box">
-          <Text style={styles.iconEmoji}>☕️</Text>
+          <Animated.View style={{ transform: [{ rotate: spinRotation }] }}>
+            <CloverMark size={26} color={CLOVER_FOREST} bg={colors.statusPendingBg} />
+          </Animated.View>
         </View>
         <View style={styles.cardContent}>
           <View style={styles.titleRow}>
@@ -188,9 +214,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.statusPendingBg,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  iconEmoji: {
-    fontSize: 21,
   },
   cardContent: {
     flex: 1,
