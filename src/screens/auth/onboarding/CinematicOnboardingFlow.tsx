@@ -17,6 +17,7 @@ export interface OnboardingState {
   photoUri: string | null;
   birthday: string;           // ISO: YYYY-MM-DD
   workType: string[];
+  desiredRoles: string[];
   currentlyWorkingOn: string;
   school: string;
   notificationsGranted: boolean;
@@ -44,6 +45,7 @@ const INITIAL_STATE: OnboardingState = {
   photoUri: null,
   birthday: '',
   workType: [],
+  desiredRoles: ['Open to anyone'],
   currentlyWorkingOn: '',
   school: '',
   notificationsGranted: false,

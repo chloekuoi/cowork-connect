@@ -7,6 +7,7 @@ export type Profile = {
   username: string;
   photo_url: string | null;
   work_type: string | null;
+  desired_roles: string | null;
   interests: string[] | null;
   bio: string | null;
   phone_number: string | null;
