@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   InputAccessoryView,
   Keyboard,
@@ -20,12 +20,14 @@ import type { ScreenProps } from '../CinematicOnboardingFlow';
 const KEYBOARD_ACCESSORY_ID = 'onboarding-about-keyboard-accessory';
 
 const WORK_OPTIONS = [
-  'Founder',
-  'Freelancer',
-  'Remote employee',
-  'Student',
-  'Creator',
-  'Digital nomad',
+  'Solo founder',
+  'Technical / Engineer',
+  'Designer',
+  'Marketer / Growth',
+  'Product',
+  'Operator',
+  'Investor',
+  'Other',
 ];
 
 export function AboutScreen({ state, setState, onNext, onBack, currentStep, totalSteps }: ScreenProps) {
@@ -39,6 +41,20 @@ export function AboutScreen({ state, setState, onNext, onBack, currentStep, tota
         : [...current, option];
       return { ...s, workType: next };
     });
+  };
+
+  const [otherText, setOtherText] = useState('');
+
+  const handleNext = () => {
+    if (selectedTypes.includes('Other') && otherText.trim()) {
+      setState(s => ({
+        ...s,
+        workType: (s.workType as string[]).map(w =>
+          w === 'Other' ? otherText.trim() : w
+        ),
+      }));
+    }
+    onNext();
   };
 
   return (
@@ -110,13 +126,29 @@ export function AboutScreen({ state, setState, onNext, onBack, currentStep, tota
               </Text>
             </TouchableOpacity>
           ))}
+          {selectedTypes.includes('Other') ? (
+            <TextInput
+              style={[styles.input, styles.otherInput]}
+              value={otherText}
+              onChangeText={setOtherText}
+              placeholder="your role…"
+              placeholderTextColor={t.placeholder}
+              autoCapitalize="none"
+              autoFocus
+              returnKeyType="done"
+              blurOnSubmit
+              onSubmitEditing={Keyboard.dismiss}
+              multiline={false}
+              {...(Platform.OS === 'ios' ? { inputAccessoryViewID: KEYBOARD_ACCESSORY_ID } : null)}
+            />
+          ) : null}
         </ScrollView>
 
         <ProgressBar
           currentStep={currentStep}
           totalSteps={totalSteps}
           onBack={onBack}
-          onNext={onNext}
+          onNext={handleNext}
         />
       </KeyboardAvoidingView>
 
@@ -211,6 +243,10 @@ const styles = StyleSheet.create({
   optionLabelSelected: {
     fontFamily: t.fontSerif.regular,
     color: t.text,
+  },
+  otherInput: {
+    marginTop: 8,
+    marginBottom: 4,
   },
   keyboardAccessory: {
     backgroundColor: '#FFFFFF',

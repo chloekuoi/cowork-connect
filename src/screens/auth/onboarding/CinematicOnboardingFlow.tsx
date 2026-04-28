@@ -11,6 +11,7 @@ import { AboutScreen } from './screens/AboutScreen';
 import { NotificationsScreen } from './screens/NotificationsScreen';
 import { ContactSyncScreen } from './screens/ContactSyncScreen';
 import { SuccessScreen } from './screens/SuccessScreen';
+import { LookingForScreen } from './screens/LookingForScreen';
 
 export interface OnboardingState {
   name: string;
@@ -38,7 +39,7 @@ interface CinematicOnboardingFlowProps {
   onComplete: () => void;
 }
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
 
 const INITIAL_STATE: OnboardingState = {
   name: '',
@@ -95,9 +96,10 @@ export function CinematicOnboardingFlow({ onComplete }: CinematicOnboardingFlowP
       case 1: return <IdentityScreen {...props} />;
       case 2: return <BirthdayScreen {...props} />;
       case 3: return <AboutScreen {...props} />;
-      case 4: return <NotificationsScreen {...props} />;
-      case 5: return <ContactSyncScreen {...props} />;
-      case 6: return <SuccessScreen {...props} />;
+      case 4: return <LookingForScreen {...props} />;
+      case 5: return <NotificationsScreen {...props} />;
+      case 6: return <ContactSyncScreen {...props} />;
+      case 7: return <SuccessScreen {...props} />;
       default: return null;
     }
   };
