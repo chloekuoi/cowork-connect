@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   question: {
     fontSize: 24,
     lineHeight: 32,
-    marginBottom: 20,
+    marginBottom: 14,
   },
   divider: {
     height: 1,

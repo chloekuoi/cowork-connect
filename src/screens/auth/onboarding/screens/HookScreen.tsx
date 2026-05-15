@@ -51,8 +51,6 @@ export function HookScreen({ onNext, onBack, currentStep, totalSteps }: ScreenPr
         </TouchableOpacity>
       </Animated.View>
 
-      <View style={styles.bottomSpacer} />
-
       {/* Progress bar — no back on first screen */}
       <ProgressBar
         currentStep={currentStep}
@@ -80,14 +78,13 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   spacer: { flex: 1 },
-  bottomSpacer: { height: 32 },
   question: {
     fontSize: 24,
     lineHeight: 32,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   ctaWrap: {
-    marginBottom: 8,
+    marginBottom: 4,
   },
   cta: {
     paddingVertical: 6,

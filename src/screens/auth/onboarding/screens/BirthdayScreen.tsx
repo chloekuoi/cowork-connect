@@ -144,8 +144,6 @@ export function BirthdayScreen({ state, setState, onNext, onBack, currentStep, t
           <Text style={styles.error}>this space is for the grown-ups.</Text>
         )}
 
-        <View style={styles.bottomSpacer} />
-
         <ProgressBar
           currentStep={currentStep}
           totalSteps={totalSteps}
@@ -184,17 +182,16 @@ const styles = StyleSheet.create({
   },
   kav: { flex: 1 },
   spacer: { flex: 1 },
-  bottomSpacer: { height: 32 },
   question: {
     fontSize: 24,
     lineHeight: 32,
-    marginBottom: 24,
+    marginBottom: 10,
   },
   dateRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
     gap: 8,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   dateInput: {
     fontFamily: t.fontSerif.light,

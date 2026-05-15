@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     lineHeight: 32,
     letterSpacing: -0.3,
     marginTop: 32,
-    marginBottom: 14,
+    marginBottom: 10,
   },
   input: {
     fontFamily: t.fontSerif.light,

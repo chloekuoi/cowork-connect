@@ -37,7 +37,7 @@ export const onboardingTheme = {
   // Spacing
   screenPaddingH: 28,
   screenPaddingTop: 20,
-  screenPaddingBottom: 40,
+  screenPaddingBottom: 28,
 } as const;
 
 export type OnboardingTheme = typeof onboardingTheme;
