@@ -16,7 +16,7 @@ import { LookingForScreen } from './screens/LookingForScreen';
 
 export interface OnboardingState {
   name: string;
-  photoUri: string | null;
+  photoUris: (string | null)[];   // index = position (0–4)
   birthday: string;           // ISO: YYYY-MM-DD
   workType: string[];
   desiredRoles: string[];
@@ -39,11 +39,11 @@ interface CinematicOnboardingFlowProps {
   onComplete: () => void;
 }
 
-const TOTAL_STEPS = 9;
+const TOTAL_STEPS = 10;
 
 const INITIAL_STATE: OnboardingState = {
   name: '',
-  photoUri: null,
+  photoUris: [null, null, null, null, null],
   birthday: '',
   workType: [],
   desiredRoles: ['Open to anyone'],

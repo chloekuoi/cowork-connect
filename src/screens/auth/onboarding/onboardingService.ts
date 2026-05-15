@@ -13,12 +13,13 @@ export async function completeOnboarding(
   userId: string,
   state: OnboardingState
 ): Promise<void> {
-  // Upload photo if present (position 0)
-  if (state.photoUri) {
-    await uploadPhoto(userId, state.photoUri, 0).catch(() => {
-      // Photo upload failure shouldn't block onboarding
-    });
-  }
+  // Upload all photos (up to 5 slots)
+  await Promise.allSettled(
+    state.photoUris.map((uri, position) =>
+      uri ? uploadPhoto(userId, uri, position) : Promise.resolve()
+    )
+  );
+  // Photo upload failures don't block onboarding (Promise.allSettled never rejects)
 
   // Save profile fields
   const { error } = await supabase

@@ -33,7 +33,11 @@ export function IdentityScreen({ state, setState, onNext, onBack, currentStep, t
     });
 
     if (!result.canceled && result.assets[0]) {
-      setState(s => ({ ...s, photoUri: result.assets[0].uri }));
+      setState(s => {
+        const next = [...s.photoUris];
+        next[0] = result.assets[0].uri;
+        return { ...s, photoUris: next };
+      });
     }
   };
 
@@ -55,8 +59,8 @@ export function IdentityScreen({ state, setState, onNext, onBack, currentStep, t
         />
 
         <TouchableOpacity onPress={pickPhoto} style={styles.photoCircle} activeOpacity={0.7}>
-          {state.photoUri ? (
-            <Image source={{ uri: state.photoUri }} style={styles.photoImage} />
+          {state.photoUris[0] ? (
+            <Image source={{ uri: state.photoUris[0] }} style={styles.photoImage} />
           ) : (
             <Text style={styles.photoPlus}>+</Text>
           )}
