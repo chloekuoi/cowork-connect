@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { onboardingTheme as t } from '../theme';
 import { ProgressBar } from '../components/ProgressBar';
-import { TypewriterText } from '../components/TypewriterText';
 import type { ScreenProps } from '../CinematicOnboardingFlow';
 
 const KEYBOARD_ACCESSORY_ID = 'onboarding-about-keyboard-accessory';
@@ -73,12 +72,6 @@ export function AboutScreen({ state, setState, onNext, onBack, currentStep, tota
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.spacer} />
-
-          <TypewriterText
-            text="tell us a bit more."
-            style={styles.question}
-            startDelay={300}
-          />
 
           <Text style={styles.fieldLabel}>where'd you go to school?</Text>
           <TextInput
@@ -191,29 +184,25 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
   },
-  question: {
-    fontSize: 24,
-    lineHeight: 32,
-    marginBottom: 20,
-  },
   fieldLabel: {
-    fontFamily: t.fontSerif.lightItalic,
-    fontSize: 15,
-    color: t.accent,
-    marginBottom: 6,
-    fontStyle: 'italic',
+    fontFamily: t.fontSerif.light,
+    fontSize: 24,
+    color: t.text,
+    lineHeight: 32,
+    letterSpacing: -0.3,
+    marginBottom: 12,
   },
   fieldLabelSpaced: {
-    marginTop: 20,
+    marginTop: 32,
   },
   sectionHeading: {
     fontFamily: t.fontSerif.light,
-    fontSize: 17,
+    fontSize: 24,
     color: t.text,
-    marginTop: 28,
+    lineHeight: 32,
+    letterSpacing: -0.3,
+    marginTop: 32,
     marginBottom: 14,
-    letterSpacing: -0.2,
-    lineHeight: 24,
   },
   input: {
     fontFamily: t.fontSerif.light,
