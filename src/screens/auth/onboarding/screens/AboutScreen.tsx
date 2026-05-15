@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import { onboardingTheme as t } from '../theme';
 import { ProgressBar } from '../components/ProgressBar';
+import { TypewriterText } from '../components/TypewriterText';
 import type { ScreenProps } from '../CinematicOnboardingFlow';
 
 const KEYBOARD_ACCESSORY_ID = 'onboarding-about-keyboard-accessory';
@@ -73,34 +74,11 @@ export function AboutScreen({ state, setState, onNext, onBack, currentStep, tota
         >
           <View style={styles.spacer} />
 
-          <Text style={styles.fieldLabel}>where'd you go to school?</Text>
-          <TextInput
-            style={styles.input}
-            value={state.school}
-            onChangeText={v => setState(s => ({ ...s, school: v }))}
-            placeholderTextColor={t.placeholder}
-            autoCapitalize="words"
-            returnKeyType="next"
-            multiline={false}
-            {...(Platform.OS === 'ios' ? { inputAccessoryViewID: KEYBOARD_ACCESSORY_ID } : null)}
+          <TypewriterText
+            text="how do you spend your 9-to-5?"
+            style={styles.question}
+            startDelay={300}
           />
-
-          <Text style={[styles.fieldLabel, styles.fieldLabelSpaced]}>what are you building?</Text>
-          <TextInput
-            style={styles.input}
-            value={state.currentlyWorkingOn}
-            onChangeText={v => setState(s => ({ ...s, currentlyWorkingOn: v }))}
-            placeholder="a coworking app, fueled by excess matcha"
-            placeholderTextColor={t.placeholder}
-            autoCapitalize="none"
-            returnKeyType="done"
-            blurOnSubmit
-            onSubmitEditing={Keyboard.dismiss}
-            multiline={false}
-            {...(Platform.OS === 'ios' ? { inputAccessoryViewID: KEYBOARD_ACCESSORY_ID } : null)}
-          />
-
-          <Text style={styles.sectionHeading}>how do you spend your 9-to-5?</Text>
           <View style={styles.divider} />
           {WORK_OPTIONS.map((option) => (
             <TouchableOpacity
@@ -185,24 +163,9 @@ const styles = StyleSheet.create({
     flex: 1,
     minHeight: 40,
   },
-  fieldLabel: {
-    fontFamily: t.fontSerif.light,
+  question: {
     fontSize: 24,
-    color: t.text,
     lineHeight: 32,
-    letterSpacing: -0.3,
-    marginBottom: 12,
-  },
-  fieldLabelSpaced: {
-    marginTop: 32,
-  },
-  sectionHeading: {
-    fontFamily: t.fontSerif.light,
-    fontSize: 24,
-    color: t.text,
-    lineHeight: 32,
-    letterSpacing: -0.3,
-    marginTop: 32,
     marginBottom: 10,
   },
   input: {

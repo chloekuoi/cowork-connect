@@ -29,7 +29,6 @@ export async function completeOnboarding(
       work_type: (state.workType as string[]).length > 0 ? (state.workType as string[]).join(', ') : null,
       desired_roles: state.desiredRoles.length > 0 ? state.desiredRoles.join(', ') : null,
       currently_working_on: state.currentlyWorkingOn.trim() || null,
-      school: state.school.trim() || null,
       onboarding_complete: true,
     })
     .eq('id', userId);
