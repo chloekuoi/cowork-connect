@@ -51,6 +51,8 @@ export function NotificationsScreen({ state, setState, onNext, onBack, currentSt
         <Text style={styles.skipText}>maybe later</Text>
       </TouchableOpacity>
 
+      <View style={styles.bottomSpacer} />
+
       <ProgressBar
         currentStep={currentStep}
         totalSteps={totalSteps}
@@ -78,6 +80,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   spacer: { flex: 1, maxHeight: 200 },
+  bottomSpacer: { flex: 1 },
   question: {
     fontSize: 24,
     lineHeight: 32,

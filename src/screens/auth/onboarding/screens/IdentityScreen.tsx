@@ -75,6 +75,8 @@ export function IdentityScreen({ state, setState, onNext, onBack, currentStep, t
           {...(Platform.OS === 'ios' ? { inputAccessoryViewID: KEYBOARD_ACCESSORY_ID } : null)}
         />
 
+        <View style={styles.bottomSpacer} />
+
         <ProgressBar
           currentStep={currentStep}
           totalSteps={totalSteps}
@@ -113,6 +115,7 @@ const styles = StyleSheet.create({
   },
   kav: { flex: 1 },
   spacer: { flex: 1, maxHeight: 200 },
+  bottomSpacer: { flex: 1 },
   question: {
     fontSize: 24,
     lineHeight: 32,

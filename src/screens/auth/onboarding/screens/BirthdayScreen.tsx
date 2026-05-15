@@ -144,6 +144,8 @@ export function BirthdayScreen({ state, setState, onNext, onBack, currentStep, t
           <Text style={styles.error}>this space is for the grown-ups.</Text>
         )}
 
+        <View style={styles.bottomSpacer} />
+
         <ProgressBar
           currentStep={currentStep}
           totalSteps={totalSteps}
@@ -182,6 +184,7 @@ const styles = StyleSheet.create({
   },
   kav: { flex: 1 },
   spacer: { flex: 1, maxHeight: 200 },
+  bottomSpacer: { flex: 1 },
   question: {
     fontSize: 24,
     lineHeight: 32,
