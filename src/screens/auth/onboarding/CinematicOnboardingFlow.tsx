@@ -9,6 +9,7 @@ import { IdentityScreen } from './screens/IdentityScreen';
 import { BirthdayScreen } from './screens/BirthdayScreen';
 import { AboutScreen } from './screens/AboutScreen';
 import { BuildingScreen } from './screens/BuildingScreen';
+import { PhotoScreen } from './screens/PhotoScreen';
 import { NotificationsScreen } from './screens/NotificationsScreen';
 import { ContactSyncScreen } from './screens/ContactSyncScreen';
 import { SuccessScreen } from './screens/SuccessScreen';
@@ -93,13 +94,14 @@ export function CinematicOnboardingFlow({ onComplete }: CinematicOnboardingFlowP
     switch (currentStep) {
       case 0: return <HookScreen {...props} />;
       case 1: return <IdentityScreen {...props} />;
-      case 2: return <BirthdayScreen {...props} />;
-      case 3: return <BuildingScreen {...props} />;
-      case 4: return <AboutScreen {...props} />;
-      case 5: return <LookingForScreen {...props} />;
-      case 6: return <NotificationsScreen {...props} />;
-      case 7: return <ContactSyncScreen {...props} />;
-      case 8: return <SuccessScreen {...props} />;
+      case 2: return <PhotoScreen {...props} />;
+      case 3: return <BirthdayScreen {...props} />;
+      case 4: return <BuildingScreen {...props} />;
+      case 5: return <AboutScreen {...props} />;
+      case 6: return <LookingForScreen {...props} />;
+      case 7: return <NotificationsScreen {...props} />;
+      case 8: return <ContactSyncScreen {...props} />;
+      case 9: return <SuccessScreen {...props} />;
       default: return null;
     }
   };
