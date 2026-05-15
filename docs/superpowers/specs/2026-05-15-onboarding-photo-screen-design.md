@@ -14,7 +14,7 @@ Add a dedicated photo upload screen to the cinematic onboarding flow, placed imm
 ## Screen: PhotoScreen
 
 ### Placement
-Step 2 in the flow, right after IdentityScreen. Total steps increase from 9 to 10.
+Step 2 in the flow, right after IdentityScreen. Total steps increase from 9 to 10 (`TOTAL_STEPS = 10`).
 
 **Updated flow:**
 
@@ -34,9 +34,28 @@ Step 2 in the flow, right after IdentityScreen. Total steps increase from 9 to 1
 ### Layout
 - Follows the cinematic onboarding aesthetic: cream background (`t.bg`), dark green text, serif fonts, lower-anchor layout (wordmark at top, `spacer: flex:1` pushes content down)
 - TypewriterText question: `"put a face to the name."` with `startDelay={300}`
-- **3+2 photo grid**: two rows — top row has 3 equal slots, bottom row has 2 equal slots + an invisible spacer (so the last row is left-aligned, not stretched)
-- `ProgressBar` at bottom, always has `onNext` (photos optional), `nextLabel="skip"`
-- `"skip for now"` text link sits between the grid and the ProgressBar, calls `onNext` directly
+- **3+2 photo grid** (see Grid sizing below)
+- `"skip for now"` text link sits between the grid and the ProgressBar, calls `onNext` directly — same pattern as NotificationsScreen and ContactSyncScreen
+- `ProgressBar` at bottom, always has `onNext` (photos optional), `nextLabel="skip"` — label does not change based on whether photos have been added
+
+### "skip for now" style
+Matches the skip link on NotificationsScreen/ContactSyncScreen:
+```ts
+skip: { paddingVertical: 4 },
+skipText: {
+  fontFamily: t.fontSans.light,
+  fontSize: 12,
+  color: t.placeholder,
+},
+```
+
+### Grid sizing
+Available width = `screenWidth - 2 * t.screenPaddingH` (i.e., screen width minus the 28px horizontal padding on each side).
+
+- **Column gap:** 6px; **Row gap:** 6px
+- Each slot width = `(availableWidth - 2 * 6) / 3`
+- Each slot height = slot width (1:1 aspect ratio, square slots)
+- Bottom row: 2 slots + 1 invisible `View` (same dimensions as a slot, `backgroundColor: 'transparent'`) for left-alignment
 
 ### Photo slots
 
@@ -48,11 +67,13 @@ Step 2 in the flow, right after IdentityScreen. Total steps increase from 9 to 1
 | 3 | Currently building something... | Still figuring it out, send help |
 | 4 | Add photo 5 | *(none)* |
 
-- Slot 0 has a green dashed border (`t.accentDark`) to distinguish it as primary; all other slots use the muted cream style
+These prompts and subtitles are hard-coded in `PhotoScreen.tsx`. No changes are made to `PHOTO_PROMPTS` or `PHOTO_SUBTITLES` in `EditProfileScreen.tsx`.
+
+- Slot 0 has a green dashed border (`t.accentDark`) to distinguish it as primary; all other slots use a muted cream fill (`rgba(12,31,14,0.06)`)
 - Slot 0 is pre-populated if the user already picked a photo on IdentityScreen (shows the image instead of the prompt)
 - Tapping a filled slot re-opens the image picker (replaces the photo)
 - Tapping an empty slot opens the image picker
-- Uses `expo-image-picker` via the existing `pickImage()` helper from `photoService`
+- Each slot uses `pickImage()` from `photoService` (handles permissions + library launch)
 - No delete action on this screen — users can manage photos in Edit Profile after onboarding
 
 ### Implementation note
@@ -78,15 +99,17 @@ photoUris: (string | null)[];   // index = position (0–4)
 photoUris: [null, null, null, null, null],
 ```
 
+Also update: `TOTAL_STEPS: 9 → 10`.
+
 ### IdentityScreen.tsx
 
-The photo circle reads and writes `photoUris[0]`:
+**Picker call:** No change — keep the existing inline `ImagePicker.launchImageLibraryAsync` call. Only the state write changes.
 
 ```ts
-// Read
-const photoUri = state.photoUris[0];
+// Before
+setState(s => ({ ...s, photoUri: result.assets[0].uri }));
 
-// Write
+// After
 setState(s => {
   const next = [...s.photoUris];
   next[0] = result.assets[0].uri;
@@ -94,25 +117,50 @@ setState(s => {
 });
 ```
 
+Read also changes:
+```ts
+// Before
+state.photoUri
+
+// After
+state.photoUris[0]
+```
+
 ### PhotoScreen.tsx
 
-Each slot reads `state.photoUris[position]` and writes using the same array-copy pattern as above.
+Each slot reads `state.photoUris[position]`. The write uses the same array-copy pattern:
+```ts
+setState(s => {
+  const next = [...s.photoUris];
+  next[position] = uri;
+  return { ...s, photoUris: next };
+});
+```
 
 ---
 
 ## Upload changes (onboardingService.ts)
 
-Replace the single `uploadPhoto(userId, state.photoUri, 0)` call with a loop over all slots:
+Replace:
+```ts
+if (state.photoUri) {
+  await uploadPhoto(userId, state.photoUri, 0).catch(() => {
+    // Photo upload failure shouldn't block onboarding
+  });
+}
+```
 
+With:
 ```ts
 await Promise.allSettled(
   state.photoUris.map((uri, position) =>
     uri ? uploadPhoto(userId, uri, position) : Promise.resolve()
   )
 );
+// Photo upload failures don't block onboarding (Promise.allSettled never rejects)
 ```
 
-`Promise.allSettled` ensures one failed upload does not block the others or the overall onboarding completion.
+`Promise.allSettled` preserves the original intent — upload failures are silently ignored and onboarding completion is never blocked.
 
 ---
 
@@ -120,10 +168,10 @@ await Promise.allSettled(
 
 | File | Change |
 |------|--------|
-| `src/screens/auth/onboarding/screens/PhotoScreen.tsx` | **Create** — 3+2 grid, prompts, TypewriterText |
-| `src/screens/auth/onboarding/CinematicOnboardingFlow.tsx` | `photoUri` → `photoUris[]`, TOTAL_STEPS 9→10, import + wire PhotoScreen as case 2, shift cases 3–9 |
-| `src/screens/auth/onboarding/screens/IdentityScreen.tsx` | Circle reads/writes `photoUris[0]` instead of `photoUri` |
-| `src/screens/auth/onboarding/onboardingService.ts` | Upload loop over `photoUris` using `Promise.allSettled` |
+| `src/screens/auth/onboarding/screens/PhotoScreen.tsx` | **Create** — 3+2 grid, prompts, TypewriterText, pickImage |
+| `src/screens/auth/onboarding/CinematicOnboardingFlow.tsx` | `photoUri` → `photoUris[]`, `TOTAL_STEPS` 9→10, import + wire `PhotoScreen` as case 2, shift cases 3–9 |
+| `src/screens/auth/onboarding/screens/IdentityScreen.tsx` | Circle reads/writes `photoUris[0]`; picker call unchanged |
+| `src/screens/auth/onboarding/onboardingService.ts` | Replace single `uploadPhoto` call with `Promise.allSettled` loop over `photoUris` |
 
 ---
 
@@ -132,3 +180,4 @@ await Promise.allSettled(
 - Deleting or reordering photos within the onboarding flow (available in Edit Profile)
 - Camera capture (library picker only, consistent with existing IdentityScreen behaviour)
 - Showing upload progress during the photo step (uploads happen at completion in SuccessScreen)
+- Changes to `PHOTO_PROMPTS` / `PHOTO_SUBTITLES` in `EditProfileScreen.tsx`
